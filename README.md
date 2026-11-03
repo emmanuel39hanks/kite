@@ -1,0 +1,215 @@
+# Kite
+
+**An autopilot for your savings, on NEAR.** You pick a mix: Bitcoin, Ethereum, Solana, NEAR, gold, digital dollars. Your money goes into **your own vault contract**, and Kite keeps the mix on target by rebalancing through **NEAR Intents** whenever something drifts too far. Idle parts can earn a yield. And if you'd rather not pick, a model on **NEAR AI Cloud** drafts a plan for you, privately.
+
+Kite's robot holds a key that can only ask your vault to rebalance. The vault checks every trade against your rules and against a **quote signed by NEAR Intents**, so even a stolen key can't move your money anywhere else.
+
+- **Live:** https://www.usekite.xyz · try it with no wallet: https://www.usekite.xyz/console?preview=1
+- **Built at NEAR HACKATHON 2026**, tracks: `defi` (main), `security`, `privacy`. MIT licensed.
+
+---
+
+## Try it in two minutes (no wallet, no funds)
+
+NEAR Intents has no testnet, so Kite has a **preview mode**:
+- live prices
+- **real 1Click quotes requested with `dry: true`**
+- a vault simulated in your browser
+- nothing signed or sent
+
+1. Open https://www.usekite.xyz/console?preview=1. To run locally instead: `cd worker && npm install`, then `cd ../web && npm install && npm run dev`, and open http://localhost:3000/console?preview=1.
+2. **Explore** → **Bitcoin Plus** → **Start this plan** → **Create vault (preview)**. The panel lists exactly what the real signature grants.
+3. **Add money:**
+   - **Bitcoin** → **Get a real quote** shows a live 1Click quote: BTC in, USDC out, cost and time.
+   - Or **USDC in my NEAR wallet** → `1000` → **Send**. The preview wallet starts with 1,000 USDC and 5 NEAR.
+4. **Invest:**
+   - **Invest at today's real quotes** prices each slice with a dry 1Click quote.
+   - Or pick **1 year ago**, which replays Kite's daily check on real daily closes with your guardrails. **Activity** then lists every rebalance and the drift that triggered it.
+5. **Home** shows:
+   - value, a chart of the vault's own history, and profit and loss on what you put in
+   - return per holding and drift against your band
+   - what the earning parts make
+6. **Check now** runs Kite's rule against live prices:
+   - If something is past your band, it gets a real dry quote and applies the vault's checks.
+   - It trades only if the quote is within your price limit.
+   - Otherwise it logs the refusal the contract would give (`ERR_SLIPPAGE`, `ERR_RATE`, …).
+   - Lower the band on **Guardrails** to see it trade.
+7. **Earn** (sidebar) shows each earning option with its live APY, cost and risks, and what your vault earns a year.
+8. **Create → Describe your goal instead:** type a goal and get a private draft plan from NEAR AI. See [Private plan builder](#private-plan-builder-near-ai-cloud).
+9. **Guardrails:**
+   - Change limits.
+   - Switch Kite's key off; checks then log `ERR_NO_AGENT`.
+   - **Withdraw** everything, then **Close** to get the 2.4 NEAR deposit back.
+
+| Real | Simulated |
+|---|---|
+| Prices: 1Click `/v0/tokens` | The vault and its balances, kept in `localStorage` |
+| Every swap amount: 1Click `/v0/quote` with `dry: true` (`web/src/app/api/preview/quote`) | The wallet: 1,000 USDC and 5 NEAR |
+| Daily price history: Kraken, with CoinGecko as fallback | Back-dated swap cost: a flat 0.3%, about what live quotes show |
+| Yields: Meta Pool, Lido, Morpho, Kamino APIs | |
+| The rebalance rule: `web/src/lib/preview.ts` mirrors `worker/src/drift.ts` and the contract | |
+
+---
+
+## How it works on mainnet
+
+Connect a NEAR wallet (HOT, Meteor, Intear, Sender, Nightly or OKX).
+
+| Step | What happens on chain |
+|---|---|
+| Create your vault | One transaction from your account to `kite.<you>`: `CreateAccount`, `Transfer 2.4 NEAR` (storage, refunded on close), `DeployContract` (this repo's vault), `new(owner, plan, limits)`, and `AddKey`. The key is Kite's worker key: `FunctionCall` only, receiver = your vault, methods = `rebalance, settle`, 0.25 NEAR allowance. |
+| Add money | Send USDC from your NEAR wallet (`ft_transfer_call` to `intents.near`, `msg = vault`). Or `/api/deposit/quote` gets a 1Click deposit address on Base, Arbitrum, Ethereum, Bitcoin or Solana, and what you send lands in your vault as USDC inside `intents.near`. |
+| Invest | You sign `vault.allocate(transfers)`: slices of USDC go to 1Click deposit addresses that swap into each plan asset and pay **back to the vault**. |
+| Daily check | `/api/cron` (Vercel Cron) or **Check now** runs `worker.runOnce`. It reads balances and drift, gets a 1Click quote, checks it locally, then calls `vault.rebalance(quote, signature, prices)` with the worker key. Later it calls `vault.settle()`. |
+| Guardrails | Owner calls `set_limits`, `revoke_agent`, `set_agent`, `pause`, `unpause` and `set_quote_signer`. Each needs 1 yocto attached, so only your full-access key can call them. |
+| Leave | `withdraw` each balance to your Intents account, then `close_vault`. It refuses while anything is left, then deletes the account and returns its NEAR to you. |
+
+**Status:**
+- **Built and tested:** the contract, worker and web app. The web app is deployed.
+- **Not yet run:** the first end-to-end mainnet run with real funds is the next step. Transaction links will be added here.
+
+---
+
+## What NEAR does here
+
+- **NEAR Intents:**
+  - Holds every asset as NEP-245 balances owned by your vault account: nBTC, ETH, SOL, NEAR, USDC and Tether Gold, plus the earning versions stNEAR, wstETH, gtUSDCp and kV-gtSOLb.
+  - Its 1Click API handles deposits from other chains and every swap.
+  - **Its signed quotes are verified on-chain by the vault** (`env::ed25519_verify`).
+- **NEAR AI Cloud:** drafts plans privately. The prompt is end-to-end encrypted to attested TEE hardware, and the browser verifies the answer's signature.
+- **Function-call access keys:** limit Kite's worker to two methods at the protocol level.
+- **Auth by predecessor** (default in `intents.near`): the vault contract moves its own Intents balances with no keys registered there. Custody stays with a contract only you control.
+- **Account model:** one readable, deletable sub-account per user (`kite.<you>`), whose storage deposit is refunded on close.
+
+---
+
+## How the vault protects you
+
+Code: `contracts/vault/src/lib.rs`. Every refusal has a named error in `contracts/vault/src/errors.rs`.
+
+**Kite's worker never decides where money goes.** Every `rebalance` must carry a quote **signed by NEAR Intents 1Click**, and the vault verifies it on-chain:
+- **Signature:** ed25519 over `base58(sha256(quote json))`, against 1Click's published key `reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc`. The owner can rotate it with `set_quote_signer`.
+- **Terms:** what is sold and bought, the amounts, the deposit address, the minimum out and the USD values all come from the signed quote, not from the worker.
+- **Payout and refund:** the quote must pay out to the vault and refund to the vault, inside NEAR Intents.
+- **Freshness:** the quote must be under 5 minutes old and newer than the last one used.
+
+### We tried to rob our own vault
+
+We played an attacker who stole Kite's key and tried everything we could think of. Every attempt is refused, by NEAR itself or by your vault:
+
+| The attacker tries to… | Stopped by | Refusal |
+|---|---|---|
+| Withdraw your money to their own account | NEAR (the key can only call `rebalance`/`settle`) | `MethodNameMismatch` |
+| Skip the vault and move funds in `intents.near` directly | NEAR (the key only works on the vault) | `ReceiverMismatch` |
+| Loosen your limits, unpause, change the plan, or allocate | NEAR, **and** the contract | `MethodNameMismatch`, `ERR_NOT_OWNER` |
+| Use a **real** 1Click quote that pays the attacker | Your vault | `ERR_QUOTE_RECIPIENT` |
+| Use a real quote that refunds the attacker, then make the swap fail | Your vault | `ERR_QUOTE_REFUND` |
+| Edit a quote, or sign a fake one | Your vault | `ERR_QUOTE_SIG` |
+| Save a quote for later, or replay a used one | Your vault | `ERR_QUOTE_STALE`, `ERR_QUOTE_REPLAY` |
+| Pass off a dry quote, or one with no deposit address | Your vault | `ERR_QUOTE_TERMS` |
+| Lie about prices to sneak a huge trade through | Your vault (the traded assets are valued at the signed quote's prices) | `ERR_TOO_BIG` |
+| Accept a bad price, or ask for a loose minimum | Your vault (fees included, using 1Click's signed USD values) | `ERR_SLIPPAGE` |
+| Buy something that isn't in your plan | Your vault | `ERR_NOT_IN_PLAN` |
+| Sell something that isn't over its band, or buy something already over target | Your vault | `ERR_NOT_OVER_BAND`, `ERR_WRONG_DIRECTION` |
+| Trade over and over to bleed fees, or overlap swaps | Your vault | `ERR_RATE`, `ERR_PENDING` |
+| Keep trading after a swap goes missing | `settle` trips a breaker after the settle window, pausing the vault | `ERR_PAUSED` |
+
+**Run the attacks yourself:**
+- **Contract tests:** `cd contracts/vault && cargo test attack_` runs **27 attacks** out of **51 tests** in total. One test checks a **real** 1Click signature with the exact code that runs on chain.
+- **Against a live vault, free:** `cd worker && npm run attack -- --vault kite.<owner>.near`. It fetches real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan, and asks the vault's free `check_quote` view. Every one must be refused.
+- **As real transactions:** add `--send` with the agent key. The attacks go out as real transactions, and each refusal gets a transaction hash. Add `--out file.md` to save the transcript.
+
+**Threat model:**
+- **A fully compromised worker still can't** move money anywhere except a 1Click swap that pays your vault.
+- **It can still** make trades you didn't need, inside your guardrails and rate limits, at 1Click's signed market price. The worst case is swap costs.
+
+**The gap we found and closed:** the first version took the deposit address and reference prices from the worker. Writing the attack suite showed that a stolen key could have pointed one trade at itself. Verifying 1Click's signature on-chain closed it.
+
+---
+
+## Earn while you hold
+
+In **Create → Choose how much**, any NEAR, ETH, USDC or SOL slice can be switched to an earning version. It keeps the same price moves and adds a yield. The ready-made **Steady** plan holds its dollars this way, and the **Earn** page shows what your vault makes a year.
+
+| Slice | Held as | Yield from | Live APY source (no API key) |
+|---|---|---|---|
+| NEAR | stNEAR `nep141:meta-pool.near` | Meta Pool staking | `validators.narwallets.com/metrics_json` (30-day) |
+| ETH | wstETH | Lido staking | `eth-api.lido.fi` (median of 7 days; the mean is skewed by spikes) |
+| USDC | gtUSDCp (wraps Gauntlet USDC Prime on Morpho, Base) | Morpho lending | Morpho GraphQL `netApy` |
+| SOL | kV-gtSOLb | Kamino lending | Kamino `kvaults/…/metrics` (30-day) |
+
+- **Valuation:** at 1Click's price, which tracks each token's exchange rate (checked: stNEAR/NEAR ≈ 1.505, kV-gtSOLb/SOL ≈ 1.056). gtUSDCp's units are tiny, about $0.0000011 each, so the UI shows its price per million.
+- **Price limit:** each earning asset carries a 2% limit, stored per asset in the vault plan (`Target.max_slippage_bps`, at most 5%), because a round trip costs about 1–2%. A trade uses the widest of the global limit and its two assets' limits.
+- **Backtests:** for earning versions, they use the base asset's real history × today's exchange rate, grown back at today's APY. The UI labels this as an estimate.
+- **Worth knowing:** switching in and back out costs about 1–2%, so earning pays off over months. gtUSDCp is a wrapper token whose deployer we couldn't verify.
+
+---
+
+## Private plan builder (NEAR AI Cloud)
+
+**Create → Describe your goal instead.** Type something like "saving for a house in 3 years, no big swings". A model on NEAR AI Cloud drafts a plan and explains each choice. You then review every number in the normal Create steps.
+
+Private by construction, using `@nearai/inference-sdk` in the browser:
+1. **Hardware check:** the browser verifies NEAR AI's attestation itself, covering the gateway and the model's Intel TDX and NVIDIA confidential-GPU reports.
+2. **Encryption:** it encrypts the message to the attested model key (X25519 + XChaCha20-Poly1305, end to end).
+3. **Relay only:** Kite's server only relays encrypted bytes (`web/src/app/api/nearai/v1/[...path]`). It adds the API key, allows only Kite's model and the four endpoints the SDK needs, and rate-limits visitors. It can't read the prompt or the answer.
+4. **Signature check:** the browser verifies the model's signature on the reply (`provider_tee`) before showing it, and links to `cloud.near.ai/verify`.
+
+**The AI never touches money:**
+- It picks only from Kite's six assets.
+- Its answer is clamped and re-normalized (`web/src/lib/planner.ts`).
+- The vault still decides every trade by fixed rules.
+
+**Model:** `z-ai/glm-5.3-flash`. One draft costs a fraction of a cent and takes about 20 s, most of it hardware verification.
+
+---
+
+## Repository
+
+```
+contracts/vault/   Rust vault (near-sdk 5.30): plan, guardrails, signed-quote checks, settle/breaker, close
+worker/            Node worker: drift maths, 1Click client + quote signatures, runOnce, attack script
+web/               Next.js 16: landing page, /console, and API routes
+plan/              The build plan and task notes
+RESEARCH.md        Background research (some points superseded)
+```
+
+| Task | Command |
+|---|---|
+| Contract tests | `cd contracts/vault && cargo test` |
+| Build the vault | `cd contracts/vault && cargo near build non-reproducible-wasm` → copy to `web/public/vault/kite_vault.wasm` |
+| Worker tests | `cd worker && npm test` (drift maths, and the real 1Click signature) |
+| Check routes | `cd worker && npm run routes` (live 1Click routes for every asset) |
+| One check, dry | `cd worker && npm run worker -- --vault kite.<you>.near --dry` |
+| Web app | `cd web && npm run dev` · `npx tsc --noEmit` · `npx eslint src` · `npm run build` |
+
+**Vault wasm** (`web/public/vault/kite_vault.wasm`, 227,807 bytes):
+sha256 `626eb151fb2d2fe0…`; run `shasum -a 256 web/public/vault/kite_vault.wasm` for the full hash.
+
+### Environment (`web/.env.local`, never committed)
+
+| Variable | What it's for |
+|---|---|
+| `NEXT_PUBLIC_KITE_AGENT_PK` | Public half of Kite's worker key, added to each new vault |
+| `KITE_AGENT_KEY` | Server only. Lets `/api/vault/check` and `/api/cron` send real rebalances. Leave it out to run dry. |
+| `NEARAI_API_KEY` | Server only. Lets the relay reach NEAR AI Cloud for the private plan builder. |
+| `ONECLICK_JWT` | Optional 1Click partner key, which avoids the 0.2% no-key fee |
+| `CRON_SECRET`, `KITE_VAULTS` | Protects the daily cron, and lists the vaults it checks |
+
+---
+
+## Verified facts (2026-11-03)
+- **Routes:** checked against the live API (`npm run routes`). USDC → nBTC/ETH/SOL/NEAR/XAUt quote at 0.3–0.7%, and the four earning assets quote both ways.
+- **Ondo stocks:** not routable through 1Click yet, so they show as **coming soon**.
+- **No testnet:** NEAR Intents has no testnet, which is why preview mode uses real `dry: true` quotes.
+
+## Built during the hackathon
+All code in this repo was written during NEAR HACKATHON 2026 (from 2026-11-01).
+
+Libraries: near-sdk, near-api-js, NEAR Wallet Selector, `@nearai/inference-sdk`, Next.js, Tailwind, Radix.
+
+## Credits
+Sky footage from Mixkit. Token logos from web3icons; company logos from Simple Icons.
+
+## Not financial advice
+Tokenized stocks, when they arrive, are not available to US persons. Automated trading for others may be regulated where you live.

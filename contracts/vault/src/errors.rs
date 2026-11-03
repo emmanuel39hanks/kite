@@ -1,0 +1,34 @@
+//! Every refusal has a name, so the console and the attack suite can show why.
+
+pub const ERR_NOT_OWNER: &str = "ERR_NOT_OWNER: only the vault owner can do this";
+pub const ERR_ONE_YOCTO: &str = "ERR_ONE_YOCTO: attach 1 yoctoNEAR (owner actions need a full-access signature)";
+pub const ERR_NOT_AGENT: &str = "ERR_NOT_AGENT: only Kite's key on this vault can rebalance";
+pub const ERR_NO_AGENT: &str = "ERR_NO_AGENT: Kite's key has been revoked";
+pub const ERR_PAUSED: &str = "ERR_PAUSED: the vault is paused";
+pub const ERR_PENDING: &str = "ERR_PENDING: a swap is still being settled";
+pub const ERR_NO_PENDING: &str = "ERR_NO_PENDING: nothing to settle";
+pub const ERR_SAME_ASSET: &str = "ERR_SAME_ASSET: sell and buy are the same";
+pub const ERR_NOT_IN_PLAN: &str = "ERR_NOT_IN_PLAN: Kite can only trade assets in your plan";
+pub const ERR_ZERO: &str = "ERR_ZERO: amount must be above zero";
+pub const ERR_RATE: &str = "ERR_RATE: too many trades, or too soon after the last one";
+pub const ERR_NOT_OVER_BAND: &str = "ERR_NOT_OVER_BAND: that asset isn't far enough above its target to sell";
+pub const ERR_WRONG_DIRECTION: &str = "ERR_WRONG_DIRECTION: Kite can only buy what is below its target";
+pub const ERR_TOO_BIG: &str = "ERR_TOO_BIG: trade is larger than your limit allows";
+pub const ERR_SLIPPAGE: &str = "ERR_SLIPPAGE: the minimum received is outside your price limit";
+pub const ERR_INSUFFICIENT: &str = "ERR_INSUFFICIENT: not enough of that asset";
+pub const ERR_PRICE: &str = "ERR_PRICE: missing or zero price";
+pub const ERR_EMPTY: &str = "ERR_EMPTY: the vault holds nothing";
+pub const ERR_BALANCES: &str = "ERR_BALANCES: could not read balances from NEAR Intents";
+pub const ERR_LIMITS: &str = "ERR_LIMITS: a limit is outside its allowed range";
+pub const ERR_PLAN_SIZE: &str = "ERR_PLAN_SIZE: a plan has 2 to 8 assets";
+pub const ERR_PLAN_SUM: &str = "ERR_PLAN_SUM: targets must add up to 100%";
+pub const ERR_PLAN_ASSET: &str = "ERR_PLAN_ASSET: each asset once, with a share above zero";
+pub const ERR_ALLOCATE: &str = "ERR_ALLOCATE: allocate takes 1 to 8 transfers";
+pub const ERR_NOT_EMPTY: &str = "ERR_NOT_EMPTY: withdraw everything from the vault before closing it";
+pub const ERR_CLOSE_TOKENS: &str = "ERR_CLOSE_TOKENS: check at most 16 tokens when closing";
+pub const ERR_QUOTE_SIG: &str = "ERR_QUOTE_SIG: the quote isn't signed by NEAR Intents 1Click";
+pub const ERR_QUOTE_TERMS: &str = "ERR_QUOTE_TERMS: the quote isn't a live intents-to-intents swap with a deposit address";
+pub const ERR_QUOTE_RECIPIENT: &str = "ERR_QUOTE_RECIPIENT: the swap must pay out to this vault";
+pub const ERR_QUOTE_REFUND: &str = "ERR_QUOTE_REFUND: refunds must come back to this vault";
+pub const ERR_QUOTE_STALE: &str = "ERR_QUOTE_STALE: the quote is too old (or from the future)";
+pub const ERR_QUOTE_REPLAY: &str = "ERR_QUOTE_REPLAY: this quote, or a newer one, was already used";

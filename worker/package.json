@@ -1,0 +1,33 @@
+{
+  "name": "kite-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Kite worker: checks vault drift, quotes NEAR Intents 1Click, calls vault.rebalance / settle with the agent's function-call key.",
+  "scripts": {
+    "worker": "node --env-file-if-exists=.env.local --import tsx src/cli.ts",
+    "routes": "node --env-file-if-exists=.env.local --import tsx scripts/routes.ts",
+    "attack": "node --env-file-if-exists=.env.local --import tsx scripts/attack.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "near-api-js": "^7.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  }
+}
