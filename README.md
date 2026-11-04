@@ -6,6 +6,7 @@ Kite's robot holds a key that can only ask your vault to rebalance. The vault ch
 
 - **Live:** https://www.usekite.xyz · try it with no wallet: https://www.usekite.xyz/console?preview=1
 - **Built at NEAR HACKATHON 2026**, tracks: `defi` (main), `security`, `privacy`. MIT licensed.
+- **Built during the hackathon window:** all code in this repository was written between Nov 2 and Nov 14, 2026. Nothing is carried over from earlier work.
 
 ---
 

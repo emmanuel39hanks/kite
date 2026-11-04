@@ -491,6 +491,12 @@ function Closing() {
   return (
     <section id="start" className="scroll-mt-24 px-5 pb-16 sm:px-10">
       <div className="relative mx-auto max-w-[1320px] overflow-hidden rounded-2xl bg-cloud">
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url(https://images.unsplash.com/photo-1753114767610-75bc913c8423?auto=format&fit=crop&q=80&w=1600)" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-white/85 via-white/50 to-transparent" />
         <div className="relative flex min-h-[380px] flex-col justify-center p-8 sm:p-14">
           <h2 className="max-w-[16ch] text-[40px] leading-[1] font-medium tracking-[var(--tracking-display)] sm:text-[60px]">
             Set it up once. Kite handles the rest.
