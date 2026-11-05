@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Card, StatusNote } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
-import { askPrivately, type Receipt } from "@/lib/private-ai";
+import { askPrivately, warmUp, type Receipt } from "@/lib/private-ai";
 import { cleanReview, reviewPrompt, REVIEW_SCHEMA, reviewStats, statValue, SUGGESTIONS, type ReviewStats } from "@/lib/review";
 import type { Portfolio } from "@/lib/store";
 import { useKite } from "@/lib/store";
@@ -22,6 +22,7 @@ export function VaultReview({ p }: { p: Portfolio }) {
   const k = useKite();
   const h = useHistory(365);
   const yields = useYields();
+  useEffect(() => warmUp(), []);
   const [busy, setBusy] = useState<string | null>(null);
   const [res, setRes] = useState<Result | null>(null);
   const [err, setErr] = useState<string | null>(null);

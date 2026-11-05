@@ -8,14 +8,16 @@
  * model key, and checks the model's signature on the reply. Kite's server only
  * relays encrypted bytes (/api/nearai/v1) and adds the API key.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
 import { assetById, earnVersionOf } from "@/lib/assets";
 import type { Slice } from "@/lib/mix";
-import { askPrivately, type Receipt } from "@/lib/private-ai";
+import { askPrivately, warmUp, type Receipt } from "@/lib/private-ai";
 import { DRAFT_SCHEMA, normalise, systemPrompt, type Draft } from "@/lib/planner";
 import type { Guardrails } from "@/lib/store";
-import { useYields } from "@/lib/use-market";
+import { assetStats, allowedNumbers } from "@/lib/planner-data";
+import { useKite } from "@/lib/store";
+import { useHistory, useYields } from "@/lib/use-market";
 import { Icon } from "./icons";
 import { Button, StatusNote } from "./ui";
 
@@ -35,6 +37,9 @@ const EXAMPLES = [
 
 export function AiPlanner({ onUse }: { onUse: (r: { name: string; mix: Slice[]; rules: Guardrails }) => void }) {
   const yields = useYields();
+  const h = useHistory(365);
+  const k = useKite();
+  useEffect(() => warmUp(), []);
   const [text, setText] = useState("");
   const [stage, setStage] = useState<Stage>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -45,14 +50,16 @@ export function AiPlanner({ onUse }: { onUse: (r: { name: string; mix: Slice[]; 
     setError(null);
     setResult(null);
     try {
+      const stats = h ? assetStats(h) : null;
+      const current = k.portfolio ? k.portfolio.target.map((t) => `${assetById(t.id).name} ${Math.round(k.portfolio!.current[t.id] ?? 0)}%`).join(", ") : undefined;
       const { data, receipt } = await askPrivately({
-        system: systemPrompt(yields),
+        system: systemPrompt(yields, { stats: stats ? JSON.stringify(stats) : undefined, current }),
         user: text.trim().slice(0, 1500),
         schema: DRAFT_SCHEMA,
         maxTokens: 2500,
         onStage: (st) => setStage(st === "ask" ? "draft" : st),
       });
-      const { draft, mix } = normalise(data);
+      const { draft, mix } = normalise(data, stats ? allowedNumbers(stats, [...(k.portfolio ? Object.values(k.portfolio.current).map((v) => Math.round(v)) : [])]) : undefined);
       setResult({ draft, mix, receipt });
       setStage("done");
     } catch (e) {
@@ -105,7 +112,7 @@ export function AiPlanner({ onUse }: { onUse: (r: { name: string; mix: Slice[]; 
             <Button variant="primary" icon="lock" onClick={run} loading={busy} disabled={text.trim().length < 10 || busy}>
               Draft my plan privately
             </Button>
-            <span className="text-[12px] text-[#909090]">Takes about 20 seconds; most of it is checking the hardware.</span>
+            <span className="text-[12px] text-[#909090]">Usually 10 to 15 seconds.</span>
           </div>
           {busy && (
             <ol className="mt-4 space-y-1.5" aria-live="polite">
@@ -177,6 +184,16 @@ function DraftView({
         Rules: steps in at {draft.rules.driftBand} pts off, biggest trade {draft.rules.maxTradePct}%, swaps may cost up to {(draft.rules.slippageBps / 100).toFixed(2)}%,{" "}
         {draft.rules.tradesPerDay} trades a day.
       </p>
+      {draft.basis.length > 0 && (
+        <div className="mt-3 rounded-xl bg-[#f5f5f7] px-3 py-2.5">
+          <div className="text-[12px] text-[#909090]">Based on real prices from the last year</div>
+          <ul className="mt-1 space-y-0.5 text-[13px] leading-5 text-black/70">
+            {draft.basis.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {draft.caution && <p className="mt-2 text-[13px] leading-5 text-black/70">Worth knowing: {draft.caution}</p>}
 
       <details className="group mt-4 rounded-xl bg-[#f5f5f7] px-3 py-2.5 text-[12px] leading-5">

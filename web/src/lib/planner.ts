@@ -22,6 +22,8 @@ export type Draft = {
   assets: { id: Pickable; weight: number; earn: boolean; why: string }[];
   rules: Guardrails;
   caution: string;
+  /** Facts from the supplied statistics that the plan rests on. Numbers in them were checked against that table. */
+  basis: string[];
 };
 
 /** JSON schema the model must answer in (structured outputs). */
@@ -31,7 +33,7 @@ export const DRAFT_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    required: ["name", "summary", "assets", "rules", "caution"],
+    required: ["name", "summary", "assets", "rules", "caution", "basis"],
     properties: {
       name: { type: "string", description: "Short plan name, 2-4 words" },
       summary: { type: "string", description: "One or two plain sentences on the idea" },
@@ -63,11 +65,12 @@ export const DRAFT_SCHEMA = {
         },
       },
       caution: { type: "string", description: "One honest sentence on the main risk" },
+      basis: { type: "array", maxItems: 3, items: { type: "string" }, description: "Up to 3 short facts from the supplied statistics that shaped the plan, quoting the numbers exactly" },
     },
   },
 } as const;
 
-export function systemPrompt(yields: Yields) {
+export function systemPrompt(yields: Yields, ctx?: { stats?: string; current?: string }) {
   const y = (id: EarnId) => (yields[id] ? `${yields[id]!.apy.toFixed(1)}%` : "a variable yield");
   return [
     "You help someone draft a portfolio plan for Kite, a self-custodied app on NEAR that keeps a mix of assets on target by rebalancing.",
@@ -76,10 +79,13 @@ export function systemPrompt(yields: Yields) {
     `Some can earn a yield instead of sitting idle; set earn=true to use it: near → stNEAR, staking (${y("stnear")}); eth → wstETH, staking (${y("wsteth")}); usdc → lent on Morpho (${y("gtusdc")}); sol → lent on Kamino (${y("ksol")}). Earning versions cost about 1-2% to switch in and out, so only use them for money held for months.`,
     "Pick 2 to 5 assets. Weights are whole percentages adding to 100.",
     "Rules: driftBand = points off target before Kite rebalances (3 tight, 5 balanced, 10 relaxed); maxTradePct = biggest single trade as % of the portfolio (5-15 typical); slippageBps = the most a swap may cost, fees included (100 is a sensible default, 150 for relaxed); tradesPerDay (2-6).",
+    ctx?.stats ? `Real statistics for the last year, per asset (ret30/ret90 = % return over 30/90 days, volYear = % yearly swing, maxDrawdown = worst % fall, corrBtc = correlation with Bitcoin, -1 to 1): ${ctx.stats}` : "",
+    ctx?.current ? `The person's current vault mix, if they have one: ${ctx.current}. Say what you would change and why.` : "",
+    "Put every number you rely on in basis (up to 3 short facts), quoting the supplied numbers exactly but in plain words, e.g. \"Bitcoin swung about 43.8% over the year and fell as much as 44.8% from a peak\". Never write field names like volYear or corrBtc. Do not state numbers anywhere else except the weights.",
     "Match risk to what the person says: short time horizons and low tolerance for swings mean more USDC and gold; long horizons and high tolerance can hold more crypto.",
     "Write for a non-expert in plain, short sentences. No hype, no promises of returns. Not financial advice.",
     "Answer only with JSON in the required schema.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 /** Cut to a length at a sentence end, never mid-word. */
@@ -91,7 +97,7 @@ function sentences(s: string, max: number) {
 }
 
 /** Make whatever came back safe to show: known assets only, weights summing to 100, rules in range. */
-export function normalise(raw: unknown): { draft: Draft; mix: Slice[] } {
+export function normalise(raw: unknown, allowed?: Set<string>): { draft: Draft; mix: Slice[] } {
   const d = raw as Partial<Draft>;
   const clamp = (v: unknown, lo: number, hi: number, dflt: number) => {
     const n = Math.round(Number(v));
@@ -134,6 +140,11 @@ export function normalise(raw: unknown): { draft: Draft; mix: Slice[] } {
     assets,
     rules,
     caution: sentences(String(d.caution ?? ""), 420),
+    // Keep a fact only if every number in it is one we supplied.
+    basis: (Array.isArray(d.basis) ? d.basis : [])
+      .map((b) => String(b).slice(0, 200))
+      .filter((b) => !allowed || (b.match(/\d+(?:\.\d+)?/g) ?? []).every((n) => allowed.has(n)))
+      .slice(0, 3),
   };
   const mix = assets.map((a) => slice(a.earn ? earnVersionOf(a.id)!.id : a.id, a.weight));
   // Sanity: every id must resolve.
