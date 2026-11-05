@@ -56,6 +56,7 @@ function useChainEvents(vault: string | null | undefined, enabled: boolean): Act
                 : "Kite started a rebalance",
           detail: e.ok ? "Made by Kite's rebalance-only key. Read from the chain." : "The vault's rules said no, so nothing moved.",
           tx: e.hash,
+          canExplain: e.ok && e.method === "rebalance" && !!e.swap,
         };
       }),
     [raw],
@@ -96,7 +97,7 @@ export default function ActivityPage() {
       <Card className="overflow-hidden">
         {events.length ? (
           <div className="bg-white">
-            <ActivityList events={events} />
+            <ActivityList events={events} vault={k.portfolio?.vault} />
           </div>
         ) : (
           <Empty

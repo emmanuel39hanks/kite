@@ -1,6 +1,7 @@
 import { txUrl } from "@/lib/near/config";
 import type { ActivityEvent } from "@/lib/store";
 import { Icon, type IconName } from "./icons";
+import { WhyRebalance } from "./why-rebalance";
 
 const STYLE: Record<ActivityEvent["kind"], { icon: IconName; tone: string }> = {
   created: { icon: "key", tone: "bg-black/[0.05] text-black/70" },
@@ -14,7 +15,7 @@ const STYLE: Record<ActivityEvent["kind"], { icon: IconName; tone: string }> = {
 
 const when = (t: number) => new Date(t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
-export function ActivityList({ events, compact = false }: { events: ActivityEvent[]; compact?: boolean }) {
+export function ActivityList({ events, compact = false, vault }: { events: ActivityEvent[]; compact?: boolean; vault?: string }) {
   return (
     <ul className="divide-y divide-black/[0.06]">
       {events.map((e) => {
@@ -27,6 +28,7 @@ export function ActivityList({ events, compact = false }: { events: ActivityEven
             <div className="min-w-0 flex-1">
               <div className="truncate text-[15px] tracking-[-0.02em]">{e.title}</div>
               {e.detail && <p className={`text-[13px] leading-5 text-[#909090] ${compact ? "truncate" : ""}`}>{e.detail}</p>}
+              {e.canExplain && e.tx && vault && !compact && <WhyRebalance vault={vault} hash={e.tx} />}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-0.5">
               <span className="text-[12px] text-[#909090] tabular-nums">{when(e.at)}</span>

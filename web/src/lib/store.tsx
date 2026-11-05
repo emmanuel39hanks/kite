@@ -53,6 +53,8 @@ export type ActivityEvent = {
   tx?: string;
   /** Preview mode: simulated, priced by a real 1Click dry quote or real past prices. */
   sim?: boolean;
+  /** A rebalance made by Kite's key, read from the chain: can be explained on demand. */
+  canExplain?: boolean;
 };
 
 type NewEvent = Omit<ActivityEvent, "id" | "at"> & { at?: number };
