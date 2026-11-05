@@ -233,6 +233,6 @@ web/               Next.js 16 app
 
 ## Credits and notes
 
-Libraries: near-sdk, near-api-js, NEAR Wallet Selector, `@nearai/inference-sdk`, Next.js, Tailwind, Radix. Sky footage from Mixkit. Closing-banner photo from Unsplash. Token logos from web3icons; company logos from Simple Icons.
+Libraries: near-sdk, near-api-js, NEAR Wallet Selector, `@nearai/inference-sdk`, Next.js, Tailwind, Radix. Sky footage from Mixkit. Closing-banner photo from Unsplash (photo id 1753114767610-75bc913c8423, hotlinked, not committed). Token logos from web3icons; company logos from Simple Icons.
 
 Kite is not financial advice. Tokenized stocks, when they arrive, are not available to US persons. Automated trading for others may be regulated where you live.
