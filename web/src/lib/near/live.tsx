@@ -191,6 +191,14 @@ function useRealLive() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error ?? "Couldn't get quotes");
     const transfers = (d.transfers as { token: string; amount: string; to: string }[]).map(({ token, amount, to }) => ({ token, amount, to }));
+    // The owner signs these, and they came from a server: make sure they only spend USDC, no more than the vault holds, to deposit-looking addresses.
+    const spend = transfers.reduce((n, t) => n + BigInt(/^\d{1,30}$/.test(t.amount) ? t.amount : "0"), 0n);
+    const sane =
+      transfers.length >= 1 &&
+      transfers.length <= plan.length &&
+      spend <= usdc &&
+      transfers.every((t) => t.token === NEAR.usdc && /^[a-z0-9._-]{8,64}$/.test(t.to) && t.to !== k.account && t.to !== vault);
+    if (!sane) throw new Error("The swap quotes didn't look right, so nothing was signed. Try again in a moment.");
     const hash = await w.send(vault, [ownerCall("allocate", { transfers })]);
     k.addEvent({ kind: "trade", title: `Invested ${(Number(usdc) / 1e6).toFixed(2)} USDC`, detail: `${transfers.length} swaps into your plan through NEAR Intents.`, tx: hash });
     return hash;

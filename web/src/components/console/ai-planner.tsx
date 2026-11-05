@@ -47,6 +47,8 @@ export function AiPlanner({ onUse }: { onUse: (r: { name: string; mix: Slice[]; 
   const busy = stage !== "idle" && stage !== "done";
 
   const run = async () => {
+    if (busy) return;
+    setStage("verify");
     setError(null);
     setResult(null);
     try {

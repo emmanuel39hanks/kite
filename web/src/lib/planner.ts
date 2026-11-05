@@ -6,6 +6,7 @@
  * Create before anything is signed. Trades are always decided by the vault's rules.
  */
 import { assetById, earnVersionOf, type EarnId } from "./assets";
+import { onlyNumbersFrom } from "./text-guard";
 import { slice, type Slice } from "./mix";
 import type { Guardrails } from "./store";
 import type { Yields } from "./yields";
@@ -134,17 +135,18 @@ export function normalise(raw: unknown, allowed?: Set<string>): { draft: Draft; 
     slippageBps: clamp(r.slippageBps, 50, 300, 100),
     tradesPerDay: clamp(r.tradesPerDay, 1, 12, 4),
   };
+  // Every free-text field may only contain numbers we supplied, the weights, or the rule values.
+  const known = allowed ? new Set([...allowed, ...assets.map((a) => String(a.weight)), ...Object.values(rules).map(String)]) : null;
+  const clean = (t: string) => (known && !onlyNumbersFrom(t, known) ? "" : t);
+  assets.forEach((a) => (a.why = clean(a.why)));
   const draft: Draft = {
     name: String(d.name ?? "My plan").slice(0, 40) || "My plan",
-    summary: sentences(String(d.summary ?? ""), 400),
+    summary: clean(sentences(String(d.summary ?? ""), 400)),
     assets,
     rules,
-    caution: sentences(String(d.caution ?? ""), 420),
-    // Keep a fact only if every number in it is one we supplied.
-    basis: (Array.isArray(d.basis) ? d.basis : [])
-      .map((b) => String(b).slice(0, 200))
-      .filter((b) => !allowed || (b.match(/\d+(?:\.\d+)?/g) ?? []).every((n) => allowed.has(n)))
-      .slice(0, 3),
+    caution: clean(sentences(String(d.caution ?? ""), 420)),
+    // Facts the plan rests on: kept only if every number in them is one we supplied.
+    basis: (Array.isArray(d.basis) ? d.basis : []).map((b) => String(b).slice(0, 200)).filter((b) => b && clean(b)).slice(0, 3),
   };
   const mix = assets.map((a) => slice(a.earn ? earnVersionOf(a.id)!.id : a.id, a.weight));
   // Sanity: every id must resolve.

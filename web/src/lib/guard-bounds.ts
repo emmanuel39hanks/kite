@@ -1,3 +1,4 @@
+import { hasNumber } from "./text-guard";
 import type { Guardrails } from "./store";
 
 /**
@@ -64,5 +65,5 @@ export function cleanProposal(raw: unknown, current: Guardrails): GuardProposal 
     rules.slippageBps = Math.min(rules.slippageBps, current.slippageBps);
     rules.tradesPerDay = Math.min(rules.tradesPerDay, current.tradesPerDay);
   }
-  return { rules, intent, explain: String(d.explain ?? "").replace(/\d/g, "").slice(0, 300) };
+  return { rules, intent, explain: hasNumber(String(d.explain ?? "")) ? "" : String(d.explain ?? "").slice(0, 300) };
 }

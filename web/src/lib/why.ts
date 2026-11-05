@@ -1,4 +1,5 @@
 import { assetByIntentsId } from "./assets";
+import { onlyNumbersFrom } from "./text-guard";
 import type { WhyFacts } from "@/app/api/vault/why/route";
 
 export const WHY_SCHEMA = {
@@ -35,8 +36,6 @@ export const whyTemplate = (i: WhyInput) =>
 
 export function cleanWhy(raw: unknown, input: WhyInput): { text: string; fromModel: boolean } {
   const text = String((raw as { because?: string }).because ?? "").trim();
-  const allowed = new Set([String(input.overByPts)]);
-  const cited = text.match(/\d+(?:\.\d+)?/g) ?? [];
-  if (!text || text.length > 400 || cited.some((n) => !allowed.has(n))) return { text: whyTemplate(input), fromModel: false };
+  if (!text || text.length > 400 || !onlyNumbersFrom(text, new Set([String(input.overByPts)]))) return { text: whyTemplate(input), fromModel: false };
   return { text, fromModel: true };
 }

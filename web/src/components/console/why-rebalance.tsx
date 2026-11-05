@@ -10,7 +10,10 @@ const KEY = (hash: string) => `kite-why:${hash}`;
 const load = (hash: string): Saved | null => {
   try {
     const raw = localStorage.getItem(KEY(hash));
-    return raw ? (JSON.parse(raw) as Saved) : null;
+    if (!raw) return null;
+    const s = JSON.parse(raw) as Partial<Saved>;
+    const okInput = !!s.input && typeof s.input.sell === "string" && typeof s.input.buy === "string" && typeof s.input.overByPts === "number";
+    return typeof s.text === "string" && typeof s.fromModel === "boolean" && okInput ? (s as Saved) : null;
   } catch {
     return null;
   }

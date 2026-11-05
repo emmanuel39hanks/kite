@@ -25,6 +25,8 @@ export function AiRules({ current, onApply }: { current: Guardrails; onApply: (g
   useEffect(() => warmUp(), []);
 
   const run = async () => {
+    if (busy) return;
+    setBusy("Starting…");
     setErr(null);
     setRes(null);
     try {
@@ -45,6 +47,8 @@ export function AiRules({ current, onApply }: { current: Guardrails; onApply: (g
   };
 
   const changes = res ? GUARD_KEYS.filter((k) => res.rules[k] !== current[k]) : [];
+  // Computed here, whatever the model said it was doing: these three rules let the vault do more when raised.
+  const loosened = changes.filter((k) => k !== "driftBand" && res!.rules[k] > current[k]);
 
   return (
     <div className="mb-3 rounded-2xl bg-[#f5f5f7] p-4">
@@ -95,6 +99,7 @@ export function AiRules({ current, onApply }: { current: Guardrails; onApply: (g
             <p className="text-[14px]">No change needed: your rules already match that.</p>
           )}
           {res.explain && <p className="mt-2 text-[13px] leading-5 text-black/70">{res.explain}</p>}
+          {loosened.length > 0 && <p className="mt-2 text-[13px] leading-5 text-[#8a5a00]">This loosens: {loosened.map((k) => LABEL[k].toLowerCase()).join(", ")}. Check it is what you want before saving.</p>}
           <p className="mt-2 text-[12px] leading-5 text-[#909090]">
             Kept inside the app&apos;s limits ({GUARD_BOUNDS.slippageBps.max / 100}% price limit at most, {GUARD_BOUNDS.tradesPerDay.max} trades a day at most){res.intent === "more_careful" ? "; a request to be more careful can never loosen a rule" : ""}. This only moves the sliders. Nothing is saved until you press Save.
             {res.receipt.signatureKind === "provider_tee" ? " Answered privately and signed by the model's hardware." : " Signed by NEAR AI's gateway."}

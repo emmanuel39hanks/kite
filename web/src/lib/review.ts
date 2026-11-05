@@ -1,3 +1,4 @@
+import { hasNumber } from "./text-guard";
 import type { History } from "./market";
 import type { Slice } from "./mix";
 import type { Guardrails } from "./store";
@@ -166,7 +167,7 @@ export const reviewPrompt = [
 export function cleanReview(raw: unknown): { verdict: "ok" | "watch" | "change"; bullets: { stat: StatKey; text: string }[]; suggestion: string } {
   const d = raw as { verdict?: string; bullets?: { stat?: string; text?: string }[]; suggestion?: string };
   const bullets = (Array.isArray(d.bullets) ? d.bullets : [])
-    .filter((b) => b && (STAT_KEYS as readonly string[]).includes(String(b.stat)) && typeof b.text === "string" && !/\d/.test(b.text))
+    .filter((b) => b && (STAT_KEYS as readonly string[]).includes(String(b.stat)) && typeof b.text === "string" && !hasNumber(b.text))
     .map((b) => ({ stat: b.stat as StatKey, text: String(b.text).slice(0, 240) }))
     .slice(0, 4);
   if (bullets.length < 1) throw new Error("The review didn't come back in a usable form. Try again.");

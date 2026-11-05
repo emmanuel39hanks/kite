@@ -1,3 +1,4 @@
+import { hasNumber } from "./text-guard";
 import type { SwapStatus } from "./swap-status";
 
 export type WhereMoney = "vault" | "swap_address" | "unknown";
@@ -31,7 +32,7 @@ export const incidentPrompt = [
 
 export function cleanIncident(raw: unknown, status: SwapStatus["status"], fallback: string): { text: string; next: string; fromModel: boolean } {
   const d = raw as { what_happened?: string; where_money_is?: string; next_step?: string };
-  const ok = d.where_money_is === expectedWhere(status) && typeof d.what_happened === "string" && !/\d/.test(d.what_happened) && !/\d/.test(String(d.next_step ?? ""));
+  const ok = d.where_money_is === expectedWhere(status) && typeof d.what_happened === "string" && !hasNumber(d.what_happened) && !hasNumber(String(d.next_step ?? ""));
   return ok
     ? { text: String(d.what_happened).slice(0, 320), next: String(d.next_step ?? "").slice(0, 200), fromModel: true }
     : { text: fallback, next: "", fromModel: false };

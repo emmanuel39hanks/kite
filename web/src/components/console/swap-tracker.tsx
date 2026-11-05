@@ -7,6 +7,7 @@ import { assetByIntentsId } from "@/lib/assets";
 import { txUrl } from "@/lib/near/config";
 import { cleanIncident, INCIDENT_SCHEMA, incidentPrompt } from "@/lib/incident";
 import { askPrivately } from "@/lib/private-ai";
+import { safeHttps } from "@/lib/text-guard";
 import { describe, useSwapStatus } from "@/lib/swap-status";
 import { useState } from "react";
 
@@ -19,9 +20,14 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
   const a = assetByIntentsId(sell);
   const b = assetByIntentsId(buy);
   const d = status?.swapDetails;
+  // 1Click's reason is free text from outside. Only a plain code like PARTIALLY_FILLED is used or shown.
+  const reasonCode = typeof d?.refundReason === "string" && /^[A-Z][A-Z0-9_]{2,39}$/.test(d.refundReason) ? d.refundReason : null;
   const links = [
     ...(d?.nearTxHashes ?? []).map((h) => ({ label: "Vault transfer", href: txUrl(h) })),
-    ...(d?.destinationChainTxHashes ?? []).map((t) => ({ label: "Delivery", href: t.explorerUrl })),
+    ...(d?.destinationChainTxHashes ?? []).flatMap((t) => {
+      const href = safeHttps(t.explorerUrl);
+      return href ? [{ label: "Delivery", href }] : [];
+    }),
     { label: "NEAR Intents explorer", href: `https://explorer.near-intents.org/transactions/${depositAddress}` },
   ];
   const failed = status?.status === "REFUNDED" || status?.status === "FAILED";
@@ -36,7 +42,7 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
     try {
       const { data } = await askPrivately({
         system: incidentPrompt,
-        user: JSON.stringify({ status: status.status, from: a?.ticker, to: b?.ticker, refundReason: d?.refundReason ?? null }),
+        user: JSON.stringify({ status: status.status, from: a?.ticker, to: b?.ticker, refundReason: reasonCode }),
         schema: INCIDENT_SCHEMA,
         maxTokens: 500,
       });
@@ -81,7 +87,7 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
       </ol>
 
       <p className="mt-3 text-[14px] leading-5">{s.where}</p>
-      {d?.refundReason && <p className="mt-1 text-[13px] text-[#909090]">Reason given: {d.refundReason}</p>}
+      {reasonCode && <p className="mt-1 text-[13px] text-[#909090]">Reason given: {reasonCode.replace(/_/g, " ").toLowerCase()}</p>}
       {d?.refundedAmountFormatted && <p className="mt-1 text-[13px] text-[#909090]">Returned: {d.refundedAmountFormatted}</p>}
 
       {explainable && !why && (

@@ -31,7 +31,8 @@ export function VaultReview({ p }: { p: Portfolio }) {
   const stats: ReviewStats | null = h ? reviewStats(h, p.target, p.current, k.guardrails, yields) : null;
 
   const run = async () => {
-    if (!stats) return;
+    if (!stats || busy) return;
+    setBusy("Starting…");
     setErr(null);
     setRes(null);
     try {
