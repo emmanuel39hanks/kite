@@ -19,6 +19,7 @@ pub const ERR_INSUFFICIENT: &str = "ERR_INSUFFICIENT: not enough of that asset";
 pub const ERR_PRICE: &str = "ERR_PRICE: missing or zero price";
 pub const ERR_EMPTY: &str = "ERR_EMPTY: the vault holds nothing";
 pub const ERR_BALANCES: &str = "ERR_BALANCES: could not read balances from NEAR Intents";
+pub const ERR_TOO_SMALL: &str = "ERR_TOO_SMALL: a trade under $1 isn't worth a swap";
 pub const ERR_LIMITS: &str = "ERR_LIMITS: a limit is outside its allowed range";
 pub const ERR_PLAN_SIZE: &str = "ERR_PLAN_SIZE: a plan has 2 to 8 assets";
 pub const ERR_PLAN_SUM: &str = "ERR_PLAN_SUM: targets must add up to 100%";

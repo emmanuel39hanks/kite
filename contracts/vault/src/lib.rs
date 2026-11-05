@@ -84,6 +84,7 @@ impl Limits {
         require!((100..=5_000).contains(&self.max_trade_bps), ERR_LIMITS);
         require!((10..=500).contains(&self.max_slippage_bps), ERR_LIMITS);
         require!((1..=24).contains(&self.max_trades_per_day), ERR_LIMITS);
+        require!(self.min_interval_secs <= 86_400, ERR_LIMITS);
         require!(self.settle_window_secs >= 60 && self.settle_window_secs <= 86_400, ERR_LIMITS);
     }
 }
@@ -175,6 +176,17 @@ pub struct SignedQuote {
     pub amount_out_usd: String,
     pub deposit_address: Option<String>,
     pub timestamp: String,
+    // Side payments a signed request can carry. Kite never asks for any, so any non-empty value is refused.
+    #[serde(default)]
+    pub app_fees: Option<Vec<near_sdk::serde::de::IgnoredAny>>,
+    #[serde(default)]
+    pub referral: Option<String>,
+    #[serde(default)]
+    pub custom_recipient_msg: Option<String>,
+    #[serde(default)]
+    pub virtual_chain_recipient: Option<String>,
+    #[serde(default)]
+    pub virtual_chain_refund_recipient: Option<String>,
 }
 
 /// What the vault takes from a verified quote.
@@ -232,6 +244,8 @@ impl Vault {
         intents: Option<AccountId>,
         quote_signer: Option<PublicKey>,
     ) -> Self {
+        // The web flow runs `new` in the same transaction that creates the account, signed by the owner.
+        require!(env::predecessor_account_id() == owner, ERR_NOT_OWNER);
         validate_plan(&plan);
         limits.validate();
         let vault = Self {
@@ -258,6 +272,7 @@ impl Vault {
     #[payable]
     pub fn set_quote_signer(&mut self, public_key: PublicKey) {
         self.assert_owner();
+        require!(public_key.curve_type() == near_sdk::CurveType::ED25519, ERR_QUOTE_SIG);
         self.quote_signer = public_key;
         emit("quote_signer_set", "{}");
     }
@@ -299,6 +314,7 @@ impl Vault {
     #[payable]
     pub fn set_agent(&mut self, public_key: PublicKey, allowance_yocto: U128) -> Promise {
         self.assert_owner();
+        require!(allowance_yocto.0 > 0, ERR_LIMITS);
         let allowance = Allowance::limited(NearToken::from_yoctonear(allowance_yocto.0)).unwrap_or(Allowance::Unlimited);
         let mut p = Promise::new(env::current_account_id());
         if let Some(old) = self.agent.take() {
@@ -524,6 +540,8 @@ impl Vault {
     fn assert_agent(&self) {
         require!(env::predecessor_account_id() == env::current_account_id(), ERR_NOT_AGENT);
         require!(self.agent.is_some(), ERR_NO_AGENT);
+        // Only the key recorded for Kite, not any other key that happens to be on this account.
+        require!(self.agent.as_ref() == Some(&env::signer_account_pk()), ERR_NOT_AGENT);
     }
 
     pub fn close_tokens(&self, also_check: Vec<String>) -> Vec<String> {
@@ -586,6 +604,17 @@ impl Vault {
         require!(env::ed25519_verify(&sig, message.as_bytes(), &pk), ERR_QUOTE_SIG);
 
         let q: SignedQuote = near_sdk::serde_json::from_str(quote).unwrap_or_else(|_| env::panic_str(ERR_QUOTE_TERMS));
+        // A signed request can carry fees, referrals or redirects that pay someone else out of the swap.
+        // A stolen key could otherwise skim the whole price-limit budget of every trade into its own account.
+        let blank = |s: &Option<String>| s.as_deref().is_none_or(str::is_empty);
+        require!(
+            q.app_fees.as_ref().is_none_or(Vec::is_empty)
+                && blank(&q.referral)
+                && blank(&q.custom_recipient_msg)
+                && blank(&q.virtual_chain_recipient)
+                && blank(&q.virtual_chain_refund_recipient),
+            ERR_QUOTE_TERMS
+        );
         let me = env::current_account_id();
         require!(!q.dry && q.swap_type == "EXACT_INPUT" && q.deposit_type == "INTENTS", ERR_QUOTE_TERMS);
         require!(q.recipient == me.as_str() && q.recipient_type == "INTENTS", ERR_QUOTE_RECIPIENT);
@@ -593,7 +622,7 @@ impl Vault {
         require!(q.amount == q.amount_in, ERR_QUOTE_TERMS);
 
         let quoted_ns = parse_iso_ns(&q.timestamp).unwrap_or_else(|| env::panic_str(ERR_QUOTE_TERMS));
-        require!(quoted_ns <= now_ns + 60 * NS_PER_SEC, ERR_QUOTE_STALE);
+        require!(quoted_ns <= now_ns + 15 * NS_PER_SEC, ERR_QUOTE_STALE);
         require!(now_ns.saturating_sub(quoted_ns) <= QUOTE_MAX_AGE_SECS * NS_PER_SEC, ERR_QUOTE_STALE);
 
         let int = |s: &str| s.parse::<u128>().unwrap_or_else(|_| env::panic_str(ERR_QUOTE_TERMS));
@@ -627,6 +656,7 @@ impl Vault {
         let sell_dec = 10u128.pow(self.plan[si].decimals as u32);
         let buy_dec = 10u128.pow(self.plan[bi].decimals as u32);
         require!(terms.amount_in.0 > 0 && terms.amount_out.0 > 0 && terms.in_usd_e6.0 > 0 && terms.out_usd_e6.0 > 0, ERR_PRICE);
+        require!(terms.in_usd_e6.0 >= 1_000_000, ERR_TOO_SMALL);
         // Signed prices: micro-dollars per whole token.
         let sell_px = terms.in_usd_e6.0 * sell_dec / terms.amount_in.0;
         let buy_px = terms.out_usd_e6.0 * buy_dec / terms.amount_out.0;

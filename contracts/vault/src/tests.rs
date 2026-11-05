@@ -69,6 +69,7 @@ fn ctx(predecessor: AccountId, deposit: u128, now_secs: u64) {
     testing_env!(VMContextBuilder::new()
         .current_account_id(vault_id())
         .predecessor_account_id(predecessor)
+        .signer_account_pk(agent_pk())
         .attached_deposit(NearToken::from_yoctonear(deposit))
         .block_timestamp(now_secs * NS_PER_SEC)
         .build());
@@ -131,8 +132,15 @@ fn good() -> Q {
 
 /// The exact JSON 1Click signs (sorted keys), and its signature by `key`.
 fn sign_with(q: &Q, key: &SigningKey) -> (String, String) {
+    sign_full(q, key, &[])
+}
+/// Same, with extra fields in the signed request (fees, referrals, …).
+fn sign_full(q: &Q, key: &SigningKey, extra: &[(&'static str, near_sdk::serde_json::Value)]) -> (String, String) {
     let mut m: BTreeMap<&str, near_sdk::serde_json::Value> = BTreeMap::new();
     use near_sdk::serde_json::json;
+    for (k, v) in extra {
+        m.insert(k, v.clone());
+    }
     m.insert("amount", json!(q.amount_in.to_string()));
     m.insert("amountIn", json!(q.amount_in.to_string()));
     m.insert("amountInFormatted", json!("x"));
@@ -624,6 +632,93 @@ fn attack_a21_agent_rotates_quote_key() {
     let mut v = new_vault();
     ctx(vault_id(), 1, NOW + 100);
     v.set_quote_signer(pk_of(&SigningKey::from_bytes(&[9u8; 32])));
+}
+
+/// A22: a real quote whose signed request also pays an app fee (or referral) to the attacker.
+#[test]
+#[should_panic(expected = "ERR_QUOTE_TERMS")]
+fn attack_a22_app_fee_to_attacker() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("appFees", json!([{"recipient": "thief.near", "fee": 90}]))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+
+#[test]
+#[should_panic(expected = "ERR_QUOTE_TERMS")]
+fn attack_a22b_referral_on_the_quote() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("referral", json!("thief"))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+
+/// Empty or null fee fields are what an honest request looks like, and are fine.
+#[test]
+fn empty_fee_fields_are_fine() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("appFees", json!([])), ("referral", json!(null))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+
+/// A23: some other key on the vault account (not the one recorded for Kite) calls rebalance.
+#[test]
+#[should_panic(expected = "ERR_NOT_AGENT")]
+fn attack_a23_other_key_on_the_account() {
+    let mut v = new_vault();
+    let (body, sig) = signed(&good());
+    testing_env!(VMContextBuilder::new()
+        .current_account_id(vault_id())
+        .predecessor_account_id(vault_id())
+        .signer_account_pk("ed25519:3tysLvy7KGoE8pznUgXvSHa4vYyGvrDZFcT8jgb8PEQ6".parse().unwrap())
+        .block_timestamp(NOW * NS_PER_SEC)
+        .build());
+    let _ = v.rebalance(body, sig, prices());
+}
+
+/// A zero allowance would have meant unlimited gas for the agent key.
+#[test]
+#[should_panic(expected = "ERR_LIMITS")]
+fn set_agent_refuses_zero_allowance() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW + 100);
+    let _ = v.set_agent(agent_pk(), U128(0));
+}
+
+/// The quote key must be ed25519, or every rebalance would panic.
+#[test]
+#[should_panic(expected = "ERR_QUOTE_SIG")]
+fn quote_signer_must_be_ed25519() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW + 100);
+    v.set_quote_signer(PublicKey::from_parts(near_sdk::CurveType::SECP256K1, vec![1u8; 64]).unwrap());
+}
+
+/// Only the owner can set a vault up.
+#[test]
+#[should_panic(expected = "ERR_NOT_OWNER")]
+fn new_refuses_a_stranger() {
+    ctx("stranger.near".parse().unwrap(), 0, NOW);
+    Vault::new(owner(), plan(), limits(), Some(agent_pk()), None, Some(pk_of(&oneclick())));
+}
+
+#[test]
+#[should_panic(expected = "ERR_LIMITS")]
+fn min_interval_is_bounded() {
+    ctx(owner(), 0, NOW);
+    Vault::new(owner(), plan(), Limits { min_interval_secs: u64::MAX, ..limits() }, Some(agent_pk()), None, Some(pk_of(&oneclick())));
+}
+
+/// A24: dust trades to burn the daily trade count and lock the vault in pending.
+#[test]
+#[should_panic(expected = "ERR_TOO_SMALL")]
+fn attack_a24_dust_trade() {
+    let mut v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let q = Q { amount_in: 625, amount_out: 124, min_out: 123, in_usd: "0.5", out_usd: "0.499", ..good() };
+    let t = terms(&v, &q);
+    let _ = v.on_rebalance_balances(balances_ok(), t, prices());
 }
 
 /* ───────────── close_vault ───────────── */
