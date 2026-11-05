@@ -6,10 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "node --import tsx --test \"src/**/*.test.ts\"",
-    "preinstall": "npm ci --prefix ../worker"
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@near-js/crypto": "^2.5.1",

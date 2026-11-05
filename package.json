@@ -1,0 +1,15 @@
+{
+  "name": "kite",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "description": "Kite: a self-custodied auto-rebalancing portfolio on NEAR. Orchestration scripts for the contract, worker and web app.",
+  "scripts": {
+    "setup": "npm ci --prefix worker && npm ci --prefix web",
+    "test": "npm test --prefix worker && npm test --prefix web && cd contracts/vault && cargo test",
+    "check": "npm run typecheck --prefix web && npm run lint --prefix web && npm run build --prefix web",
+    "dev": "npm run dev --prefix web"
+  }
+}
