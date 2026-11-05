@@ -8,10 +8,10 @@ export const NEAR = {
   agentPublicKey: process.env.NEXT_PUBLIC_KITE_AGENT_PK ?? "",
   /** Vault contract code served by this site; its hash is published in the README. */
   wasmUrl: "/vault/kite_vault.wasm",
-  /** NEAR sent to the new vault account: storage for its 230 KB of code and state (~2.32 NEAR),
-   *  plus about 0.28 NEAR of headroom for Kite's rebalance gas. All of it comes back via close_vault. */
+  /** NEAR sent to the new vault account: storage for its ~233 KB of code plus state (~2.35 NEAR),
+   *  and about 0.24 NEAR left over for Kite's rebalance gas. All of it comes back via close_vault. */
   vaultStorageNear: "2.6",
-  /** Gas the agent key may burn before it must be rotated. */
+  /** Gas the agent key may burn before it must be renewed (turn the key off and on). */
   agentAllowanceNear: "0.25",
   /** USDC on NEAR: the hub asset deposits land in. */
   usdc: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",

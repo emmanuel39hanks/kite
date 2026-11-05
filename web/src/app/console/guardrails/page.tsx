@@ -244,9 +244,13 @@ function KiteGas({ vault }: { vault: string }) {
   const [left, setLeft] = useState<{ vault: string; near: number | null } | null>(null);
   useEffect(() => {
     let off = false;
-    kiteGasLeft(vault).then((near) => !off && setLeft({ vault, near }));
+    const load = () => kiteGasLeft(vault).then((near) => !off && setLeft({ vault, near }));
+    load();
+    // Refresh after a top-up without a page reload.
+    const t = setInterval(load, 60_000);
     return () => {
       off = true;
+      clearInterval(t);
     };
   }, [vault]);
   const near = left?.vault === vault ? left.near : null;
@@ -255,7 +259,7 @@ function KiteGas({ vault }: { vault: string }) {
   return (
     <p className={`mt-3 text-[13px] leading-5 ${low ? "text-rose-600" : "text-[#6b6b6b]"}`}>
       Gas left for Kite: {near.toFixed(3)} NEAR.{" "}
-      {low ? "Kite stops trading below 0.05. Send your vault some NEAR, then turn the key off and on to renew it." : "Each rebalance uses about 0.01."}
+      {low ? "Kite stops trading below 0.05. Send your vault some NEAR, then turn the key off and on to renew it." : "Each rebalance uses a few hundredths at most."}
     </p>
   );
 }
