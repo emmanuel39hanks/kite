@@ -136,15 +136,16 @@ export function normalise(raw: unknown, allowed?: Set<string>): { draft: Draft; 
     tradesPerDay: clamp(r.tradesPerDay, 1, 6, 4),
   };
   // Every free-text field may only contain numbers we supplied, the weights, or the rule values.
-  const known = allowed ? new Set([...allowed, ...assets.map((a) => String(a.weight)), ...Object.values(rules).map(String)]) : null;
-  const clean = (t: string) => (known && !onlyNumbersFrom(t, known) ? "" : t);
+  // With no statistics supplied, nothing but the weights and rule values may appear as a number.
+  const known = new Set([...(allowed ?? []), ...assets.map((a) => String(a.weight)), ...Object.values(rules).map(String)]);
+  const clean = (t: string) => (onlyNumbersFrom(t, known) ? t : "");
   assets.forEach((a) => (a.why = clean(a.why)));
   const draft: Draft = {
     name: String(d.name ?? "My plan").slice(0, 40) || "My plan",
     summary: clean(sentences(String(d.summary ?? ""), 400)),
     assets,
     rules,
-    caution: clean(sentences(String(d.caution ?? ""), 420)),
+    caution: clean(sentences(String(d.caution ?? ""), 420)) || "Prices move, and any plan can lose value. Check each number before you use it.",
     // Facts the plan rests on: kept only if every number in them is one we supplied.
     basis: (Array.isArray(d.basis) ? d.basis : []).map((b) => String(b).slice(0, 200)).filter((b) => b && clean(b)).slice(0, 3),
   };

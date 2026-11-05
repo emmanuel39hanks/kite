@@ -48,10 +48,29 @@ export type PreviewState = { wallet: Record<string, number>; vault: PreviewVault
 
 const FRESH: PreviewState = { wallet: { near: 5, usdc: 1000 }, vault: null };
 
+/** Storage isn't trusted: a malformed saved preview is dropped rather than crashing the page. */
+function validPreview(s: PreviewState): boolean {
+  const nums = (o: unknown) => !!o && typeof o === "object" && Object.values(o as object).every((n) => typeof n === "number" && Number.isFinite(n));
+  if (!s || typeof s !== "object" || !nums(s.wallet)) return false;
+  const v = s.vault;
+  if (v === null) return true;
+  if (!v || !Array.isArray(v.plan) || !v.plan.length || !nums(v.balances) || !nums(v.cost) || !Array.isArray(v.series) || !Array.isArray(v.trades)) return false;
+  return v.plan.every((p) => {
+    try {
+      return typeof p.weight === "number" && !!assetById(p.id as never);
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function loadPreview(): PreviewState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as PreviewState;
+    if (raw) {
+      const s = JSON.parse(raw) as PreviewState;
+      if (validPreview(s)) return s;
+    }
   } catch {}
   return structuredClone(FRESH);
 }

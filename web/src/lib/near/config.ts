@@ -23,5 +23,5 @@ export const liveAvailable = () => NEAR.agentPublicKey.startsWith("ed25519:");
 
 export const vaultIdFor = (owner: string) => `kite.${owner}`;
 
-export const txUrl = (hash: string) => `${NEAR.explorer}/txns/${hash}`;
+export const txUrl = (hash: string) => `${NEAR.explorer}/txns/${encodeURIComponent(hash)}`;
 export const accountUrl = (id: string) => `${NEAR.explorer}/address/${id}`;

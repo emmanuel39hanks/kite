@@ -381,7 +381,7 @@ function PrivatePlanner() {
   ];
   const checks = [
     { title: "Locked on your device", text: "Your words are encrypted before they leave your browser." },
-    { title: "Opened only in sealed hardware", text: "Only a model inside NEAR AI Cloud's secure chips can read them. Not Kite, not NEAR AI." },
+    { title: "Opened only in sealed hardware", text: "Only a model inside NEAR AI Cloud's secure chips can open them. Kite's server only passes the locked message along." },
     { title: "Signed and checked", text: "The answer comes back signed by that hardware, and your browser checks the signature." },
   ];
   return (
@@ -457,7 +457,7 @@ function Faq() {
     },
     {
       q: "Who sees what I tell the AI?",
-      a: "No one. Your words are encrypted in your browser and can only be opened inside NEAR AI Cloud's sealed hardware. Kite's server just passes the locked message along. The AI only drafts a plan; you decide.",
+      a: "They are encrypted in your browser and can only be opened inside NEAR AI Cloud's sealed hardware. Kite's server just passes the locked message along, though it does see that a request was made and how big it was. The AI only drafts a plan; you decide.",
     },
     {
       q: "Can I use it where I live?",

@@ -267,7 +267,7 @@ function AccountArea() {
             {copied ? "Copied" : "Copy account"}
           </MenuItem>
           {k.vaultFound && (
-            <MenuItem icon="external" onSelect={() => window.open(accountUrl(vault), "_blank")}>
+            <MenuItem icon="external" onSelect={() => window.open(accountUrl(vault), "_blank", "noopener,noreferrer")}>
               View vault on NearBlocks
             </MenuItem>
           )}

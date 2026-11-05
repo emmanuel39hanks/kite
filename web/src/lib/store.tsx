@@ -88,6 +88,17 @@ type Ctx = State & {
   setGuardrails: (g: Guardrails) => void;
 };
 
+/** Only the fields we save, and only if they look right: what's in storage is not trusted. */
+function pickPersisted(raw: unknown): Partial<Persisted> {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const out: Partial<Persisted> = {};
+  if (typeof r.name === "string") out.name = r.name.slice(0, 80);
+  if (typeof r.planSlug === "string") out.planSlug = r.planSlug.slice(0, 80);
+  if (Array.isArray(r.activity)) out.activity = (r.activity as ActivityEvent[]).filter((e) => e && typeof e.id === "string" && typeof e.title === "string" && typeof e.at === "number" && typeof e.kind === "string").slice(0, 200);
+  if (r.draft && typeof r.draft === "object") out.draft = r.draft as Persisted["draft"];
+  return out;
+}
+
 const KiteContext = createContext<Ctx | null>(null);
 
 export function KiteProvider({ children }: { children: ReactNode }) {
@@ -106,7 +117,7 @@ export function KiteProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(keyFor(null));
       // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from storage
-      if (raw) setState((s) => ({ ...s, ...(JSON.parse(raw) as Partial<Persisted>) }));
+      if (raw) setState((s) => ({ ...s, ...pickPersisted(JSON.parse(raw)) }));
     } catch {}
     setReady(true);
   }, []);
@@ -125,7 +136,7 @@ export function KiteProvider({ children }: { children: ReactNode }) {
       if (s.account === account) return s;
       let saved: Partial<Persisted> = {};
       try {
-        saved = JSON.parse(localStorage.getItem(keyFor(account)) ?? "{}");
+        saved = pickPersisted(JSON.parse(localStorage.getItem(keyFor(account)) ?? "{}"));
       } catch {}
       return {
         ...EMPTY,

@@ -15,7 +15,7 @@ const STEPS = ["Left your vault", "Being swapped", "Back in your vault"];
 
 /** A rebalance in flight: where the money is now, and how it ended. Data comes from the vault and from 1Click's status API. */
 export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: string; depositAddress: string }) {
-  const { status, checkedAt } = useSwapStatus(depositAddress);
+  const { status, checkedAt, stalled } = useSwapStatus(depositAddress);
   const s = describe(status?.status ?? "PENDING_DEPOSIT");
   const a = assetByIntentsId(sell);
   const b = assetByIntentsId(buy);
@@ -111,7 +111,7 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
             {l.label} <Icon name="external" size={12} />
           </a>
         ))}
-        <span className="text-[#909090]">{checkedAt ? `Checked ${new Date(checkedAt).toLocaleTimeString()}` : "Checking…"}</span>
+        <span className="text-[#909090]">{stalled ? `Status unavailable right now${checkedAt ? `, last checked ${new Date(checkedAt).toLocaleTimeString()}` : ""}` : checkedAt ? `Checked ${new Date(checkedAt).toLocaleTimeString()}` : "Checking…"}</span>
         {failed && status?.correlationId && <span className="text-[#909090]">Ref {status.correlationId.slice(0, 8)}</span>}
       </div>
     </Card>

@@ -28,8 +28,10 @@ export async function getMarket(): Promise<Market> {
     if (r.ok) {
       const d = (await r.json()) as Record<string, { usd: number; usd_24h_change?: number }>;
       changes = Object.fromEntries(Object.entries(GECKO).map(([k, g]) => [k, d[g]?.usd_24h_change ?? NaN]));
-    }
-  } catch {}
+    } else console.warn("24h changes unavailable: CoinGecko answered", r.status);
+  } catch (e) {
+    console.warn("24h changes unavailable:", e instanceof Error ? e.message : e);
+  }
   const quotes: Record<string, Quote> = {};
   for (const a of ASSETS) {
     if (!a.live) continue;

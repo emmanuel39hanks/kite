@@ -45,13 +45,14 @@ export function describe(s: SwapStatus["status"]): { step: 1 | 2 | 3; tone: "blu
 /** Poll one swap until it reaches a final status. */
 export function useSwapStatus(address: string | null) {
   // Kept with the address it belongs to, so a new swap never shows the previous one's state.
-  const [data, setData] = useState<{ address: string; st: SwapStatus; at: number } | null>(null);
+  const [data, setData] = useState<{ address: string; st: SwapStatus | null; at: number | null; fails: number } | null>(null);
   useEffect(() => {
     if (!address) return;
     let misses = 0;
     let stop = false;
     let delay = 4000;
     let t: ReturnType<typeof setTimeout>;
+    const noteFailure = () => !stop && setData((p) => ({ address, st: p?.address === address ? p.st : null, at: p?.address === address ? p.at : null, fails: p?.address === address ? p.fails + 1 : 1 }));
     const tick = async () => {
       if (typeof document !== "undefined" && document.hidden) {
         if (!stop) t = setTimeout(tick, 5000);
@@ -61,11 +62,14 @@ export function useSwapStatus(address: string | null) {
         const r = await fetch(`/api/deposit/status?address=${encodeURIComponent(address)}`, { cache: "no-store" });
         const d = (await r.json()) as SwapStatus;
         if (!stop && r.ok) {
-          setData({ address, st: d, at: Date.now() });
+          setData({ address, st: d, at: Date.now(), fails: 0 });
           if (isTerminal(d.status)) return;
         }
+        if (!r.ok) noteFailure();
         if (r.status === 404 && ++misses >= 6) return; // 1Click does not know this address
-      } catch {}
+      } catch {
+        noteFailure();
+      }
       delay = Math.min(delay * 1.4, 30_000);
       if (!stop) t = setTimeout(tick, delay);
     };
@@ -76,5 +80,5 @@ export function useSwapStatus(address: string | null) {
     };
   }, [address]);
   const mine = data?.address === address ? data : null;
-  return { status: mine?.st ?? null, checkedAt: mine?.at ?? null };
+  return { status: mine?.st ?? null, checkedAt: mine?.at ?? null, stalled: (mine?.fails ?? 0) >= 3 };
 }

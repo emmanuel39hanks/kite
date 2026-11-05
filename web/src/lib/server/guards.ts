@@ -1,3 +1,4 @@
+import "server-only";
 import { timingSafeEqual } from "node:crypto";
 
 /** A Kite vault id: kite.<owner>, where owner is a NEAR account (named or implicit). No empty or dotted-over labels. */

@@ -18,12 +18,13 @@ Each row: do this, see that.
 |---|---|
 | `cd contracts/vault && cargo test` | **60 tests pass**, including **31 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
 | `cd worker && npm install && npm test` | **8 tests pass** (drift maths and the real 1Click signature) |
+| `cd web && npm install && npm test` | **27 tests pass**: the checks on model output (Unicode-safe number guard, clamped rules, template fallbacks), the pre-signing check on swap addresses, and the preview engine's rebalance rule |
 | `cd web && npm install && npm run dev`, open http://localhost:3000/console?preview=1 | The full app with a simulated vault, live prices and **real 1Click quotes** (`dry: true`). No wallet, nothing signed. Walkthrough below. |
 | `cd worker && npm run attack -- --vault kite.<owner>.near` | Real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan are sent to the vault's free `check_quote` view. **Every one is refused.** (Needs a created vault.) |
-| `cd web && npx tsc --noEmit && npx eslint src && npm run build` | Clean type check, no lint warnings, production build |
+| `cd web && npm run typecheck && npx eslint src && npm run build` | Clean type check, no lint warnings, production build |
 | `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `3709d2c52360334f…`, the contract the app deploys (230,112 bytes) |
 
-**What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests; `cargo-near` only if you want to rebuild the wasm. The preview and every command above need **no environment variables and no funds**. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's worker key, so the preview is the judge path.
+**What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests; `cargo-near` only if you want to rebuild the wasm. The preview and every command above need **no environment variables and no funds**. The public "check now" route is always a dry run; real rebalances come from the daily cron (needs `CRON_SECRET` and `KITE_AGENT_KEY`) or the worker CLI. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's worker key, so the preview is the judge path.
 
 **What is proven and what is not, plainly:**
 
@@ -47,7 +48,7 @@ NEAR Intents has no testnet, so Kite has a **preview mode**: live prices, **real
 3. **Add money:** **Bitcoin** → **Get a real quote** shows a live 1Click quote (BTC in, USDC out, cost and time). Or **USDC in my NEAR wallet** → `1000` → **Send**. The preview wallet starts with 1,000 USDC and 5 NEAR.
 4. **Invest:** **Invest at today's real quotes** prices each slice with a dry 1Click quote. Or pick **1 year ago**, which replays Kite's daily check on real daily closes with your guardrails. **Activity** lists every rebalance and the drift that triggered it.
 5. **Home** shows value, a chart of the vault's own history, profit and loss on what you put in, return per holding, drift against your band, and what the earning parts make.
-6. **Check now** runs Kite's rule on live prices. If something is past your band it gets a real dry quote and applies the vault's checks. It trades only inside your price limit, otherwise it logs the refusal the contract would give (`ERR_SLIPPAGE`, `ERR_RATE`, …). Lower the band on **Guardrails** to see it trade.
+6. **Check now** runs Kite's rule on live prices (a dry check in the real app; in the preview it applies the trade to your simulated vault). If something is past your band it gets a real dry quote and applies the vault's checks. It trades only inside your price limit, otherwise it logs the refusal the contract would give (`ERR_SLIPPAGE`, `ERR_RATE`, …). Lower the band on **Guardrails** to see it trade.
 7. **Review your plan** (Home): numbers from real price history, explained privately. See [Private AI](#private-ai-on-near-ai-cloud).
 8. **Guardrails:** change limits by slider or by typing "be more careful". Switch Kite's key off and checks log `ERR_NO_AGENT`. **Withdraw** everything, then **Close** to get the 2.6 NEAR deposit back.
 
@@ -70,7 +71,7 @@ Connect a NEAR wallet (HOT, Meteor, Intear, Sender, Nightly or OKX).
 | Create your vault | One transaction from your account to `kite.<you>`: `CreateAccount`, `Transfer 2.6 NEAR` (storage, refunded on close), `DeployContract` (this repo's vault), `new(owner, plan, limits)`, `AddKey`. The key is Kite's worker key: `FunctionCall` only, receiver = your vault, methods `rebalance, settle`, 0.25 NEAR allowance. One vault per account. |
 | Add money | Send USDC from your NEAR wallet (`ft_transfer_call` to `intents.near`, `msg = vault`). Or `/api/deposit/quote` gets a 1Click deposit address on Base, Arbitrum, Ethereum, Bitcoin or Solana, and what you send lands in your vault as USDC inside `intents.near`. |
 | Invest | You sign `vault.allocate(transfers)`: slices of USDC go to 1Click deposit addresses that swap into each plan asset and pay **back to the vault**. |
-| Daily check | `/api/cron` (Vercel Cron, needs `CRON_SECRET`) or **Check now** runs `worker.runOnce`. Real transactions are sent only for vaults listed in `KITE_VAULTS`; any other vault gets a dry check: reads balances and drift, gets a 1Click quote, checks it locally, calls `vault.rebalance(quote, signature, prices)` with the worker key, and later `vault.settle()`. |
+| Daily check | `/api/cron` (Vercel Cron, needs `CRON_SECRET`, sends real transactions only for vaults in `KITE_VAULTS`) or the worker CLI runs `worker.runOnce`: reads balances and drift, gets a 1Click quote, checks it locally, calls `vault.rebalance(quote, signature, prices)` with the worker key, and later `vault.settle()`. **Check now** in the app is always a dry run that shows what Kite would do. |
 | Guardrails | Owner calls `set_limits`, `revoke_agent`, `set_agent`, `pause`, `unpause`, `set_quote_signer`. Each needs 1 yocto attached, so only your full-access key can call them. |
 | Leave | `withdraw` each balance to your Intents account, then `close_vault`. It refuses while anything is left, then deletes the account and returns its NEAR to you. |
 
@@ -213,7 +214,7 @@ web/               Next.js 16 app
 | Worker tests | `cd worker && npm test` |
 | Check routes | `cd worker && npm run routes` (live 1Click routes for every asset) |
 | One check, dry | `cd worker && npm run worker -- --vault kite.<you>.near --dry` |
-| Web app | `cd web && npm run dev` · `npx tsc --noEmit` · `npx eslint src` · `npm run build` |
+| Web app | `cd web && npm run dev` · `npm test` · `npm run typecheck` · `npx eslint src` · `npm run build` |
 
 ### Environment (`web/.env.local`, never committed)
 
@@ -223,6 +224,8 @@ web/               Next.js 16 app
 | `KITE_AGENT_KEY` | Server only. Lets `/api/vault/check` and `/api/cron` send real rebalances. Leave it out to run dry. |
 | `NEARAI_API_KEY` | Server only. Lets the relay reach NEAR AI Cloud for the private AI features. Hackathon credits come through NEAR Builders. Without it the AI features show "not configured" and everything else works. |
 | `ONECLICK_JWT` | Optional 1Click partner key, which avoids the 0.2% no-key fee |
+| `NEXT_PUBLIC_NEAR_RPC`, `NEAR_RPC`, `INTENTS_CONTRACT`, `ONECLICK_URL` | Optional overrides with working defaults (FastNEAR RPC, `intents.near`, the 1Click API) |
+| `KITE_VAULT`, `ATTACKER` | Worker CLI only (`npm run worker`, `npm run attack`) |
 | `CRON_SECRET`, `KITE_VAULTS` | `CRON_SECRET` is required for `/api/cron` (it refuses all calls without it). `KITE_VAULTS` lists the vaults the server may send real transactions for. |
 
 ---

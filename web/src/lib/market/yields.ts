@@ -58,7 +58,10 @@ export async function getYields(): Promise<Yields> {
       try {
         const y = await fn();
         if (Number.isFinite(y.apy) && y.apy > 0 && y.apy < 50) out[id] = y;
-      } catch {}
+        else console.warn(`yield for ${id} ignored: out of range`, y.apy);
+      } catch (e) {
+        console.warn(`yield for ${id} unavailable:`, e instanceof Error ? e.message : e);
+      }
     }),
   );
   return out;

@@ -13,7 +13,8 @@ const load = (hash: string): Saved | null => {
     if (!raw) return null;
     const s = JSON.parse(raw) as Partial<Saved>;
     const okInput = !!s.input && typeof s.input.sell === "string" && typeof s.input.buy === "string" && typeof s.input.overByPts === "number";
-    return typeof s.text === "string" && typeof s.fromModel === "boolean" && okInput ? (s as Saved) : null;
+    const okReceipt = s.receipt === null || (!!s.receipt && typeof s.receipt.completionId === "string" && (s.receipt.signatureKind === "provider_tee" || s.receipt.signatureKind === "gateway"));
+    return typeof s.text === "string" && typeof s.fromModel === "boolean" && okInput && okReceipt ? (s as Saved) : null;
   } catch {
     return null;
   }
