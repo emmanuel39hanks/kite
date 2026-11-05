@@ -185,7 +185,8 @@ export function verifyPayload(payload: string, signature: string, signer = ONE_C
 
 /** Tell 1Click which transaction funded the deposit address, so solvers start immediately. */
 export async function submitDeposit(txHash: string, depositAddress: string): Promise<void> {
-  await fetch(`${ONECLICK}/deposit/submit`, { method: "POST", headers: headers(), body: JSON.stringify({ txHash, depositAddress }) });
+  const r = await fetch(`${ONECLICK}/deposit/submit`, { method: "POST", headers: headers(), body: JSON.stringify({ txHash, depositAddress }) });
+  if (!r.ok) throw new Error(`1Click did not accept the deposit notice (${r.status}); the swap may start late, run again to settle.`);
 }
 
 export async function status(depositAddress: string): Promise<{ status: string; [k: string]: unknown }> {

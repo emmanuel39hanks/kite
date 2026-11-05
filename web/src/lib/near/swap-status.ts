@@ -60,13 +60,13 @@ export function useSwapStatus(address: string | null) {
       }
       try {
         const r = await fetch(`/api/deposit/status?address=${encodeURIComponent(address)}`, { cache: "no-store" });
+        if (r.status === 404 && ++misses >= 6) return; // 1Click does not know this address
         const d = (await r.json()) as SwapStatus;
         if (!stop && r.ok) {
           setData({ address, st: d, at: Date.now(), fails: 0 });
           if (isTerminal(d.status)) return;
         }
         if (!r.ok) noteFailure();
-        if (r.status === 404 && ++misses >= 6) return; // 1Click does not know this address
       } catch {
         noteFailure();
       }

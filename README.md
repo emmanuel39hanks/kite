@@ -16,13 +16,13 @@ Each row: do this, see that.
 
 | Do this | You should see |
 |---|---|
-| `cd contracts/vault && cargo test` | **60 tests pass**, including **31 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
+| `cd contracts/vault && cargo test` | **61 tests pass**, including **32 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
 | `cd worker && npm install && npm test` | **8 tests pass** (drift maths and the real 1Click signature) |
-| `cd web && npm install && npm test` | **27 tests pass**: the checks on model output (Unicode-safe number guard, clamped rules, template fallbacks), the pre-signing check on swap addresses, and the preview engine's rebalance rule |
+| `cd web && npm install && npm test` | **29 tests pass**: the checks on model output (Unicode-safe number guard, clamped rules, template fallbacks), the pre-signing check on swap addresses, and the preview engine's rebalance rule |
 | `cd web && npm install && npm run dev`, open http://localhost:3000/console?preview=1 | The full app with a simulated vault, live prices and **real 1Click quotes** (`dry: true`). No wallet, nothing signed. Walkthrough below. |
 | `cd worker && npm run attack -- --vault kite.<owner>.near` | Real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan are sent to the vault's free `check_quote` view. **Every one is refused.** (Needs a created vault.) |
 | `cd web && npm run typecheck && npx eslint src && npm run build` | Clean type check, no lint warnings, production build |
-| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `3709d2c52360334f…`, the contract the app deploys (230,112 bytes) |
+| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `43e2275fe39d9f89…`, the contract the app deploys (230,485 bytes) |
 
 **What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests; `cargo-near` only if you want to rebuild the wasm. The preview and every command above need **no environment variables and no funds**. The public "check now" route is always a dry run; real rebalances come from the daily cron (needs `CRON_SECRET` and `KITE_AGENT_KEY`) or the worker CLI. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's worker key, so the preview is the judge path.
 
@@ -30,7 +30,7 @@ Each row: do this, see that.
 
 | | Status |
 |---|---|
-| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 60 tests pass. Independently reviewed for security (findings fixed, see below). |
+| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 61 tests pass. Independently reviewed for security (findings fixed, see below). |
 | Worker and web app | Built and deployed at usekite.xyz. |
 | Preview mode with real quotes | Works. Simulated vault, real prices and quotes. |
 | **First end-to-end run on NEAR mainnet with real funds** | **Not done yet.** Transaction links will go in this README once it is. |
@@ -68,7 +68,7 @@ Connect a NEAR wallet (HOT, Meteor, Intear, Sender, Nightly or OKX).
 
 | Step | What happens on chain |
 |---|---|
-| Create your vault | One transaction from your account to `kite.<you>`: `CreateAccount`, `Transfer 2.6 NEAR` (storage, refunded on close), `DeployContract` (this repo's vault), `new(owner, plan, limits)`, `AddKey`. The key is Kite's worker key: `FunctionCall` only, receiver = your vault, methods `rebalance, settle`, 0.25 NEAR allowance. One vault per account. |
+| Create your vault | One transaction from your account to `kite.<you>`: `CreateAccount`, `Transfer 2.6 NEAR` (storage, refunded on close), `DeployContract` (this repo's vault), `new(owner, plan, limits, agent, intents)`, `AddKey`. The key is Kite's worker key: `FunctionCall` only, receiver = your vault, methods `rebalance, settle`, 0.25 NEAR allowance. One vault per account. |
 | Add money | Send USDC from your NEAR wallet (`ft_transfer_call` to `intents.near`, `msg = vault`). Or `/api/deposit/quote` gets a 1Click deposit address on Base, Arbitrum, Ethereum, Bitcoin or Solana, and what you send lands in your vault as USDC inside `intents.near`. |
 | Invest | You sign `vault.allocate(transfers)`: slices of USDC go to 1Click deposit addresses that swap into each plan asset and pay **back to the vault**. |
 | Daily check | `/api/cron` (Vercel Cron, needs `CRON_SECRET`, sends real transactions only for vaults in `KITE_VAULTS`) or the worker CLI runs `worker.runOnce`: reads balances and drift, gets a 1Click quote, checks it locally, calls `vault.rebalance(quote, signature, prices)` with the worker key, and later `vault.settle()`. **Check now** in the app is always a dry run that shows what Kite would do. |
@@ -135,10 +135,11 @@ We played an attacker who stole Kite's key and tried everything we could think o
 | Put a referral or a redirect field in the quote | Your vault (those fields are covered by 1Click's signature, so the vault can see and refuse them) | `ERR_QUOTE_TERMS` |
 | Use some other key that sits on the vault account | Your vault (only the key recorded for Kite works) | `ERR_NOT_AGENT` |
 | Burn the daily trade count with dust trades | Your vault (nothing under $1) | `ERR_TOO_SMALL` |
+| Ask for a quote that needs a deposit memo, so the swap never starts | Your vault | `ERR_QUOTE_TERMS` |
 | Keep trading after a swap goes missing | `settle` trips a breaker after the settle window, pausing the vault | `ERR_PAUSED` |
 
 **Run the attacks yourself:**
-- **Contract tests:** `cd contracts/vault && cargo test attack_` runs the 31 attack tests (60 tests in total).
+- **Contract tests:** `cd contracts/vault && cargo test attack_` runs the 32 attack tests (61 tests in total).
 - **Against a live vault, free:** `cd worker && npm run attack -- --vault kite.<owner>.near`.
 - **As real transactions:** add `--send` with the agent key. Each refusal gets a transaction hash. Add `--out file.md` to save the transcript.
 

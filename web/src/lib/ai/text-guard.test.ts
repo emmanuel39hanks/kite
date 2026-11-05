@@ -7,11 +7,11 @@ test("catches digits in any script, fullwidth forms and circled digits", () => {
 });
 
 test("catches quantity words, including plurals and -fold", () => {
-  for (const s of ["fell by twenty", "doubled", "a small percent", "hundreds of trades", "tenfold", "twice as much", "half of it", "三十", "百分之五十"]) assert.equal(hasNumber(s), true, s);
+  for (const s of ["fell by twenty", "doubled", "a small percent", "hundreds of trades", "tenfold", "twice as much", "half of it", "三十", "百分之五十", "Ⅲ", "XII", "MMXXV", "the tenth time", "tens of trades", "a couple", "several", "per cent", "basis points", "quadruple", "drei", "cinco", "три", "壹貳"]) assert.equal(hasNumber(s), true, s);
 });
 
 test("leaves ordinary prose alone", () => {
-  for (const s of ["This moves less than most crypto.", "It keeps one trade small and steady.", "Gold cushions drops."]) assert.equal(hasNumber(s), false, s);
+  for (const s of ["This moves less than most crypto.", "It keeps one trade small and steady.", "Gold cushions drops.", "A mixed plan, reviewed quarterly, often helps. Someone may prefer it.", "I think it is fine."]) assert.equal(hasNumber(s), false, s);
 });
 
 test("allowed-number check folds look-alike digits and removes invisible characters", () => {

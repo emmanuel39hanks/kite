@@ -19,6 +19,7 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
+  if (!b || typeof b !== "object") return Response.json({ error: "Bad request" }, { status: 400 });
   const { from, to, amount, origin } = b;
   if (!KNOWN.has(from) || !KNOWN.has(to) || from === to || !/^\d{1,30}$/.test(amount ?? "") || amount === "0") {
     return Response.json({ error: "Bad request" }, { status: 400 });

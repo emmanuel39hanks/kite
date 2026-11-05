@@ -180,6 +180,8 @@ pub struct SignedQuote {
     // one is refused. (App fees are NOT covered by 1Click's signature, so the vault can't see them: a thief's
     // key can still ask for one, and what it can take that way is bounded by the price limit below.)
     #[serde(default)]
+    pub deposit_memo: Option<String>,
+    #[serde(default)]
     pub referral: Option<String>,
     #[serde(default)]
     pub custom_recipient_msg: Option<String>,
@@ -606,7 +608,8 @@ impl Vault {
         let q: SignedQuote = near_sdk::serde_json::from_str(quote).unwrap_or_else(|_| env::panic_str(ERR_QUOTE_TERMS));
         let blank = |s: &Option<String>| s.as_deref().is_none_or(str::is_empty);
         require!(
-            blank(&q.referral)
+            blank(&q.deposit_memo)
+                && blank(&q.referral)
                 && blank(&q.custom_recipient_msg)
                 && blank(&q.virtual_chain_recipient)
                 && blank(&q.virtual_chain_refund_recipient),

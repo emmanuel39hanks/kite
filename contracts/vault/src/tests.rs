@@ -662,6 +662,16 @@ fn empty_referral_fields_are_fine() {
     v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
 }
 
+/// A25: a quote that wants a deposit memo: the vault's plain transfer carries none, so the swap would never start.
+#[test]
+#[should_panic(expected = "ERR_QUOTE_TERMS")]
+fn attack_a25_deposit_memo_required() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("depositMemo", json!("needs-this"))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+
 /// A23: some other key on the vault account (not the one recorded for Kite) calls rebalance.
 #[test]
 #[should_panic(expected = "ERR_NOT_AGENT")]

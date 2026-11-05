@@ -95,7 +95,8 @@ function pickPersisted(raw: unknown): Partial<Persisted> {
   if (typeof r.name === "string") out.name = r.name.slice(0, 80);
   if (typeof r.planSlug === "string") out.planSlug = r.planSlug.slice(0, 80);
   if (Array.isArray(r.activity)) out.activity = (r.activity as ActivityEvent[]).filter((e) => e && typeof e.id === "string" && typeof e.title === "string" && typeof e.at === "number" && typeof e.kind === "string").slice(0, 200);
-  if (r.draft && typeof r.draft === "object") out.draft = r.draft as Persisted["draft"];
+  const d = r.draft as { name?: unknown; mix?: unknown } | null;
+  if (d && typeof d.name === "string" && Array.isArray(d.mix) && d.mix.every((m) => m && typeof (m as Slice).id === "string" && Number.isFinite((m as Slice).weight))) out.draft = { name: d.name.slice(0, 80), mix: d.mix as Slice[] };
   return out;
 }
 

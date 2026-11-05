@@ -10,7 +10,7 @@ const vault = "kite.alex.near";
 const plan = [{ token: BTC, target_bps: 6000 }, { token: ETH, target_bps: 4000 }];
 const usdc = 10_000_000n;
 const stored = (o: Record<string, unknown> = {}) => ({
-  quoteResponse: { quoteRequest: { recipient: vault, refundTo: vault, recipientType: "INTENTS", refundType: "INTENTS", depositType: "INTENTS", originAsset: USDC, dry: false, appFees: [{ recipient: FEE, fee: 20 }], ...o } },
+  quoteResponse: { quoteRequest: { recipient: vault, refundTo: vault, recipientType: "INTENTS", refundType: "INTENTS", depositType: "INTENTS", originAsset: USDC, dry: false, swapType: "EXACT_INPUT", slippageTolerance: 100, appFees: [{ recipient: FEE, fee: 20 }], ...o } },
 });
 const good = [
   { token: USDC, amount: "6000000", to: "aaaaaaaa11", buy: BTC },
@@ -57,4 +57,14 @@ test("refuses an address NEAR Intents doesn't know", async () => {
     verifyAllocation({ transfers: good, plan, usdc, usdcToken: USDC, vault, fetchStatus: async () => { throw new Error("404"); } }),
     /unknown to NEAR Intents/,
   );
+});
+
+test("refuses a loose slippage, a wrong swap type, or a referral", async () => {
+  await assert.rejects(run(good, () => ({ slippageTolerance: 10_000 })));
+  await assert.rejects(run(good, () => ({ swapType: "EXACT_OUTPUT" })));
+  await assert.rejects(run(good, () => ({ referral: "thief" })));
+});
+
+test("nothing to invest gives a plain message, not a quote error", async () => {
+  await assert.rejects(run([]), /nothing to invest/);
 });

@@ -41,6 +41,15 @@ function agent(vault: string) {
 /** Minimal view of a transaction outcome: the hash and whether it failed. */
 export type TxResult = { hash: string | undefined; outcome: unknown };
 
+/** Throws if any receipt of the transaction failed. The policy check runs in a callback receipt, so a refused rebalance still "succeeds" at first. */
+function assertOk(outcome: unknown, what: string) {
+  const o = outcome as { status?: unknown; receipts_outcome?: { outcome?: { status?: unknown } }[] };
+  const failed = (s: unknown) => !!s && typeof s === "object" && "Failure" in (s as object);
+  if (failed(o.status) || (o.receipts_outcome ?? []).some((r) => failed(r.outcome?.status))) {
+    throw new Error(`${what} was refused on chain: ${JSON.stringify(o.status ?? o.receipts_outcome).slice(0, 300)}`);
+  }
+}
+
 export async function callRebalance(
   vault: string,
   args: { quote: string; signature: string; prices: { token: string; usd_e6: string }[] },
@@ -49,6 +58,7 @@ export async function callRebalance(
     receiverId: vault,
     actions: [actions.functionCall("rebalance", args, teraToGas("200"), 0n)],
   });
+  assertOk(outcome, "The rebalance");
   return { hash: (outcome as { transaction?: { hash?: string } }).transaction?.hash, outcome };
 }
 
@@ -57,5 +67,6 @@ export async function callSettle(vault: string): Promise<TxResult> {
     receiverId: vault,
     actions: [actions.functionCall("settle", {}, teraToGas("150"), 0n)],
   });
+  assertOk(outcome, "Settling");
   return { hash: (outcome as { transaction?: { hash?: string } }).transaction?.hash, outcome };
 }

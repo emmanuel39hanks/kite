@@ -16,6 +16,7 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
+  if (!body || typeof body !== "object") return Response.json({ error: "Bad request" }, { status: 400 });
   const { vault, usdc, plan } = body as { vault: string; usdc: string; plan: { token: string; target_bps: number }[] };
   const sane =
     isKiteVault(vault) &&
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
         recipientType: "INTENTS",
         deadline: new Date(Date.now() + 3600_000).toISOString(),
       }),
+      signal: AbortSignal.timeout(20_000),
     });
     const d = await r.json().catch(() => ({}) as { message?: string; quote?: { depositAddress?: string; amountOutUsd?: string } });
     if (!r.ok || !d.quote?.depositAddress) return Response.json({ error: `${assetByIntentsId(t.token)?.name}: ${typeof d.message === "string" ? d.message.slice(0, 200) : "no quote"}` }, { status: 502 });

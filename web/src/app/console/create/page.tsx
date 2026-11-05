@@ -1,5 +1,6 @@
 "use client";
 
+import { GUARD_BOUNDS } from "@/lib/ai/guard-bounds";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Donut, MixBar } from "@/components/charts";
@@ -339,12 +340,15 @@ const PRESETS: { id: string; label: string; text: string; g: Guardrails }[] = [
   { id: "tight", label: "Tight", text: "Stays close to your shares. Trades more often, in smaller steps.", g: { driftBand: 3, maxTradePct: 5, slippageBps: 75, tradesPerDay: 6 } },
 ];
 
-const RULES: { key: keyof Guardrails; label: string; help: (v: number) => string; min: number; max: number; step: number; show: (v: number) => string }[] = [
-  { key: "driftBand", label: "When Kite steps in", help: (v) => `Say Bitcoin should be 50%. Kite waits until it's below ${50 - v}% or above ${50 + v}% before trading.`, min: 2, max: 20, step: 1, show: (v) => `${v} pts off` },
-  { key: "maxTradePct", label: "Biggest single trade", help: (v) => `No one swap moves more than ${v}% of your money. Bigger fixes happen over several days.`, min: 1, max: 50, step: 1, show: (v) => `${v}%` },
-  { key: "slippageBps", label: "Worst price accepted", help: (v) => `If a swap would hand back less than ${(100 - v / 100).toFixed(2)}% of what goes in, fees included, the vault refuses it.`, min: 10, max: 300, step: 10, show: (v) => `${(v / 100).toFixed(2)}%` },
-  { key: "tradesPerDay", label: "Trades per day", help: (v) => `At most ${v} trade${v === 1 ? "" : "s"} a day, however wild the market gets.`, min: 1, max: 12, step: 1, show: (v) => `${v}` },
+type RuleDef = { key: keyof Guardrails; label: string; help: (v: number) => string; show: (v: number) => string };
+const RULE_DEFS: RuleDef[] = [
+  { key: "driftBand", label: "When Kite steps in", help: (v) => `Say Bitcoin should be 50%. Kite waits until it's below ${50 - v}% or above ${50 + v}% before trading.`, show: (v) => `${v} pts off` },
+  { key: "maxTradePct", label: "Biggest single trade", help: (v) => `No one swap moves more than ${v}% of your money. Bigger fixes happen over several days.`, show: (v) => `${v}%` },
+  { key: "slippageBps", label: "Worst price accepted", help: (v) => `If a swap would hand back less than ${(100 - v / 100).toFixed(2)}% of what goes in, fees included, the vault refuses it.`, show: (v) => `${(v / 100).toFixed(2)}%` },
+  { key: "tradesPerDay", label: "Trades per day", help: (v) => `At most ${v} trade${v === 1 ? "" : "s"} a day, however wild the market gets.`, show: (v) => `${v}` },
 ];
+// Ranges come from one place, so every screen agrees with the vault and with each other.
+const RULES = RULE_DEFS.map((r) => ({ ...r, ...GUARD_BOUNDS[r.key] }));
 
 function RulesStep({ rules, setRules }: { rules: Guardrails; setRules: (g: Guardrails) => void }) {
   const [custom, setCustom] = useState(!PRESETS.some((p) => same(p.g, rules)));

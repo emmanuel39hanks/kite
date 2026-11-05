@@ -16,6 +16,7 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
+  if (!b || typeof b !== "object") return Response.json({ error: "Bad request" }, { status: 400 });
   const { source, amount, vault, owner } = b as { source: string; amount: string; vault: string; owner: string };
   const src = typeof source === "string" && Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
   if (!src || typeof amount !== "string" || !/^\d{1,30}$/.test(amount) || !isKiteVault(vault) || !isNearAccount(owner)) {

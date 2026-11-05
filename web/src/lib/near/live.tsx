@@ -266,9 +266,10 @@ function useRealLive() {
     const r = await fetch("/api/vault/check", { method: "POST", body: JSON.stringify({ vault }) });
     const d = (await r.json()) as { action?: string; dry?: boolean; lines?: string[]; error?: string };
     k.addEvent({
-      kind: d.action === "rebalanced" ? "trade" : d.error ? "blocked" : "check",
-      title: d.error ? "Check failed" : d.action === "none" ? "Checked: on plan" : d.action === "rebalanced" ? "Rebalanced" : `Checked: ${d.action}`,
-      detail: d.error ?? d.lines?.slice(-1)[0],
+      kind: d.error ? "blocked" : "check",
+      // This is always a dry check: it shows what Kite would do. The daily run (or the worker CLI) does the trading.
+      title: d.error ? "Check failed" : d.action === "none" ? "Checked: on plan" : d.action === "dry" ? "Checked: a trade is due" : d.action === "skipped" ? "Checked: a trade is due but costs too much" : d.action === "paused" ? "Checked: vault is paused" : `Checked: ${d.action}`,
+      detail: d.error ?? (d.action === "dry" ? "Kite would trade now. The daily run does it, or run the worker yourself." : d.lines?.slice(-1)[0]),
     });
     return d;
   }, [k, vault]);
