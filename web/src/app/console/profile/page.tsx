@@ -208,7 +208,7 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
         <div>
           <SectionTitle actions={!preview && <Button size="sm" href={accountUrl(account)} external icon="external">NearBlocks</Button>}>Wallet</SectionTitle>
           <Card className="overflow-hidden">
-            <p className="p-5 pb-4 text-[14px] leading-5 text-[#909090]">{preview ? "The simulated wallet the preview starts you with, plus anything you withdraw from the vault." : "What's in your NEAR account itself, outside the vault."} Creating a vault takes a 2.4 NEAR deposit (you get it back when you close it) plus a little for fees.</p>
+            <p className="p-5 pb-4 text-[14px] leading-5 text-[#909090]">{preview ? "The simulated wallet the preview starts you with, plus anything you withdraw from the vault." : "What's in your NEAR account itself, outside the vault."} Creating a vault takes a 2.6 NEAR deposit (you get it back when you close it) plus a little for fees.</p>
             <ul className="divide-y divide-black/[0.05] bg-white">
               {walletRows.map(([id, amount]) => [id, assetById(id).ticker, amount] as const).map(([id, ticker, amount]) => (
                 <li key={id} className="flex items-center gap-3 px-5 py-3.5">

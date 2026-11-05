@@ -40,7 +40,7 @@ export function toContractLimits(g: Guardrails): ContractLimits {
     max_trade_bps: g.maxTradePct * 100,
     max_slippage_bps: g.slippageBps,
     max_trades_per_day: g.tradesPerDay,
-    min_interval_secs: 3_600,
+    min_interval_secs: 14_400, // four hours: at most 6 trades a day however many the owner allows
     settle_window_secs: 1_800,
   };
 }

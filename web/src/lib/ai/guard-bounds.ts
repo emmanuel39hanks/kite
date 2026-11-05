@@ -9,7 +9,7 @@ export const GUARD_BOUNDS: Record<keyof Guardrails, { min: number; max: number; 
   driftBand: { min: 2, max: 20, step: 1 },
   maxTradePct: { min: 1, max: 50, step: 1 },
   slippageBps: { min: 10, max: 300, step: 10 },
-  tradesPerDay: { min: 1, max: 12, step: 1 },
+  tradesPerDay: { min: 1, max: 6, step: 1 },
 };
 
 export const GUARD_KEYS = Object.keys(GUARD_BOUNDS) as (keyof Guardrails)[];
@@ -33,7 +33,7 @@ export const GUARD_SCHEMA = {
       driftBand: { type: "integer", minimum: 2, maximum: 20 },
       maxTradePct: { type: "integer", minimum: 1, maximum: 50 },
       slippageBps: { type: "integer", minimum: 10, maximum: 300 },
-      tradesPerDay: { type: "integer", minimum: 1, maximum: 12 },
+      tradesPerDay: { type: "integer", minimum: 1, maximum: 6 },
       explain: { type: "string", description: "One or two plain sentences on what changed and why. No digits." },
     },
   },

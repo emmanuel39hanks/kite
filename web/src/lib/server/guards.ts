@@ -23,7 +23,8 @@ const buckets = new Map<string, number[]>();
 export function limited(key: string, max: number, windowMs: number) {
   const now = Date.now();
   const recent = (buckets.get(key) ?? []).filter((t) => now - t < windowMs);
-  recent.push(now);
+  if (recent.length <= max) recent.push(now); // a blocked key stops growing
+  buckets.delete(key); // re-insert so the oldest-touched keys are the ones evicted
   buckets.set(key, recent);
   if (buckets.size > 5000) for (const k of buckets.keys()) { buckets.delete(k); if (buckets.size <= 4000) break; }
   return recent.length > max;

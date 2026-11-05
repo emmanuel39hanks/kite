@@ -31,7 +31,7 @@ export function SkyVideo() {
       muted
       loop
       playsInline
-      preload="auto"
+      preload="metadata"
       aria-hidden="true"
     >
       <source src="/media/sky.webm" type="video/webm" />

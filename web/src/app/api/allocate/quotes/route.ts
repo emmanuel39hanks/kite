@@ -21,7 +21,9 @@ export async function POST(req: Request) {
     isKiteVault(vault) &&
     typeof usdc === "string" && /^\d{1,13}$/.test(usdc) && // at most 10 million USDC
     Array.isArray(plan) && plan.length >= 1 && plan.length <= 12 &&
-    plan.every((t) => typeof t?.token === "string" && Number.isInteger(t.target_bps) && t.target_bps >= 0 && t.target_bps <= 10_000);
+    plan.every((t) => typeof t?.token === "string" && Number.isInteger(t.target_bps) && t.target_bps >= 0 && t.target_bps <= 10_000) &&
+    new Set(plan.map((t) => t.token)).size === plan.length &&
+    plan.reduce((n, t) => n + t.target_bps, 0) <= 10_000;
   if (!sane) return Response.json({ error: "Bad request" }, { status: 400 });
   const total = BigInt(usdc);
   const slices = plan.filter((t) => t.token !== NEAR.usdc && assetByIntentsId(t.token));
@@ -47,8 +49,8 @@ export async function POST(req: Request) {
         deadline: new Date(Date.now() + 3600_000).toISOString(),
       }),
     });
-    const d = await r.json();
-    if (!r.ok || !d.quote?.depositAddress) return Response.json({ error: `${assetByIntentsId(t.token)?.name}: ${d.message ?? "no quote"}` }, { status: 502 });
+    const d = await r.json().catch(() => ({}) as { message?: string; quote?: { depositAddress?: string; amountOutUsd?: string } });
+    if (!r.ok || !d.quote?.depositAddress) return Response.json({ error: `${assetByIntentsId(t.token)?.name}: ${typeof d.message === "string" ? d.message.slice(0, 200) : "no quote"}` }, { status: 502 });
     transfers.push({ token: NEAR.usdc, amount: amount.toString(), to: d.quote.depositAddress, buy: t.token, amountOutUsd: d.quote.amountOutUsd });
   }
   return Response.json({ transfers });

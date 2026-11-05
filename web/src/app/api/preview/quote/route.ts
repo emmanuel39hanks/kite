@@ -1,5 +1,6 @@
 import { ASSETS } from "@/lib/assets";
 import { SOURCES } from "@/lib/near/sources";
+import { clientIp, limited } from "@/lib/server/guards";
 import { ONECLICK } from "@/lib/server/oneclick";
 
 const PREVIEW_VAULT = "kite.preview.near";
@@ -11,8 +12,15 @@ const KNOWN = new Set([...ASSETS.map((a) => a.intentsId).filter(Boolean), ...Obj
  * but no deposit address is issued and nothing can be sent. Powers the console's preview mode.
  */
 export async function POST(req: Request) {
-  const { from, to, amount, origin } = (await req.json()) as { from: string; to: string; amount: string; origin?: boolean };
-  if (!KNOWN.has(from) || !KNOWN.has(to) || from === to || !/^\d+$/.test(amount ?? "") || amount === "0") {
+  if (limited(`pq:${clientIp(req)}`, 120, 10 * 60_000)) return Response.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
+  let b: { from: string; to: string; amount: string; origin?: boolean };
+  try {
+    b = await req.json();
+  } catch {
+    return Response.json({ error: "Bad request" }, { status: 400 });
+  }
+  const { from, to, amount, origin } = b;
+  if (!KNOWN.has(from) || !KNOWN.has(to) || from === to || !/^\d{1,30}$/.test(amount ?? "") || amount === "0") {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
   const r = await fetch(`${ONECLICK}/quote`, {
@@ -34,7 +42,7 @@ export async function POST(req: Request) {
     }),
   }).catch(() => null);
   const d = r ? await r.json().catch(() => null) : null;
-  if (!r?.ok || !d?.quote?.amountOut) return Response.json({ error: d?.message ?? "NEAR Intents returned no quote. Try a larger amount." }, { status: 502 });
+  if (!r?.ok || !d?.quote?.amountOut) return Response.json({ error: typeof d?.message === "string" ? d.message.slice(0, 200) : "NEAR Intents returned no quote. Try a larger amount." }, { status: 502 });
   const q = d.quote;
   return Response.json({
     amountIn: q.amountIn,

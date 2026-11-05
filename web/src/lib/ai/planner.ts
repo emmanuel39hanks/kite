@@ -62,7 +62,7 @@ export const DRAFT_SCHEMA = {
           driftBand: { type: "integer", minimum: 2, maximum: 20 },
           maxTradePct: { type: "integer", minimum: 1, maximum: 50 },
           slippageBps: { type: "integer", minimum: 50, maximum: 300 },
-          tradesPerDay: { type: "integer", minimum: 1, maximum: 12 },
+          tradesPerDay: { type: "integer", minimum: 1, maximum: 6 },
         },
       },
       caution: { type: "string", description: "One honest sentence on the main risk" },
@@ -133,7 +133,7 @@ export function normalise(raw: unknown, allowed?: Set<string>): { draft: Draft; 
     driftBand: clamp(r.driftBand, 2, 20, 5),
     maxTradePct: clamp(r.maxTradePct, 1, 50, 10),
     slippageBps: clamp(r.slippageBps, 50, 300, 100),
-    tradesPerDay: clamp(r.tradesPerDay, 1, 12, 4),
+    tradesPerDay: clamp(r.tradesPerDay, 1, 6, 4),
   };
   // Every free-text field may only contain numbers we supplied, the weights, or the rule values.
   const known = allowed ? new Set([...allowed, ...assets.map((a) => String(a.weight)), ...Object.values(rules).map(String)]) : null;

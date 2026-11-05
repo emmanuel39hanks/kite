@@ -509,7 +509,7 @@ function Closing() {
             <a href="/console?preview=1" className="text-[15px] font-medium underline underline-offset-4 hover:text-black/70">
               Try the preview
             </a>
-            <span className="text-[15px] text-black/70">Connect a NEAR wallet. Start with a few dollars, plus a 2.4 NEAR vault deposit you get back when you close it.</span>
+            <span className="text-[15px] text-black/70">Connect a NEAR wallet. Start with a few dollars, plus a 2.6 NEAR vault deposit you get back when you close it.</span>
           </div>
         </div>
       </div>

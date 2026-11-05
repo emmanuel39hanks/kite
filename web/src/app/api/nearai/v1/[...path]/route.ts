@@ -24,6 +24,32 @@ const DROP_PREFIX = ["x-forwarded-", "x-vercel-", "x-middleware-", "sec-", "prox
 const MAX_TOKENS = 4000;
 const DROP_RES = new Set(["content-encoding", "content-length", "transfer-encoding", "connection", "set-cookie"]);
 
+/** The top-level keys of a JSON object, read straight from the text (JSON.parse hides duplicates). null if it isn't an object. */
+function topLevelKeys(text: string): string[] | null {
+  const keys: string[] = [];
+  let depth = 0;
+  let i = 0;
+  const n = text.length;
+  while (i < n && /\s/.test(text[i])) i++;
+  if (text[i] !== "{") return null;
+  let expectKey = false;
+  for (; i < n; i++) {
+    const c = text[i];
+    if (c === '"') {
+      let j = i + 1;
+      while (j < n && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
+      if (depth === 1 && expectKey) keys.push(text.slice(i + 1, j));
+      expectKey = false;
+      i = j;
+    } else if (c === "{" || c === "[") {
+      depth++;
+      if (depth === 1 && c === "{") expectKey = true;
+    } else if (c === "}" || c === "]") depth--;
+    else if (c === "," && depth === 1) expectKey = true;
+  }
+  return keys;
+}
+
 async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   await connection();
   const key = process.env.NEARAI_API_KEY;
@@ -42,13 +68,15 @@ async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> })
     try {
       const text = new TextDecoder().decode(body);
       // The body can't be re-serialised (the browser checks signatures over its exact bytes), so refuse
-      // ambiguous ones: a second top-level-looking "model" key could be read differently upstream.
-      if ((text.match(/(?<!\\)"model"\s*:/g) ?? []).length > 1) return Response.json({ error: "Bad request" }, { status: 400 });
-      const j = JSON.parse(text) as { model?: string; max_tokens?: unknown };
+      // ambiguous ones: a repeated or escaped top-level key could be read differently upstream.
+      const keys = topLevelKeys(text);
+      if (!keys || new Set(keys).size !== keys.length || keys.some((k) => k.includes("\\"))) return Response.json({ error: "Bad request" }, { status: 400 });
+      const j = JSON.parse(text) as Record<string, unknown>;
       if (j.model !== PLANNER_MODEL) return Response.json({ error: "Model not allowed" }, { status: 403 });
-      if (j.max_tokens !== undefined && !(typeof j.max_tokens === "number" && j.max_tokens > 0 && j.max_tokens <= MAX_TOKENS)) {
-        return Response.json({ error: "max_tokens too large" }, { status: 400 });
-      }
+      // A cost cap that can't be skipped: a sane max_tokens is required, and the multipliers are refused.
+      const mt = j.max_tokens;
+      if (!(typeof mt === "number" && Number.isInteger(mt) && mt > 0 && mt <= MAX_TOKENS)) return Response.json({ error: "max_tokens required (up to 4000)" }, { status: 400 });
+      if ("max_completion_tokens" in j || "best_of" in j || "tools" in j || (j.n !== undefined && j.n !== 1)) return Response.json({ error: "Not allowed" }, { status: 400 });
     } catch {
       return Response.json({ error: "Bad request" }, { status: 400 });
     }

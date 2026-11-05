@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@near-js/crypto": "^2.5.1",
@@ -39,11 +41,15 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   },
   "overrides": {
     "@freedomofpress/crypto-browser": {
       "@noble/curves": "1.9.7"
     }
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }

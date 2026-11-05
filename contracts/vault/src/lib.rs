@@ -176,9 +176,9 @@ pub struct SignedQuote {
     pub amount_out_usd: String,
     pub deposit_address: Option<String>,
     pub timestamp: String,
-    // Side payments a signed request can carry. Kite never asks for any, so any non-empty value is refused.
-    #[serde(default)]
-    pub app_fees: Option<Vec<near_sdk::serde::de::IgnoredAny>>,
+    // Redirect and referral fields that 1Click's signature does cover. Kite never asks for any, so a quote with
+    // one is refused. (App fees are NOT covered by 1Click's signature, so the vault can't see them: a thief's
+    // key can still ask for one, and what it can take that way is bounded by the price limit below.)
     #[serde(default)]
     pub referral: Option<String>,
     #[serde(default)]
@@ -604,12 +604,9 @@ impl Vault {
         require!(env::ed25519_verify(&sig, message.as_bytes(), &pk), ERR_QUOTE_SIG);
 
         let q: SignedQuote = near_sdk::serde_json::from_str(quote).unwrap_or_else(|_| env::panic_str(ERR_QUOTE_TERMS));
-        // A signed request can carry fees, referrals or redirects that pay someone else out of the swap.
-        // A stolen key could otherwise skim the whole price-limit budget of every trade into its own account.
         let blank = |s: &Option<String>| s.as_deref().is_none_or(str::is_empty);
         require!(
-            q.app_fees.as_ref().is_none_or(Vec::is_empty)
-                && blank(&q.referral)
+            blank(&q.referral)
                 && blank(&q.custom_recipient_msg)
                 && blank(&q.virtual_chain_recipient)
                 && blank(&q.virtual_chain_refund_recipient),

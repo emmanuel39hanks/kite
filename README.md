@@ -21,7 +21,7 @@ Each row: do this, see that.
 | `cd web && npm install && npm run dev`, open http://localhost:3000/console?preview=1 | The full app with a simulated vault, live prices and **real 1Click quotes** (`dry: true`). No wallet, nothing signed. Walkthrough below. |
 | `cd worker && npm run attack -- --vault kite.<owner>.near` | Real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan are sent to the vault's free `check_quote` view. **Every one is refused.** (Needs a created vault.) |
 | `cd web && npx tsc --noEmit && npx eslint src && npm run build` | Clean type check, no lint warnings, production build |
-| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `ae7c000eee3057f7…`, the contract the app deploys (231,823 bytes) |
+| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `3709d2c52360334f…`, the contract the app deploys (230,112 bytes) |
 
 **What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests; `cargo-near` only if you want to rebuild the wasm. The preview and every command above need **no environment variables and no funds**. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's worker key, so the preview is the judge path.
 
@@ -49,7 +49,7 @@ NEAR Intents has no testnet, so Kite has a **preview mode**: live prices, **real
 5. **Home** shows value, a chart of the vault's own history, profit and loss on what you put in, return per holding, drift against your band, and what the earning parts make.
 6. **Check now** runs Kite's rule on live prices. If something is past your band it gets a real dry quote and applies the vault's checks. It trades only inside your price limit, otherwise it logs the refusal the contract would give (`ERR_SLIPPAGE`, `ERR_RATE`, …). Lower the band on **Guardrails** to see it trade.
 7. **Review your plan** (Home): numbers from real price history, explained privately. See [Private AI](#private-ai-on-near-ai-cloud).
-8. **Guardrails:** change limits by slider or by typing "be more careful". Switch Kite's key off and checks log `ERR_NO_AGENT`. **Withdraw** everything, then **Close** to get the 2.4 NEAR deposit back.
+8. **Guardrails:** change limits by slider or by typing "be more careful". Switch Kite's key off and checks log `ERR_NO_AGENT`. **Withdraw** everything, then **Close** to get the 2.6 NEAR deposit back.
 
 | Real | Simulated |
 |---|---|
@@ -67,7 +67,7 @@ Connect a NEAR wallet (HOT, Meteor, Intear, Sender, Nightly or OKX).
 
 | Step | What happens on chain |
 |---|---|
-| Create your vault | One transaction from your account to `kite.<you>`: `CreateAccount`, `Transfer 2.4 NEAR` (storage, refunded on close), `DeployContract` (this repo's vault), `new(owner, plan, limits)`, `AddKey`. The key is Kite's worker key: `FunctionCall` only, receiver = your vault, methods `rebalance, settle`, 0.25 NEAR allowance. One vault per account. |
+| Create your vault | One transaction from your account to `kite.<you>`: `CreateAccount`, `Transfer 2.6 NEAR` (storage, refunded on close), `DeployContract` (this repo's vault), `new(owner, plan, limits)`, `AddKey`. The key is Kite's worker key: `FunctionCall` only, receiver = your vault, methods `rebalance, settle`, 0.25 NEAR allowance. One vault per account. |
 | Add money | Send USDC from your NEAR wallet (`ft_transfer_call` to `intents.near`, `msg = vault`). Or `/api/deposit/quote` gets a 1Click deposit address on Base, Arbitrum, Ethereum, Bitcoin or Solana, and what you send lands in your vault as USDC inside `intents.near`. |
 | Invest | You sign `vault.allocate(transfers)`: slices of USDC go to 1Click deposit addresses that swap into each plan asset and pay **back to the vault**. |
 | Daily check | `/api/cron` (Vercel Cron, needs `CRON_SECRET`) or **Check now** runs `worker.runOnce`. Real transactions are sent only for vaults listed in `KITE_VAULTS`; any other vault gets a dry check: reads balances and drift, gets a 1Click quote, checks it locally, calls `vault.rebalance(quote, signature, prices)` with the worker key, and later `vault.settle()`. |
@@ -131,7 +131,7 @@ We played an attacker who stole Kite's key and tried everything we could think o
 | Buy something that isn't in your plan | Your vault | `ERR_NOT_IN_PLAN` |
 | Sell something that isn't over its band, or buy something already over target | Your vault | `ERR_NOT_OVER_BAND`, `ERR_WRONG_DIRECTION` |
 | Trade over and over to bleed fees, or overlap swaps | Your vault | `ERR_RATE`, `ERR_PENDING` |
-| Quote an app fee or referral that pays the attacker out of the swap | Your vault (any fee, referral or redirect field in the signed request is refused) | `ERR_QUOTE_TERMS` |
+| Put a referral or a redirect field in the quote | Your vault (those fields are covered by 1Click's signature, so the vault can see and refuse them) | `ERR_QUOTE_TERMS` |
 | Use some other key that sits on the vault account | Your vault (only the key recorded for Kite works) | `ERR_NOT_AGENT` |
 | Burn the daily trade count with dust trades | Your vault (nothing under $1) | `ERR_TOO_SMALL` |
 | Keep trading after a swap goes missing | `settle` trips a breaker after the settle window, pausing the vault | `ERR_PAUSED` |
@@ -141,11 +141,11 @@ We played an attacker who stole Kite's key and tried everything we could think o
 - **Against a live vault, free:** `cd worker && npm run attack -- --vault kite.<owner>.near`.
 - **As real transactions:** add `--send` with the agent key. Each refusal gets a transaction hash. Add `--out file.md` to save the transcript.
 
-**Threat model:** a fully compromised worker still can't move money anywhere except a 1Click swap that pays your vault. It can still make trades you didn't need, inside your guardrails and rate limits, at 1Click's signed market price. The worst case is swap costs.
+**Threat model:** a fully compromised worker still can't move money anywhere except a 1Click swap that pays your vault. It can still make trades you didn't need, inside your guardrails and rate limits. The worst case is swap costs, and it has a number: each trade can lose at most your price limit (default 1%) of the amount traded (default at most 10% of the portfolio), so about 0.1% of the portfolio per trade and at most 4 trades a day at the defaults, about 0.4% a day, until you revoke Kite's key or pause the vault.
 
-**Defaults:** a holding must drift 5 points before Kite acts, one trade moves at most 10% of the portfolio, a swap may cost at most 1% fees included, at most 4 trades a day with at least an hour between them, and a swap that hasn't landed after 30 minutes pauses the vault. You can change all of these.
+**Defaults:** a holding must drift 5 points before Kite acts, one trade moves at most 10% of the portfolio, a swap may cost at most 1% fees included, at most 4 trades a day (the four-hour gap between trades allows at most 6), and a swap that hasn't landed after 30 minutes pauses the vault. You can change all of these.
 
-**Two gaps we found and closed:** (1) the first version took the deposit address and reference prices from the worker; verifying 1Click's signature on-chain closed it. (2) An independent review found a signed request could carry an app fee or referral paying a thief out of the swap budget; those fields are now refused. Two more review findings were also fixed: a zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account.
+**Gaps we found and closed:** (1) the first version took the deposit address and reference prices from the worker; verifying 1Click's signature on-chain closed it. (2) Independent review found the vault ignored referral and redirect fields in the signed quote; they are now refused. (3) A zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account; both are fixed. (4) Trades under $1 are refused, so dust can't burn the daily trade count.
 
 **The first gap in detail:** the first version took the deposit address and reference prices from the worker. Writing the attack suite showed a stolen key could have pointed one trade at itself. Verifying 1Click's signature on-chain closed it.
 

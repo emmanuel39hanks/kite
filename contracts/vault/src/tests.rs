@@ -634,31 +634,31 @@ fn attack_a21_agent_rotates_quote_key() {
     v.set_quote_signer(pk_of(&SigningKey::from_bytes(&[9u8; 32])));
 }
 
-/// A22: a real quote whose signed request also pays an app fee (or referral) to the attacker.
+/// A22: a real quote whose signed request carries a referral or a redirect.
 #[test]
 #[should_panic(expected = "ERR_QUOTE_TERMS")]
-fn attack_a22_app_fee_to_attacker() {
-    use near_sdk::serde_json::json;
-    let v = new_vault();
-    let (body, sig) = sign_full(&good(), &oneclick(), &[("appFees", json!([{"recipient": "thief.near", "fee": 90}]))]);
-    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
-}
-
-#[test]
-#[should_panic(expected = "ERR_QUOTE_TERMS")]
-fn attack_a22b_referral_on_the_quote() {
+fn attack_a22_referral_on_the_quote() {
     use near_sdk::serde_json::json;
     let v = new_vault();
     let (body, sig) = sign_full(&good(), &oneclick(), &[("referral", json!("thief"))]);
     v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
 }
 
-/// Empty or null fee fields are what an honest request looks like, and are fine.
 #[test]
-fn empty_fee_fields_are_fine() {
+#[should_panic(expected = "ERR_QUOTE_TERMS")]
+fn attack_a22b_virtual_chain_redirect_on_the_quote() {
     use near_sdk::serde_json::json;
     let v = new_vault();
-    let (body, sig) = sign_full(&good(), &oneclick(), &[("appFees", json!([])), ("referral", json!(null))]);
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("virtualChainRecipient", json!("0xthief"))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+
+/// Empty or null fields are what an honest request looks like, and are fine.
+#[test]
+fn empty_referral_fields_are_fine() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("referral", json!(null)), ("customRecipientMsg", json!(""))]);
     v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
 }
 
