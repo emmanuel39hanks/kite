@@ -1,6 +1,7 @@
 import { NEAR } from "@/lib/near/config";
 import { ONECLICK } from "@/lib/oneclick";
 import { SOURCES } from "@/lib/near/sources";
+import { clientIp, isKiteVault, isNearAccount, limited } from "@/lib/server-guards";
 
 /**
  * POST { source, amount (in source base units), vault, owner }
@@ -8,9 +9,16 @@ import { SOURCES } from "@/lib/near/sources";
  * credited to the vault inside NEAR Intents; refunds go to the owner's Intents account.
  */
 export async function POST(req: Request) {
-  const { source, amount, vault, owner } = (await req.json()) as { source: string; amount: string; vault: string; owner: string };
-  const src = SOURCES[source];
-  if (!src || !/^\d+$/.test(amount) || !vault?.startsWith("kite.") || !owner) {
+  if (limited(`dep:${clientIp(req)}`, 15, 10 * 60_000)) return Response.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
+  let b: Record<string, unknown>;
+  try {
+    b = await req.json();
+  } catch {
+    return Response.json({ error: "Bad request" }, { status: 400 });
+  }
+  const { source, amount, vault, owner } = b as { source: string; amount: string; vault: string; owner: string };
+  const src = typeof source === "string" && Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
+  if (!src || typeof amount !== "string" || !/^\d{1,30}$/.test(amount) || !isKiteVault(vault) || !isNearAccount(owner)) {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
   const body = {
@@ -32,7 +40,7 @@ export async function POST(req: Request) {
     headers: { "content-type": "application/json", ...(process.env.ONECLICK_JWT ? { authorization: `Bearer ${process.env.ONECLICK_JWT}` } : {}) },
     body: JSON.stringify(body),
   });
-  const d = await r.json();
-  if (!r.ok || !d.quote?.depositAddress) return Response.json({ error: d.message ?? "No quote" }, { status: 502 });
+  const d = await r.json().catch(() => ({}) as { message?: string; quote?: { depositAddress?: string } });
+  if (!r.ok || !d.quote?.depositAddress) return Response.json({ error: typeof d.message === "string" ? d.message.slice(0, 200) : "No quote" }, { status: 502 });
   return Response.json(d.quote);
 }

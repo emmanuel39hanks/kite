@@ -15,7 +15,7 @@ export const GUARD_KEYS = Object.keys(GUARD_BOUNDS) as (keyof Guardrails)[];
 
 const snap = (key: keyof Guardrails, v: unknown, fallback: number) => {
   const { min, max, step } = GUARD_BOUNDS[key];
-  const n = Number(v);
+  const n = v === null || v === "" || v === undefined ? NaN : Number(v);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.round(n / step) * step));
 };

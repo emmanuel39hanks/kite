@@ -44,22 +44,27 @@ export function describe(s: SwapStatus["status"]): { step: 1 | 2 | 3; tone: "blu
 
 /** Poll one swap until it reaches a final status. */
 export function useSwapStatus(address: string | null) {
-  const [st, setSt] = useState<SwapStatus | null>(null);
-  const [checkedAt, setCheckedAt] = useState<number | null>(null);
+  // Kept with the address it belongs to, so a new swap never shows the previous one's state.
+  const [data, setData] = useState<{ address: string; st: SwapStatus; at: number } | null>(null);
   useEffect(() => {
     if (!address) return;
+    let misses = 0;
     let stop = false;
     let delay = 4000;
     let t: ReturnType<typeof setTimeout>;
     const tick = async () => {
+      if (typeof document !== "undefined" && document.hidden) {
+        if (!stop) t = setTimeout(tick, 5000);
+        return;
+      }
       try {
         const r = await fetch(`/api/deposit/status?address=${encodeURIComponent(address)}`, { cache: "no-store" });
         const d = (await r.json()) as SwapStatus;
         if (!stop && r.ok) {
-          setSt(d);
-          setCheckedAt(Date.now());
+          setData({ address, st: d, at: Date.now() });
           if (isTerminal(d.status)) return;
         }
+        if (r.status === 404 && ++misses >= 6) return; // 1Click does not know this address
       } catch {}
       delay = Math.min(delay * 1.4, 30_000);
       if (!stop) t = setTimeout(tick, delay);
@@ -70,5 +75,6 @@ export function useSwapStatus(address: string | null) {
       clearTimeout(t);
     };
   }, [address]);
-  return { status: st, checkedAt };
+  const mine = data?.address === address ? data : null;
+  return { status: mine?.st ?? null, checkedAt: mine?.at ?? null };
 }

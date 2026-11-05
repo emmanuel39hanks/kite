@@ -25,8 +25,10 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
     { label: "NEAR Intents explorer", href: `https://explorer.near-intents.org/transactions/${depositAddress}` },
   ];
   const failed = status?.status === "REFUNDED" || status?.status === "FAILED";
-  const [why, setWhy] = useState<{ text: string; next: string; fromModel: boolean } | null>(null);
+  const [whyRaw, setWhy] = useState<{ status: string; text: string; next: string; fromModel: boolean } | null>(null);
   const [asking, setAsking] = useState(false);
+  // An explanation belongs to the status it was written for; a new status needs a new one.
+  const why = whyRaw && whyRaw.status === status?.status ? whyRaw : null;
   const explainable = failed || status?.status === "INCOMPLETE_DEPOSIT";
   const explain = async () => {
     if (!status) return;
@@ -38,9 +40,9 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
         schema: INCIDENT_SCHEMA,
         maxTokens: 500,
       });
-      setWhy(cleanIncident(data, status.status, s.where));
+      setWhy({ status: status.status, ...cleanIncident(data, status.status, s.where) });
     } catch {
-      setWhy({ text: s.where, next: "", fromModel: false });
+      setWhy({ status: status.status, text: s.where, next: "", fromModel: false });
     } finally {
       setAsking(false);
     }

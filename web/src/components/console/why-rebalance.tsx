@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { WhyFacts } from "@/app/api/vault/why/route";
 import { askPrivately, type Receipt } from "@/lib/private-ai";
-import { useKite } from "@/lib/store";
 import { cleanWhy, whyInput, whyPrompt, WHY_SCHEMA, whyTemplate, type WhyInput } from "@/lib/why";
 
 type Saved = { text: string; fromModel: boolean; input: WhyInput; receipt: Receipt | null; at: number };
@@ -19,7 +18,6 @@ const load = (hash: string): Saved | null => {
 
 /** "Why?" on one rebalance. Facts come from the vault's own log on the chain; the signed explanation is saved on this device. */
 export function WhyRebalance({ vault, hash }: { vault: string; hash: string }) {
-  const k = useKite();
   const [saved, setSaved] = useState<Saved | null>(() => (typeof window === "undefined" ? null : load(hash)));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -31,8 +29,7 @@ export function WhyRebalance({ vault, hash }: { vault: string; hash: string }) {
       const r = await fetch(`/api/vault/why?vault=${encodeURIComponent(vault)}&hash=${encodeURIComponent(hash)}`);
       const d = (await r.json()) as { facts?: WhyFacts; error?: string };
       if (!r.ok || !d.facts) throw new Error(d.error ?? "Couldn't read this trade from the chain.");
-      const targets = Object.fromEntries((k.portfolio?.target ?? []).map((t) => [t.id, t.weight]));
-      const input = whyInput(d.facts, k.guardrails.driftBand, targets);
+      const input = whyInput(d.facts);
       if (!input) throw new Error("This trade involves an asset Kite doesn't list.");
       let out: Saved;
       try {
@@ -66,7 +63,7 @@ export function WhyRebalance({ vault, hash }: { vault: string; hash: string }) {
     <div className="mt-1.5 rounded-xl bg-[#f5f5f7] px-3 py-2 text-[13px] leading-5">
       <p>{saved.text}</p>
       <p className="mt-1 text-[12px] text-[#909090]">
-        Facts read from the vault&apos;s own log: {saved.input.sell} {saved.input.overByPts} pts over target, band {saved.input.bandPts} pts.{" "}
+        Facts read from the vault&apos;s own log: {saved.input.sell} {saved.input.overByPts} pts over target.{" "}
         {saved.fromModel && saved.receipt
           ? `Worded by a private model on NEAR AI (${saved.receipt.signatureKind === "provider_tee" ? "signed by its hardware" : "signed by NEAR AI's gateway"}), checked in this browser. Signature id ${saved.receipt.completionId.slice(0, 12)}…, saved on this device. NEAR AI hasn't promised how long it can be re-checked.`
           : "Standard wording; no model involved."}

@@ -1,6 +1,7 @@
 import { assetByIntentsId } from "@/lib/assets";
 import { NEAR } from "@/lib/near/config";
 import { ONECLICK } from "@/lib/oneclick";
+import { clientIp, isKiteVault, limited } from "@/lib/server-guards";
 
 /**
  * POST { vault, usdc (base units), plan: [{ token, target_bps }] }
@@ -8,10 +9,20 @@ import { ONECLICK } from "@/lib/oneclick";
  * The console then asks the owner to sign `vault.allocate` with these deposit addresses.
  */
 export async function POST(req: Request) {
-  const { vault, usdc, plan } = (await req.json()) as { vault: string; usdc: string; plan: { token: string; target_bps: number }[] };
-  if (!vault?.startsWith("kite.") || !/^\d+$/.test(usdc) || !Array.isArray(plan)) {
+  if (limited(`alloc:${clientIp(req)}`, 10, 10 * 60_000)) return Response.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
+  let body: { vault?: unknown; usdc?: unknown; plan?: unknown };
+  try {
+    body = await req.json();
+  } catch {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
+  const { vault, usdc, plan } = body as { vault: string; usdc: string; plan: { token: string; target_bps: number }[] };
+  const sane =
+    isKiteVault(vault) &&
+    typeof usdc === "string" && /^\d{1,13}$/.test(usdc) && // at most 10 million USDC
+    Array.isArray(plan) && plan.length >= 1 && plan.length <= 12 &&
+    plan.every((t) => typeof t?.token === "string" && Number.isInteger(t.target_bps) && t.target_bps >= 0 && t.target_bps <= 10_000);
+  if (!sane) return Response.json({ error: "Bad request" }, { status: 400 });
   const total = BigInt(usdc);
   const slices = plan.filter((t) => t.token !== NEAR.usdc && assetByIntentsId(t.token));
   const transfers = [];

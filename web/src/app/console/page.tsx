@@ -435,7 +435,7 @@ function Notices({ p, earn, busy, onInvest, onUnpause }: { p: Portfolio; earn: E
         </Button>
       </Notice>,
     );
-  if (p.pending) items.push(<SwapTracker key="pending" sell={p.pending.sell} buy={p.pending.buy} depositAddress={p.pending.depositAddress} />);
+  if (p.pending) items.push(<SwapTracker key={p.pending.depositAddress} sell={p.pending.sell} buy={p.pending.buy} depositAddress={p.pending.depositAddress} />);
   if (p.value < 2)
     items.push(
       <Notice key="empty" icon="deposit" title="Add your first deposit" text="Send USDC, ETH, BTC or SOL from any chain. It lands in your vault in about a minute.">

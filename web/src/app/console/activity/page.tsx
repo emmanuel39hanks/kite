@@ -20,16 +20,19 @@ const MATCH: Record<Filter, (e: ActivityEvent) => boolean> = {
   Settings: (e) => e.kind === "guardrails" || e.kind === "key" || e.kind === "created",
 };
 
+const NONE: ChainEvent[] = [];
+
 /** Kite's own calls on the vault, read from the chain, so trades made while this browser was closed show up too. */
 function useChainEvents(vault: string | null | undefined, enabled: boolean): ActivityEvent[] {
-  const [raw, setRaw] = useState<ChainEvent[]>([]);
+  const [data, setData] = useState<{ vault: string; events: ChainEvent[] } | null>(null);
+  const raw = data && data.vault === vault ? data.events : NONE;
   useEffect(() => {
     if (!vault || !enabled) return;
     let alive = true;
     const load = () =>
       fetch(`/api/vault/history?vault=${encodeURIComponent(vault)}`)
         .then((r) => (r.ok ? r.json() : null))
-        .then((d) => alive && d?.events && setRaw(d.events))
+        .then((d) => alive && d?.events && setData({ vault, events: d.events }))
         .catch(() => {});
     load();
     const t = setInterval(load, 30_000);
@@ -50,11 +53,11 @@ function useChainEvents(vault: string | null | undefined, enabled: boolean): Act
           title: !e.ok
             ? `Kite's ${e.method} was refused`
             : e.method === "settle"
-              ? "Swap settled"
+              ? "Kite called settle on a swap"
               : sell && buy && e.swap
                 ? `Kite rebalanced: ${units(e.swap.sellUnits)} ${sell.ticker} for about ${units(e.swap.buyUnits)} ${buy.ticker}`
                 : "Kite started a rebalance",
-          detail: e.ok ? "Made by Kite's rebalance-only key. Read from the chain." : "The vault's rules said no, so nothing moved.",
+          detail: e.ok ? (e.method === "settle" ? "Confirms a swap landed, or pauses the vault if it did not. Read from the chain." : "Made by Kite's rebalance-only key. Read from the chain.") : "The vault's rules said no, so nothing moved.",
           tx: e.hash,
           canExplain: e.ok && e.method === "rebalance" && !!e.swap,
         };

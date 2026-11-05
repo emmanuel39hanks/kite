@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { PLANNER_MODEL } from "@/lib/planner";
+import { clientIp, limited } from "@/lib/server-guards";
 
 /**
  * A thin relay to NEAR AI Cloud for the private plan builder.
@@ -17,20 +18,11 @@ const ALLOWED: { method: string; path: RegExp }[] = [
   { method: "POST", path: /^chat\/completions$/ },
   { method: "GET", path: /^signature\/[A-Za-z0-9_-]+$/ },
 ];
-const DROP_REQ = new Set(["host", "authorization", "cookie", "connection", "content-length", "accept-encoding", "origin", "referer"]);
+const DROP_REQ = new Set(["host", "authorization", "cookie", "connection", "content-length", "accept-encoding", "origin", "referer", "user-agent", "x-api-key", "api-key", "forwarded", "via", "x-real-ip"]);
+// Platform and proxy headers never go upstream next to Kite's key.
+const DROP_PREFIX = ["x-forwarded-", "x-vercel-", "x-middleware-", "sec-", "proxy-", "cf-"];
+const MAX_TOKENS = 4000;
 const DROP_RES = new Set(["content-encoding", "content-length", "transfer-encoding", "connection", "set-cookie"]);
-
-// Small per-visitor limit so the relay can't be used to spend Kite's credits.
-const hits = new Map<string, number[]>();
-const WINDOW_MS = 10 * 60_000;
-const MAX_PER_WINDOW = 60;
-function limited(ip: string) {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  return recent.length > MAX_PER_WINDOW;
-}
 
 async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   await connection();
@@ -40,8 +32,7 @@ async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> })
   // Keep the model id URL-encoded exactly as the SDK sent it.
   const raw = new URL(req.url).pathname.split("/api/nearai/v1/")[1] ?? path.join("/");
   if (!ALLOWED.some((a) => a.method === req.method && a.path.test(raw))) return Response.json({ error: "Not allowed" }, { status: 404 });
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  if (limited(ip)) return Response.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
+  if (limited(`ai:${clientIp(req)}`, 60, 10 * 60_000)) return Response.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
 
   let body: ArrayBuffer | undefined;
   if (req.method === "POST") {
@@ -49,22 +40,41 @@ async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> })
     if (body.byteLength > 64_000) return Response.json({ error: "Too large" }, { status: 413 });
     // The model name stays readable under E2EE; only Kite's planner model is relayed.
     try {
-      const j = JSON.parse(new TextDecoder().decode(body)) as { model?: string; stream?: boolean };
+      const text = new TextDecoder().decode(body);
+      // The body can't be re-serialised (the browser checks signatures over its exact bytes), so refuse
+      // ambiguous ones: a second top-level-looking "model" key could be read differently upstream.
+      if ((text.match(/(?<!\\)"model"\s*:/g) ?? []).length > 1) return Response.json({ error: "Bad request" }, { status: 400 });
+      const j = JSON.parse(text) as { model?: string; max_tokens?: unknown };
       if (j.model !== PLANNER_MODEL) return Response.json({ error: "Model not allowed" }, { status: 403 });
+      if (j.max_tokens !== undefined && !(typeof j.max_tokens === "number" && j.max_tokens > 0 && j.max_tokens <= MAX_TOKENS)) {
+        return Response.json({ error: "max_tokens too large" }, { status: 400 });
+      }
     } catch {
       return Response.json({ error: "Bad request" }, { status: 400 });
     }
   }
-  if (raw.startsWith("model/") && decodeURIComponent(raw.slice(6)) !== PLANNER_MODEL) return Response.json({ error: "Model not allowed" }, { status: 403 });
+  if (raw.startsWith("model/")) {
+    let id = "";
+    try {
+      id = decodeURIComponent(raw.slice(6));
+    } catch {}
+    if (id !== PLANNER_MODEL) return Response.json({ error: "Model not allowed" }, { status: 403 });
+  }
 
   const headers = new Headers();
   req.headers.forEach((v, k) => {
-    if (!DROP_REQ.has(k.toLowerCase())) headers.set(k, v);
+    const name = k.toLowerCase();
+    if (!DROP_REQ.has(name) && !DROP_PREFIX.some((x) => name.startsWith(x))) headers.set(k, v);
   });
   headers.set("authorization", `Bearer ${key}`);
   headers.set("accept-encoding", "identity");
 
-  const up = await fetch(`${UPSTREAM}/${raw}${new URL(req.url).search}`, { method: req.method, headers, body, cache: "no-store" });
+  let up: Response;
+  try {
+    up = await fetch(`${UPSTREAM}/${raw}${new URL(req.url).search}`, { method: req.method, headers, body, cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(90_000) });
+  } catch {
+    return Response.json({ error: "NEAR AI didn't answer in time." }, { status: 504 });
+  }
   const out = new Headers();
   up.headers.forEach((v, k) => {
     if (!DROP_RES.has(k.toLowerCase())) out.set(k, v);

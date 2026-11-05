@@ -16,7 +16,12 @@ let attestP: Promise<Awaited<ReturnType<Client["verify"]>>> | null = null;
 
 /** One client per page load, so the attestation check (the slow part) is done once and reused. */
 function client(): Promise<Client> {
-  clientP ??= import("@nearai/inference-sdk").then(({ InferenceClient }) => new InferenceClient({ baseUrl: `${window.location.origin}/api/nearai/v1`, e2ee: true }));
+  clientP ??= import("@nearai/inference-sdk")
+    .then(({ InferenceClient }) => new InferenceClient({ baseUrl: `${window.location.origin}/api/nearai/v1`, e2ee: true }))
+    .catch((e) => {
+      clientP = null;
+      throw e;
+    });
   return clientP;
 }
 function attest() {

@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, StatusNote } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
+import { assetById } from "@/lib/assets";
 import { askPrivately, warmUp, type Receipt } from "@/lib/private-ai";
 import { cleanReview, reviewPrompt, REVIEW_SCHEMA, reviewStats, statValue, SUGGESTIONS, type ReviewStats } from "@/lib/review";
 import type { Portfolio } from "@/lib/store";
 import { useKite } from "@/lib/store";
 import { useHistory, useYields } from "@/lib/use-market";
 
-type Result = { verdict: "ok" | "watch" | "change"; bullets: { stat: Parameters<typeof statValue>[1]; text: string }[]; suggestion: string; receipt: Receipt };
+type Result = { stats: ReviewStats; verdict: "ok" | "watch" | "change"; bullets: { stat: Parameters<typeof statValue>[1]; text: string }[]; suggestion: string; receipt: Receipt };
 
 const VERDICT = {
   ok: { tone: "green", label: "Looks fine" },
@@ -43,7 +44,7 @@ export function VaultReview({ p }: { p: Portfolio }) {
         maxTokens: 1200,
         onStage: (st) => setBusy(st === "verify" ? "Checking NEAR AI's attestation…" : st === "ask" ? "Reviewing privately…" : "Checking the signature…"),
       });
-      setRes({ ...cleanReview(data), receipt });
+      setRes({ ...cleanReview(data), receipt, stats });
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -66,7 +67,7 @@ export function VaultReview({ p }: { p: Portfolio }) {
         <div>
           <div className="text-[16px] tracking-[-0.02em]">Review your plan</div>
           <p className="mt-0.5 max-w-[58ch] text-[13px] leading-5 text-[#909090]">
-            Real numbers from the last {stats.days} days of prices, worked out here in your browser. A private model on NEAR AI explains what they mean. It sees percentages only, never your amounts or wallet.
+            Real numbers from the last {stats.days} days of prices, worked out here in your browser. A private model on NEAR AI explains what they mean. It sees percentages only, never your amounts or wallet.{p.target.some((t) => assetById(t.id).earn) && " For the earning parts, history is an estimate built from the plain asset."}
           </p>
         </div>
         {res ? (
@@ -89,7 +90,7 @@ export function VaultReview({ p }: { p: Portfolio }) {
           <ul className="mt-4 space-y-3">
             {res.bullets.map((b) => (
               <li key={b.stat} className="grid gap-1 sm:grid-cols-[minmax(0,220px)_1fr] sm:gap-4">
-                <div className="text-[14px] tabular-nums">{statValue(stats, b.stat)}</div>
+                <div className="text-[14px] tabular-nums">{statValue(res.stats, b.stat)}</div>
                 <p className="text-[14px] leading-5 text-black/70">{b.text}</p>
               </li>
             ))}

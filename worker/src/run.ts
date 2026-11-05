@@ -56,7 +56,7 @@ export async function runOnce({ vault, dry, log = console.log }: RunOptions) {
   const inUsd = Number(q.amountInUsd);
   const outUsd = Number(q.amountOutUsd);
   log(`Quote: $${inUsd.toFixed(2)} in → $${outUsd.toFixed(2)} out (${((1 - outUsd / inUsd) * 100).toFixed(2)}% cost, limit ${(limitBps / 100).toFixed(2)}%)`);
-  if (outUsd < inUsd * keep || Number(q.minAmountOut) < Number(q.amountOut) * keep) {
+  if (!(Number.isFinite(inUsd) && Number.isFinite(outUsd) && outUsd >= inUsd * keep && Number(q.minAmountOut) >= Number(q.amountOut) * keep)) {
     log("Quote costs more than the price limit. Skipping; the vault would refuse it anyway.");
     return { action: "skipped" as const, reason: "price" };
   }
