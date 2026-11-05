@@ -155,6 +155,38 @@ We played an attacker who stole Kite's key and tried everything we could think o
 
 **Gaps we found and closed:** (1) the first version took the deposit address and reference prices from the keeper. Writing the attack suite showed a stolen key could have pointed one trade at itself; verifying 1Click's signature on-chain closed it. (2) Review found the vault ignored referral and redirect fields in the signed quote; they are now refused. (3) A zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account; both are fixed. (4) Trades under $1 are refused, so dust can't burn the daily trade count. (5) `settle` called before the transfer out landed could clear a pending swap; the vault now waits for the transfer, and judges the swap anyway once the settle window ends, so it can never be stuck. (6) A `settle` whose balance read was sent before the transfer was confirmed could see stale balances and call the swap refunded; such a read is now ignored.
 
+**Against NEAR's security checklist:**
+
+Checked against [docs.near.org/smart-contracts/security/checklist](https://docs.near.org/smart-contracts/security/checklist). Code is in `contracts/vault/src/lib.rs`.
+
+| Checklist item | Kite |
+|---|---|
+| Every public method is meant to be public | Owner methods call `assert_owner`. `rebalance` calls `assert_agent` (the vault itself, signed by Kite's key). `settle` is public on purpose. The rest are views. |
+| Callbacks are `#[private]` | `on_rebalance_balances`, `on_rebalance_sent`, `on_settle_balances`, `on_close_balances` |
+| Admin changes need a deposit-capable key | Every owner method requires 1 yoctoNEAR (sandbox test: `pause` without it fails) |
+| Inputs have bounds | Plan 2 to 8 assets, no duplicates. Allocate at most 8 transfers. Quote at most 4 KB, signature at most 128 characters. At most one reported price per plan asset, no repeats (`a29`, `a30`). Limits validated. |
+| Overflow checks in release | `overflow-checks = true` in `contracts/Cargo.toml` |
+| Funds locked before a transfer is scheduled | `pending` is set before `mt_transfer`. While a swap is pending, `withdraw` of either token and new trades are refused. |
+| Callbacks handle failure and keep state consistent | A failed transfer clears `pending` (unit test and sandbox test). A late or stale balance read can't judge a swap (`a26`, `a28`). An unconfirmed swap is still judged after the window. |
+| Another method may run before the callback | Tested for `settle` racing the transfer (`a26`, `a28`) and for a replayed quote |
+| Gas sized for callbacks | Static gas per callback. Measured in the sandbox: rebalance 10.6 Tgas, settle 5.7 Tgas, against 200 and 150 attached. |
+| Contract keeps enough liquid balance | 2.6 NEAR covers storage for about 233 KB, with about 0.24 left for gas. The keeper refuses to trade under 0.05 NEAR. |
+| Reproducible artifacts and a verified code hash | The build command strips local paths. The sandbox test asserts that the code hash equals the sha256 of the shipped file. Not done: a Docker reproducible build (`cargo near build reproducible-wasm`) and SourceScan verification. |
+| Monitoring and a response plan | Vault events (listed below), a cron that fails loudly, a breaker, and the response plan below |
+| Upgrade path | None by design. There is no full-access key and no upgrade method; to change code you close the vault and create a new one. |
+
+**If something goes wrong:**
+
+| Situation | Who acts | What to do |
+|---|---|---|
+| Kite's key may be leaked | Operator | Make a new key pair and set `KITE_AGENT_KEY` and `NEXT_PUBLIC_KITE_AGENT_PK`. Each owner turns Kite's key off and on in **Guardrails** to install the new one. Until then, owners can revoke it. |
+| A swap went missing | Nobody needs to act | After the settle window (30 minutes) `settle` trips the breaker and pauses the vault. The owner reviews, then unpauses. |
+| The daily run fails | Operator | `/api/cron` answers 500 and logs one JSON line per vault (`cron: vault-failed`). It also fails when Kite's gas is under 0.05 NEAR: send the vault NEAR and renew the key. |
+| You want out | Owner | Pause, then `withdraw` every balance. Then `close_vault`: it refuses while any balance is left, so nothing is stranded, and then deletes the vault account and returns its NEAR, including the storage deposit. |
+
+The vault emits events for everything that matters, so an indexer or NearBlocks can watch for them: `rebalance_started`, `rebalance_settled`, `rebalance_refunded`, `rebalance_failed`, `breaker_tripped`, `paused`, `unpaused`, `agent_set`, `agent_revoked`, `limits_updated`, `plan_updated`, `withdraw`, `vault_closed`.
+
+
 ---
 
 ## Earn while you hold
