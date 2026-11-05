@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Icon } from "@/components/console/icons";
 import { Badge, Button, Card, PageTitle, Slider, StatusNote, Switch } from "@/components/console/ui";
+import { GUARD_BOUNDS } from "@/lib/guard-bounds";
+import { AiRules } from "@/components/console/ai-rules";
 import { accountUrl, NEAR } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";
 import { useWallet } from "@/lib/near/wallet";
@@ -18,12 +20,14 @@ type Field = {
   show: (v: number) => string;
 };
 
-const FIELDS: Field[] = [
-  { key: "driftBand", label: "When Kite steps in", help: (v) => `Kite only trades when a holding is ${v} points or more away from its share.`, min: 2, max: 20, step: 1, show: (v) => `${v} pts` },
-  { key: "maxTradePct", label: "Biggest single trade", help: (v) => `No one swap can move more than ${v}% of your money.`, min: 1, max: 50, step: 1, show: (v) => `${v}%` },
-  { key: "slippageBps", label: "Worst price accepted", help: (v) => `If a swap would hand back less than ${(100 - v / 100).toFixed(2)}% of what goes in, fees included, the vault refuses it.`, min: 10, max: 300, step: 10, show: (v) => `${(v / 100).toFixed(2)}%` },
-  { key: "tradesPerDay", label: "Trades per day", help: (v) => `Kite can make at most ${v} trade${v === 1 ? "" : "s"} a day, however much prices move.`, min: 1, max: 12, step: 1, show: (v) => `${v}` },
+type FieldDef = Omit<Field, "min" | "max" | "step">;
+const DEFS: FieldDef[] = [
+  { key: "driftBand", label: "When Kite steps in", help: (v) => `Kite only trades when a holding is ${v} points or more away from its share.`, show: (v) => `${v} pts` },
+  { key: "maxTradePct", label: "Biggest single trade", help: (v) => `No one swap can move more than ${v}% of your money.`, show: (v) => `${v}%` },
+  { key: "slippageBps", label: "Worst price accepted", help: (v) => `If a swap would hand back less than ${(100 - v / 100).toFixed(2)}% of what goes in, fees included, the vault refuses it.`, show: (v) => `${(v / 100).toFixed(2)}%` },
+  { key: "tradesPerDay", label: "Trades per day", help: (v) => `Kite can make at most ${v} trade${v === 1 ? "" : "s"} a day, however much prices move.`, show: (v) => `${v}` },
 ];
+const FIELDS: Field[] = DEFS.map((f) => ({ ...f, ...GUARD_BOUNDS[f.key] }));
 
 export default function GuardrailsPage() {
   const k = useKite();
@@ -92,6 +96,7 @@ function Form({ initial }: { initial: Guardrails }) {
               The rules Kite has to follow. They live in your vault contract, so Kite can&apos;t change them. Changing them takes your signature.
             </p>
           </div>
+          <AiRules current={g} onApply={setG} />
           <ul className="space-y-2">
             {FIELDS.map((f) => {
               const v = g[f.key];
