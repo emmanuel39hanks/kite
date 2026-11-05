@@ -5,7 +5,10 @@ import { Icon } from "@/components/console/icons";
 import { Logo } from "@/components/logo";
 import { assetByIntentsId } from "@/lib/assets";
 import { txUrl } from "@/lib/near/config";
+import { cleanIncident, INCIDENT_SCHEMA, incidentPrompt } from "@/lib/incident";
+import { askPrivately } from "@/lib/private-ai";
 import { describe, useSwapStatus } from "@/lib/swap-status";
+import { useState } from "react";
 
 const STEPS = ["Left your vault", "Being swapped", "Back in your vault"];
 
@@ -22,6 +25,26 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
     { label: "NEAR Intents explorer", href: `https://explorer.near-intents.org/transactions/${depositAddress}` },
   ];
   const failed = status?.status === "REFUNDED" || status?.status === "FAILED";
+  const [why, setWhy] = useState<{ text: string; next: string; fromModel: boolean } | null>(null);
+  const [asking, setAsking] = useState(false);
+  const explainable = failed || status?.status === "INCOMPLETE_DEPOSIT";
+  const explain = async () => {
+    if (!status) return;
+    setAsking(true);
+    try {
+      const { data } = await askPrivately({
+        system: incidentPrompt,
+        user: JSON.stringify({ status: status.status, from: a?.ticker, to: b?.ticker, refundReason: d?.refundReason ?? null }),
+        schema: INCIDENT_SCHEMA,
+        maxTokens: 500,
+      });
+      setWhy(cleanIncident(data, status.status, s.where));
+    } catch {
+      setWhy({ text: s.where, next: "", fromModel: false });
+    } finally {
+      setAsking(false);
+    }
+  };
 
   return (
     <Card className="col-span-full p-5">
@@ -58,6 +81,21 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
       <p className="mt-3 text-[14px] leading-5">{s.where}</p>
       {d?.refundReason && <p className="mt-1 text-[13px] text-[#909090]">Reason given: {d.refundReason}</p>}
       {d?.refundedAmountFormatted && <p className="mt-1 text-[13px] text-[#909090]">Returned: {d.refundedAmountFormatted}</p>}
+
+      {explainable && !why && (
+        <button type="button" onClick={explain} disabled={asking} className="mt-3 cursor-pointer text-[13px] underline underline-offset-4 hover:text-black/70 disabled:cursor-default disabled:opacity-60">
+          {asking ? "Explaining privately…" : "Explain what happened"}
+        </button>
+      )}
+      {why && (
+        <div className="mt-3 rounded-xl bg-[#f5f5f7] px-3 py-2.5 text-[13px] leading-5">
+          <p>{why.text}</p>
+          {why.next && <p className="mt-1 text-black/70">{why.next}</p>}
+          <p className="mt-1.5 text-[12px] text-[#909090]">
+            {why.fromModel ? "Written by a private model on NEAR AI from the status above. The status line, not this text, is the source of truth." : "Standard explanation."}
+          </p>
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
         {links.map((l) => (
