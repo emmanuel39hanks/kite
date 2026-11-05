@@ -1,5 +1,7 @@
 # Kite
 
+[![CI](https://github.com/emmanuel39hanks/kite/actions/workflows/ci.yml/badge.svg)](https://github.com/emmanuel39hanks/kite/actions/workflows/ci.yml)
+
 **A self-custodied autopilot for your savings, on NEAR.** You pick a mix: Bitcoin, Ethereum, Solana, NEAR, gold, digital dollars. Your money sits in **your own vault contract**. Kite keeps the mix on target by rebalancing through **NEAR Intents** when a holding drifts too far. Idle parts can earn a yield. A private model on **NEAR AI Cloud** can draft a plan, review it, and turn plain words into rules, and it never touches your money.
 
 **The one idea:** Kite's robot holds a key that can only ask your vault to rebalance, and the vault only accepts a trade that carries a **quote signed by NEAR Intents**, checked on-chain. So even a stolen key can't send your money anywhere else.
