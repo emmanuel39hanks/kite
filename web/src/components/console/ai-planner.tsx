@@ -12,7 +12,8 @@ import { useState } from "react";
 import { Logo } from "@/components/logo";
 import { assetById, earnVersionOf } from "@/lib/assets";
 import type { Slice } from "@/lib/mix";
-import { DRAFT_SCHEMA, normalise, PLANNER_MODEL, systemPrompt, type Draft } from "@/lib/planner";
+import { askPrivately, type Receipt } from "@/lib/private-ai";
+import { DRAFT_SCHEMA, normalise, systemPrompt, type Draft } from "@/lib/planner";
 import type { Guardrails } from "@/lib/store";
 import { useYields } from "@/lib/use-market";
 import { Icon } from "./icons";
@@ -20,12 +21,11 @@ import { Button, StatusNote } from "./ui";
 
 type Stage = "idle" | "verify" | "draft" | "sign" | "done";
 const STAGES: { id: Exclude<Stage, "idle" | "done">; label: string }[] = [
-  { id: "verify", label: "Checking NEAR AI's hardware: Intel TDX and NVIDIA confidential GPU" },
+  { id: "verify", label: "Checking NEAR AI's attestation for the model" },
   { id: "draft", label: "Encrypting your words to the model and drafting" },
   { id: "sign", label: "Checking the model's signature on the answer" },
 ];
 
-export type Receipt = { model: string; completionId: string; signatureKind: string; modelReports: number; verifiedAt: number };
 
 const EXAMPLES = [
   "I'm 30, saving for a house in about 3 years. I don't want big swings.",
@@ -45,37 +45,15 @@ export function AiPlanner({ onUse }: { onUse: (r: { name: string; mix: Slice[]; 
     setError(null);
     setResult(null);
     try {
-      const { InferenceClient } = await import("@nearai/inference-sdk");
-      const client = new InferenceClient({ baseUrl: `${window.location.origin}/api/nearai/v1`, e2ee: true });
-      setStage("verify");
-      const att = await client.verify(PLANNER_MODEL);
-      setStage("draft");
-      const completion = await client.chat.completions.create({
-        model: PLANNER_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt(yields) },
-          { role: "user", content: text.trim().slice(0, 1500) },
-        ],
-        max_tokens: 2500,
-        response_format: { type: "json_schema", json_schema: DRAFT_SCHEMA },
+      const { data, receipt } = await askPrivately({
+        system: systemPrompt(yields),
+        user: text.trim().slice(0, 1500),
+        schema: DRAFT_SCHEMA,
+        maxTokens: 2500,
+        onStage: (st) => setStage(st === "ask" ? "draft" : st),
       });
-      setStage("sign");
-      const verified = await client.verifyResponse(completion.id);
-      const content = String(completion.choices[0]?.message?.content ?? "")
-        .replace(/^```(?:json)?\s*|\s*```$/g, "")
-        .trim();
-      const { draft, mix } = normalise(JSON.parse(content));
-      setResult({
-        draft,
-        mix,
-        receipt: {
-          model: PLANNER_MODEL,
-          completionId: completion.id,
-          signatureKind: String((verified as { signatureKind?: string }).signatureKind ?? "verified"),
-          modelReports: att.models?.length ?? 0,
-          verifiedAt: att.verifiedAt ?? Date.now(),
-        },
-      });
+      const { draft, mix } = normalise(data);
+      setResult({ draft, mix, receipt });
       setStage("done");
     } catch (e) {
       setStage("idle");
@@ -93,8 +71,7 @@ export function AiPlanner({ onUse }: { onUse: (r: { name: string; mix: Slice[]; 
         <div className="min-w-0">
           <h3 className="text-[17px] tracking-[-0.03em]">Describe your goal instead</h3>
           <p className="mt-0.5 text-[13px] leading-5 text-[#909090]">
-            A model on NEAR AI drafts a plan for you. Your words are encrypted in this browser to the model&apos;s verified hardware, so neither Kite nor NEAR AI can read
-            them. It only drafts: you review every number next.
+            A model on NEAR AI drafts a plan for you, privately: your words are encrypted in this browser to the model&apos;s verified hardware. It only drafts. You review every number next.
           </p>
         </div>
       </div>
@@ -202,22 +179,30 @@ function DraftView({
       </p>
       {draft.caution && <p className="mt-2 text-[13px] leading-5 text-black/70">Worth knowing: {draft.caution}</p>}
 
-      <div className="mt-4 rounded-xl bg-[#f5f5f7] p-3 text-[12px] leading-5">
-        <div className="flex items-center gap-2 text-[13px]">
+      <details className="group mt-4 rounded-xl bg-[#f5f5f7] px-3 py-2.5 text-[12px] leading-5">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] [&::-webkit-details-marker]:hidden">
           <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-[#05a800] text-white">
             <Icon name="check" size={11} stroke={2.4} />
           </span>
           Private and verified
-        </div>
-        <ul className="mt-1.5 space-y-0.5 text-black/60">
-          <li>Encrypted end to end from this browser to the model&apos;s attested key ({receipt.model})</li>
-          <li>Model hardware verified: Intel TDX and NVIDIA confidential GPU ({receipt.modelReports} report{receipt.modelReports === 1 ? "" : "s"})</li>
-          <li>Answer signed inside that hardware ({receipt.signatureKind}), checked here</li>
+          <span className="ml-auto text-black/50 group-open:hidden">How it&apos;s verified</span>
+        </summary>
+        <ul className="mt-2 space-y-1 text-black/60">
+          <li>Your words are encrypted in this browser to the model&apos;s attested key ({receipt.model}). Kite&apos;s server relays encrypted bytes only.</li>
+          {receipt.signatureKind === "provider_tee" ? (
+            <>
+              <li>NEAR AI proved the model runs on genuine confidential hardware ({receipt.modelReports} attestation report{receipt.modelReports === 1 ? "" : "s"}, Intel TDX and NVIDIA).</li>
+              <li>The answer is signed inside that hardware. This browser checked the signature against the attestation.</li>
+            </>
+          ) : (
+            <li>This answer was signed by NEAR AI&apos;s gateway, not by the model&apos;s own hardware, so it proves who answered but not where the model ran.</li>
+          )}
+          <li>This holds as far as you trust the code this page runs, which is open source.</li>
         </ul>
-        <a href="https://cloud.near.ai/verify" target="_blank" rel="noreferrer" className="mt-1.5 inline-flex items-center gap-1 text-black/70 hover:text-black">
-          Check it yourself: {receipt.completionId.slice(0, 12)}… <Icon name="external" size={11} />
+        <a href="https://cloud.near.ai/verify" target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-black/70 hover:text-black">
+          Check it yourself on NEAR AI (paste {receipt.completionId.slice(0, 12)}…) <Icon name="external" size={11} />
         </a>
-      </div>
+      </details>
 
       <div className="mt-4 flex flex-wrap gap-2.5">
         <Button variant="primary" iconRight="arrow-right" onClick={() => onUse({ name: draft.name, mix, rules: draft.rules })}>

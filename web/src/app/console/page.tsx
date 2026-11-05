@@ -1,5 +1,6 @@
 "use client";
 
+import { VaultReview } from "@/components/console/vault-review";
 import { SwapTracker } from "@/components/console/swap-tracker";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -330,6 +331,12 @@ function Live({ p }: { p: Portfolio }) {
           </div>
         </Card>
       </div>
+
+      {invested && (
+        <div className="mt-10">
+          <VaultReview p={p} />
+        </div>
+      )}
 
       <div className="mt-10">
         <SectionTitle actions={<Button size="sm" href="/console/activity">See all</Button>}>Recent activity</SectionTitle>
