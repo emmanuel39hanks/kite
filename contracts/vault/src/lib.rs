@@ -120,6 +120,9 @@ pub struct Pending {
     pub buy_before: U128,
     pub deposit_address: AccountId,
     pub started_ns: u64,
+    /// True once the sell transfer has actually left the vault. Until then `settle` must not judge the swap:
+    /// the sell balance still looks untouched, which would read as a refund and clear this record mid-flight.
+    pub sent: bool,
 }
 
 #[near(serializers = [json])]
@@ -452,6 +455,7 @@ impl Vault {
             buy_before: U128(check.buy_balance),
             deposit_address: deposit_address.clone(),
             started_ns: now,
+            sent: false,
         });
         emit(
             "rebalance_started",
@@ -474,6 +478,9 @@ impl Vault {
             self.pending = None;
             emit("rebalance_failed", r#"{"reason":"transfer_failed"}"#);
             return false;
+        }
+        if let Some(p) = self.pending.as_mut() {
+            p.sent = true;
         }
         true
     }
@@ -715,6 +722,10 @@ impl Vault {
             Some(p) => p,
             None => return "none",
         };
+        // The transfer out hasn't happened yet, so the balances say nothing about the swap.
+        if !p.sent {
+            return "waiting";
+        }
         let pos = |token: &str| self.plan.iter().position(|t| t.token == token);
         let (Some(si), Some(bi)) = (pos(&p.sell), pos(&p.buy)) else {
             self.pending = None;

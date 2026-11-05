@@ -33,8 +33,10 @@ export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 12
   if (v.status.pending) {
     const s = await swapStatus(v.status.pending.deposit_address).catch(() => ({ status: "UNKNOWN" }));
     log(`Pending swap (${s.status}). ${dry ? "Would call" : "Calling"} settle.`);
-    if (!dry) await callSettle(vault);
-    return { action: "settle" as const, swap: s.status };
+    if (dry) return { action: "settle" as const, swap: s.status };
+    const { answer } = await callSettle(vault);
+    log(`The vault answered: ${answer}.`);
+    return { action: "settle" as const, swap: s.status, settle: answer };
   }
 
   const tokenIds = v.plan.map((t) => t.token);
@@ -87,16 +89,17 @@ export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 12
     signature: res.signature,
     prices: rows.map((r) => ({ token: r.token, usd_e6: toUsdE6(r.priceUsd) })),
   });
-  if (hash) await submitDeposit(hash, q.depositAddress);
+  // Telling 1Click about the deposit only speeds it up; the swap runs without it, so a failure here isn't fatal.
+  if (hash) await submitDeposit(hash, q.depositAddress).catch((e) => log(`Couldn't notify 1Click of the deposit (${(e as Error).message}). The swap still runs.`));
   log(`Sent. tx ${hash}. 1Click deposit ${q.depositAddress}.`);
 
   // Wait for the swap to land, then settle in the same run, so one daily run is a whole rebalance.
   // If it hasn't landed in time, the vault stays pending and the next run settles it.
   const final = await waitForSwap(q.depositAddress, settleWaitMs, log);
   if (final) {
-    await callSettle(vault);
-    log(`Swap ${final.toLowerCase()}. Settled.`);
-    return { action: "rebalanced" as const, tx: hash, depositAddress: q.depositAddress, swap: final };
+    const { answer } = await callSettle(vault);
+    log(`Swap ${final.toLowerCase()}. The vault answered: ${answer}.`);
+    return { action: "rebalanced" as const, tx: hash, depositAddress: q.depositAddress, swap: final, settle: answer };
   }
   log("The swap hasn't landed yet. The next run will settle it.");
   return { action: "rebalanced" as const, tx: hash, depositAddress: q.depositAddress };

@@ -19,11 +19,14 @@ test("does nothing inside the band", () => {
 });
 
 test("a trade is never bigger than the cap or the gap", () => {
-  const t = nextTrade(plan, drifted, px, g)!;
   const nav = navOf({ plan, balances: drifted, cash: 0 } as unknown as PreviewVault, px);
-  assert.ok(t.valueUsd <= (g.maxTradePct / 100) * nav + 1e-6);
   const r = rowsOf(plan, drifted, px).rows.find((x) => x.id === "btc")!;
-  assert.ok(t.valueUsd <= (r.drift / 100) * nav + 1e-6);
+  // BTC is 10 points over ($1,000), XAUT 15 under ($1,500). The cap and the gap differ in each case,
+  // so dropping either limit from the code fails one of these.
+  const capped = nextTrade(plan, drifted, px, { ...g, maxTradePct: 4 })!;
+  assert.ok(Math.abs(capped.valueUsd - 0.04 * nav * 0.995) < 1e-6, `cap binds: ${capped.valueUsd}`);
+  const gapped = nextTrade(plan, drifted, px, { ...g, maxTradePct: 50 })!;
+  assert.ok(Math.abs(gapped.valueUsd - (r.drift / 100) * nav * 0.995) < 1e-6, `gap binds: ${gapped.valueUsd}`);
 });
 
 test("trades under one dollar are skipped", () => {

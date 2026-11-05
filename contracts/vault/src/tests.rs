@@ -138,9 +138,7 @@ fn sign_with(q: &Q, key: &SigningKey) -> (String, String) {
 fn sign_full(q: &Q, key: &SigningKey, extra: &[(&'static str, near_sdk::serde_json::Value)]) -> (String, String) {
     let mut m: BTreeMap<&str, near_sdk::serde_json::Value> = BTreeMap::new();
     use near_sdk::serde_json::json;
-    for (k, v) in extra {
-        m.insert(k, v.clone());
-    }
+
     m.insert("amount", json!(q.amount_in.to_string()));
     m.insert("amountIn", json!(q.amount_in.to_string()));
     m.insert("amountInFormatted", json!("x"));
@@ -165,6 +163,9 @@ fn sign_full(q: &Q, key: &SigningKey, extra: &[(&'static str, near_sdk::serde_js
     m.insert("slippageTolerance", json!(50));
     m.insert("swapType", json!("EXACT_INPUT"));
     m.insert("timestamp", json!(iso(q.at)));
+    for (k, v) in extra {
+        m.insert(k, v.clone()); // extras win, so a test can corrupt any field
+    }
     let body = near_sdk::serde_json::to_string(&m).unwrap();
     let msg = near_sdk::bs58::encode(env::sha256(body.as_bytes())).into_string();
     let sig = key.sign(msg.as_bytes());
@@ -183,6 +184,7 @@ fn start_good_trade(v: &mut Vault) {
     ctx(vault_id(), 0, NOW + 30);
     let t = terms(v, &good());
     let _ = v.on_rebalance_balances(balances_ok(), t, prices());
+    let _ = v.on_rebalance_sent(Ok(())); // the transfer to the deposit address went through
 }
 /// The agent calling step 1 with a quote.
 fn agent_rebalance(v: &mut Vault, q: &Q, at: u64) {
@@ -729,6 +731,98 @@ fn attack_a24_dust_trade() {
     let q = Q { amount_in: 625, amount_out: 124, min_out: 123, in_usd: "0.5", out_usd: "0.499", ..good() };
     let t = terms(&v, &q);
     let _ = v.on_rebalance_balances(balances_ok(), t, prices());
+}
+
+
+/// A26: anyone calls `settle` right after `rebalance`, before the sell transfer has executed. The sell balance still
+/// looks untouched, which used to read as "refunded" and cleared `pending` while the swap was in flight.
+#[test]
+fn attack_a26_settle_before_the_transfer_lands() {
+    let mut v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let t = terms(&v, &good());
+    let _ = v.on_rebalance_balances(balances_ok(), t, prices());
+    // Transfer not yet sent: balances are exactly what they were.
+    assert_eq!(v.settle_with(&drifted_balances(), (NOW + 40) * NS_PER_SEC), "waiting");
+    assert!(v.get_status().pending.is_some(), "pending must survive an early settle");
+    // Even after the whole settle window, an unsent swap is not judged (it can't be, nothing has left).
+    assert_eq!(v.settle_with(&drifted_balances(), (NOW + 4_000) * NS_PER_SEC), "waiting");
+    // Once the transfer is confirmed, the same balances do mean a refund.
+    let _ = v.on_rebalance_sent(Ok(()));
+    assert_eq!(v.settle_with(&drifted_balances(), (NOW + 60) * NS_PER_SEC), "refunded");
+}
+
+#[test]
+fn a_failed_transfer_clears_pending() {
+    let mut v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let t = terms(&v, &good());
+    let _ = v.on_rebalance_balances(balances_ok(), t, prices());
+    assert!(!v.on_rebalance_sent(Err(PromiseError::Failed)));
+    assert!(v.get_status().pending.is_none());
+}
+
+/// Fields of the signed quote that must be exactly right (each used to be unprotected by any test).
+#[test]
+#[should_panic(expected = "ERR_QUOTE_TERMS")]
+fn quote_amount_must_equal_amount_in() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("amount", json!("999"))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+#[test]
+#[should_panic(expected = "ERR_QUOTE_STALE")]
+fn quote_may_not_be_dated_in_the_future() {
+    let v = new_vault();
+    terms(&v, &Q { at: NOW + 60, ..good() }); // verified at NOW + 30: 30 s ahead, over the 15 s allowance
+}
+#[test]
+#[should_panic(expected = "ERR_QUOTE_REFUND")]
+fn refund_must_stay_inside_intents() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("refundType", json!("ORIGIN_CHAIN"))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+#[test]
+#[should_panic(expected = "ERR_QUOTE_RECIPIENT")]
+fn payout_must_stay_inside_intents() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("recipientType", json!("ORIGIN_CHAIN"))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+#[test]
+#[should_panic(expected = "ERR_QUOTE_TERMS")]
+fn deposit_must_come_from_inside_intents() {
+    use near_sdk::serde_json::json;
+    let v = new_vault();
+    let (body, sig) = sign_full(&good(), &oneclick(), &[("depositType", json!("ORIGIN_CHAIN"))]);
+    v.verify_quote(&body, &sig, (NOW + 30) * NS_PER_SEC);
+}
+
+/// A27: a trade bigger than the drift plus the band would sell past target. The max-trade cap is raised here so
+/// that only the no-overshoot rule can stop it: $2,000 is 20% of a $10,000 vault, and the room is 10 + 5 = 15 points.
+#[test]
+#[should_panic(expected = "ERR_TOO_BIG")]
+fn attack_a27_overshooting_the_target() {
+    ctx(owner(), 0, NOW);
+    let v = Vault::new(owner(), plan(), Limits { max_trade_bps: 5_000, ..limits() }, Some(agent_pk()), None, Some(pk_of(&oneclick())));
+    let q = Q { amount_in: 2_500_000, amount_out: 499_000, min_out: 496_500, in_usd: "2000.000000000000", out_usd: "1996.000000000000", ..good() };
+    ctx(vault_id(), 0, NOW + 30);
+    let t = terms(&v, &q);
+    let _ = v.policy_check(&drifted_balances(), &t, &prices());
+}
+
+/// Selling more than the vault holds.
+#[test]
+#[should_panic(expected = "ERR_INSUFFICIENT")]
+fn cannot_sell_more_than_the_vault_holds() {
+    let v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let t = terms(&v, &Q { amount_in: 625_001, ..good() });
+    let _ = v.policy_check(&[625_000, 0, 0], &t, &prices()); // holds exactly 0.00625 BTC, asked to sell a hair more
 }
 
 /* ───────────── close_vault ───────────── */

@@ -50,6 +50,17 @@ function assertOk(outcome: unknown, what: string) {
   }
 }
 
+/** The JSON value the last receipt returned (the vault's callback answer), or undefined. */
+export function returned(outcome: unknown): unknown {
+  const v = (outcome as { status?: { SuccessValue?: string } }).status?.SuccessValue;
+  if (!v) return undefined;
+  try {
+    return JSON.parse(Buffer.from(v, "base64").toString("utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
 export async function callRebalance(
   vault: string,
   args: { quote: string; signature: string; prices: { token: string; usd_e6: string }[] },
@@ -59,14 +70,18 @@ export async function callRebalance(
     actions: [actions.functionCall("rebalance", args, teraToGas("200"), 0n)],
   });
   assertOk(outcome, "The rebalance");
+  // on_rebalance_sent answers false when the transfer to 1Click failed: nothing left the vault.
+  if (returned(outcome) === false) throw new Error("The transfer to the swap address failed. Nothing left the vault.");
   return { hash: (outcome as { transaction?: { hash?: string } }).transaction?.hash, outcome };
 }
 
-export async function callSettle(vault: string): Promise<TxResult> {
+/** Settles a pending swap. `answer` is the vault's reply: settled, refunded, breaker, waiting or none. */
+export async function callSettle(vault: string): Promise<TxResult & { answer: string }> {
   const outcome = await agent(vault).signAndSendTransaction({
     receiverId: vault,
     actions: [actions.functionCall("settle", {}, teraToGas("150"), 0n)],
   });
   assertOk(outcome, "Settling");
-  return { hash: (outcome as { transaction?: { hash?: string } }).transaction?.hash, outcome };
+  const answer = returned(outcome);
+  return { hash: (outcome as { transaction?: { hash?: string } }).transaction?.hash, outcome, answer: typeof answer === "string" ? answer : "unknown" };
 }

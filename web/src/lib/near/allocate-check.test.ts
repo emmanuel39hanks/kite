@@ -85,3 +85,23 @@ test("a deposit address that pays or refunds someone else is not shown", async (
   await assert.rejects(runDep({ amount: "9" }));
   await assert.rejects(runDep({ appFees: [{ recipient: "thief", fee: 20 }] }));
 });
+
+// Each field on its own, so dropping any single check from the code fails a test.
+const swapFields: Record<string, unknown>[] = [
+  { recipient: "thief.near" }, { refundTo: "thief.near" },
+  { recipientType: "DESTINATION_CHAIN" }, { refundType: "ORIGIN_CHAIN" }, { depositType: "ORIGIN_CHAIN" },
+  { originAsset: "nep141:other" }, { destinationAsset: "nep141:other" }, { amount: "1" },
+  { dry: true }, { swapType: "EXACT_OUTPUT" }, { slippageTolerance: 201 }, { slippageTolerance: "100" },
+];
+
+test("each swap field is checked on its own", async () => {
+  for (const o of swapFields) await assert.rejects(run(good, () => o), /didn't check out/, JSON.stringify(o));
+});
+
+test("each deposit field is checked on its own", async () => {
+  const fields = [
+    ...swapFields.filter((o) => !("depositType" in o) && !("slippageTolerance" in o)),
+    { depositType: "INTENTS" }, { originAsset: "nep141:eth" }, { destinationAsset: BTC },
+  ];
+  for (const o of fields) await assert.rejects(runDep(o), /didn't check out/, JSON.stringify(o));
+});
