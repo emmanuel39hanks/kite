@@ -16,23 +16,23 @@ Each row: do this, see that.
 
 | Do this | You should see |
 |---|---|
-| `sh scripts/setup.sh` | Installs the worker, then the web app (the web app links the worker package, so the order matters). Run this once from a fresh clone. |
-| `cd contracts/vault && cargo test` | **73 tests pass**, including **35 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
-| `npm test --prefix worker` | **10 tests pass** (drift maths, the real 1Click signature, reading the vault's answer to each call, and the gas check) |
-| `npm test --prefix web` | **33 tests pass**: the checks on model output (Unicode-safe number guard, clamped rules, template fallbacks), the pre-signing check on swap addresses (every field on its own), and the preview engine's rebalance rule |
-| `npm run dev --prefix web`, open http://localhost:3000/console?preview=1 | The full app with a simulated vault, live prices and **real 1Click quotes** (`dry: true`). No wallet, nothing signed. Walkthrough below. |
-| `cd worker && npm run attack -- --vault kite.<owner>.near` | Real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan are sent to the vault's free `check_quote` view. **Every one is refused.** (Needs a created vault.) |
-| `npm run typecheck --prefix web && npm run lint --prefix web && npm run build --prefix web` | Clean type check, no lint warnings, production build |
-| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `d9e6ac162d6dc6d8…`, the contract the app deploys (233,280 bytes) |
+| `npm ci` | Installs the web app and the keeper in one go (npm workspaces). Run this once from a fresh clone. |
+| `npm run test:contracts` | **75 tests pass**, including **37 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
+| `npm run test:integration` | **4 sandbox tests pass** on a local NEAR node, using the shipped wasm above with real keys and receipts: Kite's key can't withdraw, call `intents` directly or change limits (NEAR refuses it); the vault has no full-access key, so its code can't change; its code hash equals the sha256 of the file; a full rebalance and settle run end to end; a failed transfer leaves nothing pending; a signed quote that pays someone else is refused. Prints the gas a rebalance really costs. |
+| `npm test` | **43 tests pass**: 10 in the keeper (drift maths, the real 1Click signature, reading the vault's answer to each call, and the gas check), 33 in the web app (the checks on model output (Unicode-safe number guard, clamped rules, template fallbacks), the pre-signing check on swap addresses (every field on its own), and the preview engine's rebalance rule) |
+| `npm run dev`, open http://localhost:3000/console?preview=1 | The full app with a simulated vault, live prices and **real 1Click quotes** (`dry: true`). No wallet, nothing signed. Walkthrough below. |
+| `npm run attack -- --vault kite.<owner>.near` | Real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan are sent to the vault's free `check_quote` view. **Every one is refused.** (Needs a created vault.) |
+| `npm run typecheck && npm run lint && npm run build` | Clean type check, no lint warnings, production build |
+| `shasum -a 256 apps/web/public/vault/kite_vault.wasm` | Starts with `edb084bc376fde0b…`, the contract the app deploys (233,500 bytes). A vault's on-chain code hash is this sha256 in base58, so you can check any deployed vault against this file. |
 
-**What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests (`cargo test` needs no wasm target); to rebuild the wasm also `rustup target add wasm32-unknown-unknown` and `cargo-near`. The preview and every command above need **no environment variables and no funds**. The public "check now" route is always a dry run; real rebalances come from the daily cron (needs `CRON_SECRET` and `KITE_AGENT_KEY`) or the worker CLI. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's worker key, so the preview is the judge path.
+**What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests (`cargo test` needs no wasm target); to rebuild the wasm also `rustup target add wasm32-unknown-unknown` and `cargo-near`. The preview and every command above need **no environment variables and no funds**. The public "check now" route is always a dry run; real rebalances come from the daily cron (needs `CRON_SECRET` and `KITE_AGENT_KEY`) or the keeper CLI. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's keeper key, so the preview is the judge path.
 
 **What is proven and what is not, plainly:**
 
 | | Status |
 |---|---|
-| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 73 tests pass. |
-| Worker and web app | Built and deployed at usekite.xyz. |
+| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 75 unit tests and 4 sandbox tests pass. |
+| Keeper and web app | Built and deployed at usekite.xyz. |
 | Preview mode with real quotes | Works. Simulated vault, real prices and quotes. |
 | **First end-to-end run on NEAR mainnet with real funds** | **Not done yet.** Transaction links will go in this README once it is. |
 | Private AI features (NEAR AI Cloud) | Work in a browser. The model, the number checks and the clamps were tested against the live API. The in-browser encrypted path is the part to try yourself. |
@@ -56,10 +56,10 @@ NEAR Intents has no testnet, so Kite has a **preview mode**: live prices, **real
 | Real | Simulated |
 |---|---|
 | Prices: 1Click `/v0/tokens` | The vault and its balances, kept in `localStorage` |
-| Every swap amount: 1Click `/v0/quote` with `dry: true` (`web/src/app/api/preview/quote`) | The wallet: 1,000 USDC and 5 NEAR |
+| Every swap amount: 1Click `/v0/quote` with `dry: true` (`apps/web/src/app/api/preview/quote`) | The wallet: 1,000 USDC and 5 NEAR |
 | Daily price history: Kraken, CoinGecko as fallback | Back-dated swap cost: a flat 0.3%, about what live quotes show |
 | Yields: Meta Pool, Lido, Morpho, Kamino APIs | |
-| The rebalance rule: `web/src/lib/preview/engine.ts` mirrors `worker/src/drift.ts` and the contract | |
+| The rebalance rule: `apps/web/src/lib/preview/engine.ts` mirrors `packages/keeper/src/drift.ts` and the contract | |
 
 ---
 
@@ -69,10 +69,10 @@ Connect a NEAR wallet (HOT, Meteor, Intear, Sender, Nightly or OKX).
 
 | Step | What happens on chain |
 |---|---|
-| Create your vault | One transaction from your account to `kite.<you>`: `CreateAccount`, `Transfer 2.6 NEAR` (storage, refunded on close), `DeployContract` (this repo's vault), `new(owner, plan, limits, agent, intents)`, `AddKey`. The key is Kite's worker key: `FunctionCall` only, receiver = your vault, methods `rebalance, settle`, 0.25 NEAR allowance. One vault per account. |
+| Create your vault | One transaction from your account to `kite.<you>`: `CreateAccount`, `Transfer 2.6 NEAR` (storage, refunded on close), `DeployContract` (this repo's vault), `new(owner, plan, limits, agent, intents)`, `AddKey`. The key is Kite's keeper key: `FunctionCall` only, receiver = your vault, methods `rebalance, settle`, 0.25 NEAR allowance. One vault per account. |
 | Add money | Send USDC from your NEAR wallet (`ft_transfer_call` to `intents.near`, `msg = vault`). Or `/api/deposit/quote` gets a 1Click deposit address on Base, Arbitrum, Ethereum, Bitcoin or Solana, and what you send lands in your vault as USDC inside `intents.near`. |
 | Invest | You sign `vault.allocate(transfers)`: slices of USDC go to 1Click deposit addresses that swap into each plan asset and pay **back to the vault**. |
-| Daily check | `/api/cron` (Vercel Cron, needs `CRON_SECRET`, sends real transactions only for vaults in `KITE_VAULTS`) or the worker CLI runs `worker.runOnce`: reads balances and drift, gets a 1Click quote, checks it locally, calls `vault.rebalance(quote, signature, prices)` with the worker key, waits up to two minutes for the swap to land, then calls `vault.settle()`. One daily run is therefore a whole rebalance; if the swap is slow, the next run settles it. **Check now** in the app is always a dry run that shows what Kite would do. |
+| Daily check | `/api/cron` (Vercel Cron, needs `CRON_SECRET`, sends real transactions only for vaults in `KITE_VAULTS`) or the keeper CLI runs `runOnce`: reads balances and drift, gets a 1Click quote, checks it locally, calls `vault.rebalance(quote, signature, prices)` with the keeper key, waits up to two minutes for the swap to land, then calls `vault.settle()`. One daily run is therefore a whole rebalance; if the swap is slow, the next run settles it. **Check now** in the app is always a dry run that shows what Kite would do. |
 | Guardrails | Owner calls `set_limits`, `revoke_agent`, `set_agent`, `pause`, `unpause`, `set_quote_signer`. Each needs 1 yocto attached, so only your full-access key can call them. |
 | Leave | `withdraw` each balance to your Intents account, then `close_vault`. It refuses while anything is left, then deletes the account and returns its NEAR to you. |
 
@@ -85,7 +85,7 @@ While a rebalance is in flight, **Home** shows a card driven by the vault's pend
 - `FAILED`: says failed, shows a reference, and **never claims delivery or safety**; where the money is must be checked against the vault balance.
 - `INCOMPLETE_DEPOSIT`: less arrived than the quote needed; a refund follows.
 
-Code: `web/src/components/console/swap-tracker.tsx`, `web/src/lib/near/swap-status.ts`.
+Code: `apps/web/src/components/console/swap-tracker.tsx`, `apps/web/src/lib/near/swap-status.ts`.
 
 ### History, including what the robot did while you were away
 
@@ -97,7 +97,7 @@ Code: `web/src/components/console/swap-tracker.tsx`, `web/src/lib/near/swap-stat
 
 - **NEAR Intents:** holds every asset as NEP-245 balances owned by your vault account (nBTC, ETH, SOL, NEAR, USDC, Tether Gold, plus the earning versions stNEAR, wstETH, gtUSDCp, kV-gtSOLb). The 1Click API handles deposits from other chains and every swap. **Its signed quotes are verified on-chain by the vault** (`env::ed25519_verify`).
 - **NEAR AI Cloud:** the private AI features below, end-to-end encrypted to attested model hardware.
-- **Function-call access keys:** limit Kite's worker to two methods at the protocol level.
+- **Function-call access keys:** limit Kite's keeper to two methods at the protocol level.
 - **Auth by predecessor** (default in `intents.near`): the vault contract moves its own Intents balances with no keys registered there. Custody stays with a contract only you control.
 - **Account model:** one readable, deletable sub-account per user (`kite.<you>`), whose storage deposit is refunded on close.
 - **Chain Signatures: not used.** The DeFi track lists it as an optional "lean on". We left it out on purpose: any path where the vault signs foreign-chain transactions would let funds leave outside a signed 1Click quote, which is the property Kite is built around.
@@ -108,9 +108,9 @@ Code: `web/src/components/console/swap-tracker.tsx`, `web/src/lib/near/swap-stat
 
 Code: `contracts/vault/src/lib.rs`. Every refusal has a named error in `contracts/vault/src/errors.rs`.
 
-**Kite's worker never decides where money goes.** Every `rebalance` must carry a quote **signed by NEAR Intents 1Click**, and the vault verifies it on-chain:
+**Kite's keeper never decides where money goes.** Every `rebalance` must carry a quote **signed by NEAR Intents 1Click**, and the vault verifies it on-chain:
 - **Signature:** ed25519 over `base58(sha256(quote json))`, against 1Click's published key `reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc`. The owner can rotate it with `set_quote_signer`.
-- **Terms:** what is sold and bought, the amounts, the deposit address, the minimum out and the USD values all come from the signed quote, not from the worker.
+- **Terms:** what is sold and bought, the amounts, the deposit address, the minimum out and the USD values all come from the signed quote, not from the keeper.
 - **Payout and refund:** the quote must pay out to the vault and refund to the vault, inside NEAR Intents.
 - **Freshness:** under 5 minutes old and newer than the last one used.
 
@@ -143,15 +143,15 @@ We played an attacker who stole Kite's key and tried everything we could think o
 | Keep trading after a swap goes missing | `settle` trips a breaker after the settle window, pausing the vault | `ERR_PAUSED` |
 
 **Run the attacks yourself:**
-- **Contract tests:** `cd contracts/vault && cargo test attack_` runs the 35 attack tests (73 tests in total). Each new check was also confirmed by deleting it from the code and watching a named test fail.
-- **Against a live vault, free:** `cd worker && npm run attack -- --vault kite.<owner>.near`.
+- **Contract tests:** `cargo test --manifest-path contracts/Cargo.toml -p kite-vault attack_` runs the 37 attack tests (75 tests in total). Each new check was also confirmed by deleting it from the code and watching a named test fail.
+- **Against a live vault, free:** `npm run attack -- --vault kite.<owner>.near`.
 - **As real transactions:** add `--send` with the agent key. Each refusal gets a transaction hash. Add `--out file.md` to save the transcript.
 
-**Threat model:** a fully compromised worker still can't move money anywhere except a 1Click swap that pays your vault. It can still make trades you didn't need, inside your guardrails and rate limits. The worst case is swap costs, and it has a number: each trade can lose at most your price limit (default 1%) of the amount traded (default at most 10% of the portfolio), but the vault checks two things, the quote's output value and its guaranteed minimum, so a fill at the minimum can cost close to twice that. At the defaults that is up to about 0.2% of the portfolio per trade and at most 4 trades a day, so **up to about 0.8% a day**, until you revoke Kite's key or pause the vault. We chose not to add a separate daily loss cap: this bound already follows from the limits you set, and tightening those (band, trade size, price limit, trades a day) tightens it. A simulated thief with a lying third price could not loop trades indefinitely: the no-overshoot rule stops it after a few.
+**Threat model:** a fully compromised keeper still can't move money anywhere except a 1Click swap that pays your vault. It can still make trades you didn't need, inside your guardrails and rate limits. The worst case is swap costs, and it has a number: each trade can lose at most your price limit (default 1%) of the amount traded (default at most 10% of the portfolio), but the vault checks two things, the quote's output value and its guaranteed minimum, so a fill at the minimum can cost close to twice that. At the defaults that is up to about 0.2% of the portfolio per trade and at most 4 trades a day, so **up to about 0.8% a day**, until you revoke Kite's key or pause the vault. We chose not to add a separate daily loss cap: this bound already follows from the limits you set, and tightening those (band, trade size, price limit, trades a day) tightens it. A simulated thief with a lying third price could not loop trades indefinitely: the no-overshoot rule stops it after a few.
 
 **Defaults:** a holding must drift 5 points before Kite acts, one trade moves at most 10% of the portfolio, a swap may cost at most 1% fees included, at most 4 trades a day (the four-hour gap between trades allows at most 6), and a swap that hasn't landed after 30 minutes pauses the vault. You can change all of these.
 
-**Gaps we found and closed:** (1) the first version took the deposit address and reference prices from the worker. Writing the attack suite showed a stolen key could have pointed one trade at itself; verifying 1Click's signature on-chain closed it. (2) Review found the vault ignored referral and redirect fields in the signed quote; they are now refused. (3) A zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account; both are fixed. (4) Trades under $1 are refused, so dust can't burn the daily trade count. (5) `settle` called before the transfer out landed could clear a pending swap; the vault now waits for the transfer, and judges the swap anyway once the settle window ends, so it can never be stuck. (6) A `settle` whose balance read was sent before the transfer was confirmed could see stale balances and call the swap refunded; such a read is now ignored.
+**Gaps we found and closed:** (1) the first version took the deposit address and reference prices from the keeper. Writing the attack suite showed a stolen key could have pointed one trade at itself; verifying 1Click's signature on-chain closed it. (2) Review found the vault ignored referral and redirect fields in the signed quote; they are now refused. (3) A zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account; both are fixed. (4) Trades under $1 are refused, so dust can't burn the daily trade count. (5) `settle` called before the transfer out landed could clear a pending swap; the vault now waits for the transfer, and judges the swap anyway once the settle window ends, so it can never be stuck. (6) A `settle` whose balance read was sent before the transfer was confirmed could see stale balances and call the swap refunded; such a read is now ignored.
 
 ---
 
@@ -185,10 +185,10 @@ Five features use a model on NEAR AI Cloud. They share one design rule: **the mo
 | **Explain a refund or failure** | The swap card | Status, tickers, 1Click's refund reason (treated as data) | The model's "where is the money" must match what the status implies, or the standard text is used. No digits. |
 | **"Why?" on a rebalance** | Activity | Facts read from the vault's own `rebalance_started` log on chain (`/api/vault/why`): what was sold, bought, and how far over target | Numbers in the wording must be ones from those facts, or a fixed template is used |
 
-**How the private call works** (`web/src/lib/ai/private-ai.ts`, `@nearai/inference-sdk` in the browser):
+**How the private call works** (`apps/web/src/lib/ai/private-ai.ts`, `@nearai/inference-sdk` in the browser):
 1. The browser verifies NEAR AI's attestation for the model.
 2. It encrypts your message to the attested model key (X25519 + XChaCha20-Poly1305).
-3. Kite's server relays the encrypted bytes (`web/src/app/api/nearai/v1/[...path]`), adds the API key, allows only Kite's model and the endpoints the SDK needs, and rate-limits visitors.
+3. Kite's server relays the encrypted bytes (`apps/web/src/app/api/nearai/v1/[...path]`), adds the API key, allows only Kite's model and the endpoints the SDK needs, and rate-limits visitors.
 4. The browser checks the signature on the reply. The panel says which kind it was: **signed by the model's hardware** (`provider_tee`), or only **by NEAR AI's gateway**, a weaker guarantee that it shows as such.
 
 **What we do not claim:** that nothing can ever read your words (this holds as far as you trust the open-source code this page runs), that a signature proves the model's text is *true* (it proves who produced it, so the facts and numbers are checked in code instead), or that signatures stay re-checkable forever (NEAR AI doesn't document how long, so we save the id on your device and say "re-checkable while NEAR AI retains it").
@@ -199,48 +199,58 @@ Five features use a model on NEAR AI Cloud. They share one design rule: **the mo
 
 ## Repository
 
+A monorepo: npm workspaces for the TypeScript, one Cargo workspace for the contracts.
+
 ```
-contracts/vault/   Rust vault (near-sdk 5.30): plan, guardrails, signed-quote checks, settle/breaker, close
-worker/            Node worker: drift maths, 1Click client + quote signatures, runOnce, attack script
-scripts/           setup.sh: install worker then web from a fresh clone
-worker/scripts/    attack.ts (the live attack demo), routes.ts (live route check)
-web/               Next.js 16 app
-  src/app/         pages and API routes
-  src/components/  landing/ (marketing page), console/ (product UI), shared logo and charts
-  src/lib/         ai/ (private AI features and the checks on their output), market/ (prices, history, yields),
-                   near/ (wallet, vault calls, swap status), preview/ (no-wallet engine),
-                   server/ (route guards, 1Click client), shared assets, plans, mix, store
+apps/web/                    Next.js 16 app: landing page, console, API routes, the daily cron
+  src/app/                   pages and API routes
+  src/components/            landing/ (marketing page), console/ (product UI), shared logo and charts
+  src/lib/                   ai/ (private AI and the checks on its output), market/ (prices, history, yields),
+                             near/ (wallet, vault calls, swap status), preview/ (no-wallet engine),
+                             server/ (route guards, 1Click client), shared assets, plans, mix, store
+  public/vault/              kite_vault.wasm: the exact contract the app deploys
+packages/keeper/             @kite/keeper, the rebalancing bot: drift maths, 1Click client and quote
+                             signatures, runOnce; scripts/attack.ts (live attack demo), scripts/routes.ts
+contracts/                   Cargo workspace
+  vault/                     the vault (near-sdk 5.30): plan, guardrails, signed-quote checks, settle and breaker, close
+  mock-intents/              test double for intents.near (balances and transfers), sandbox tests only
+  integration-tests/         runs the shipped wasm on a local NEAR sandbox with real keys and receipts
+scripts/                     setup.sh, integration.sh
 ```
 
-| Task | Command |
+| Task | Command (from the repo root) |
 |---|---|
-| Contract tests | `cd contracts/vault && cargo test` |
-| Build the vault | `cd contracts/vault && cargo near build non-reproducible-wasm --env "RUSTFLAGS=-C link-arg=-s --remap-path-prefix=$HOME/.cargo/registry=/cargo/registry --remap-path-prefix=$HOME/.rustup=/rustup --remap-path-prefix=$PWD=/src"` → copy `target/near/kite_vault.wasm` to `web/public/vault/`. The remaps keep local paths out of the binary. The hash depends on your toolchain, so compare against ours only with the same versions (we used Rust 1.97.0 and cargo-near 0.22.0). |
-| Worker tests | `cd worker && npm test` |
-| Check routes | `cd worker && npm run routes` (live 1Click routes for every asset) |
-| One check, dry | `cd worker && npm run worker -- --vault kite.<you>.near --dry` |
-| Web app | `cd web && npm run dev` · `npm test` · `npm run typecheck` · `npx eslint src` · `npm run build` |
+| Install | `npm ci` |
+| All TypeScript tests | `npm test` |
+| Contract unit tests | `npm run test:contracts` |
+| Sandbox integration tests | `npm run test:integration` (needs `cargo-near`; downloads the NEAR sandbox once) |
+| Type check, lint, build | `npm run typecheck && npm run lint && npm run build` |
+| Web app | `npm run dev` |
+| One check, dry | `npm run keeper -- --vault kite.<you>.near --dry` |
+| Live attack demo | `npm run attack -- --vault kite.<you>.near` |
+| Check routes | `npm run routes -w packages/keeper` (live 1Click routes for every asset) |
+| Build the vault | `cd contracts && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml --env "RUSTFLAGS=-C link-arg=-s --remap-path-prefix=$HOME/.cargo/registry=/cargo/registry --remap-path-prefix=$HOME/.rustup=/rustup --remap-path-prefix=$PWD=/src"` → copy `target/near/kite_vault/kite_vault.wasm` to `apps/web/public/vault/`. The remaps keep local paths out of the binary. The hash depends on your toolchain, so compare against ours only with the same versions (we used Rust 1.97.0 and cargo-near 0.22.0). |
 
-### Environment (`web/.env.local`, never committed)
+### Environment (`apps/web/.env.local`, never committed)
 
 | Variable | What it's for |
 |---|---|
-| `NEXT_PUBLIC_KITE_AGENT_PK` | Public half of Kite's worker key, added to each new vault |
+| `NEXT_PUBLIC_KITE_AGENT_PK` | Public half of Kite's keeper key, added to each new vault |
 | `KITE_AGENT_KEY` | Server only. Lets `/api/vault/check` and `/api/cron` send real rebalances. Leave it out to run dry. |
 | `NEARAI_API_KEY` | Server only. Lets the relay reach NEAR AI Cloud for the private AI features. Hackathon credits come through NEAR Builders. Without it the AI features show "not configured" and everything else works. |
 | `ONECLICK_JWT` | Optional 1Click partner key, which avoids the 0.2% no-key fee |
 | `NEXT_PUBLIC_NEAR_RPC`, `NEAR_RPC`, `INTENTS_CONTRACT`, `ONECLICK_URL` | Optional overrides with working defaults (FastNEAR RPC, `intents.near`, the 1Click API) |
-| `KITE_VAULT`, `ATTACKER` | Worker CLI only (`npm run worker`, `npm run attack`) |
+| `KITE_VAULT`, `ATTACKER` | Keeper CLI only (`npm run keeper`, `npm run attack`) |
 | `CRON_SECRET`, `KITE_VAULTS` | `CRON_SECRET` is required for `/api/cron` (it refuses all calls without it). `KITE_VAULTS` lists the vaults the server may send real transactions for. |
 
 ---
 
 ## Operating it
 
-- **Vercel project settings:** Root Directory `web`, with "Include source files outside of the Root Directory" turned on (the build installs the linked `worker` package; `web/vercel.json` sets the install command). The cron is `0 0 * * *` (daily, which fits the Hobby plan; timing can drift by up to an hour).
+- **Vercel project settings:** Root Directory `apps/web`, with "Include source files outside of the Root Directory" turned on. Vercel sees the npm workspace and installs from the repo root, so the app can import `@kite/keeper`. `apps/web/vercel.json` holds the cron. The cron is `0 0 * * *` (daily, which fits the Hobby plan; timing can drift by up to an hour).
 - **Production environment:** `NEXT_PUBLIC_KITE_AGENT_PK` (required to create a real vault: without it only the preview works), `KITE_AGENT_KEY`, `CRON_SECRET`, `KITE_VAULTS`, `NEARAI_API_KEY`. A paid `NEAR_RPC` and a `ONECLICK_JWT` are recommended. The full list is in the table above and in `web/.env.example`.
 - **Failures are loud:** `/api/cron` logs one JSON line per vault (`cron: vault` or `vault-failed`) and answers 500 if any vault failed.
-- **Before real money:** run one small vault end to end on mainnet and record the transactions here; generate a dedicated worker key; measure the gas a real rebalance uses; get an external audit.
+- **Before real money:** run one small vault end to end on mainnet and record the transactions here; generate a dedicated keeper key; get an external audit.
 
 ## Credits and notes
 

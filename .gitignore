@@ -2,10 +2,9 @@ node_modules
 .env*
 !.env.example
 .DS_Store
-contracts/vault/target
-worker/dist
+contracts/target
 .next
-web/out
+out
 *.tsbuildinfo
 .vercel
 

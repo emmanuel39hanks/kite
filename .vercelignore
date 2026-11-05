@@ -4,7 +4,6 @@
 !**/.env.example
 node_modules
 **/node_modules
-web/.next
-worker/dist
-contracts/vault/target
+**/.next
+contracts/target
 .DS_Store

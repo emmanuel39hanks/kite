@@ -1,0 +1,29 @@
+{
+  "name": "kite",
+  "private": true,
+  "description": "Kite: a self-custodied portfolio on NEAR that rebalances itself through NEAR Intents.",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/web",
+    "build": "npm run build -w apps/web",
+    "test": "npm test --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "test:contracts": "cargo test --manifest-path contracts/Cargo.toml -p kite-vault",
+    "test:integration": "sh scripts/integration.sh",
+    "attack": "npm run attack -w packages/keeper --",
+    "keeper": "npm run keeper -w packages/keeper --"
+  },
+  "engines": {
+    "node": ">=20.9"
+  },
+  "overrides": {
+    "@freedomofpress/crypto-browser": {
+      "@noble/curves": "1.9.7"
+    }
+  }
+}

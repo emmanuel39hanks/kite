@@ -1,0 +1,29 @@
+{
+  "name": "@kite/keeper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Kite keeper: checks vault drift, quotes NEAR Intents 1Click, and calls vault.rebalance / settle with the vault's function-call key.",
+  "scripts": {
+    "keeper": "node --env-file-if-exists=.env.local --import tsx src/cli.ts",
+    "routes": "node --env-file-if-exists=.env.local --import tsx scripts/routes.ts",
+    "attack": "node --env-file-if-exists=.env.local --import tsx scripts/attack.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "near-api-js": "^7.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}

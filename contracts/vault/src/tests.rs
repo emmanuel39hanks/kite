@@ -932,3 +932,22 @@ fn settle_records_whether_the_transfer_was_confirmed() {
     let _ = v.settle();
     assert!(args_of_callback().contains(r#""confirmed":true"#));
 }
+
+#[test]
+#[should_panic(expected = "ERR_PRICE")]
+fn attack_a29_repeated_prices_are_refused() {
+    let mut v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let mut p = prices();
+    p.push(p[0].clone());
+    let (q, sig) = signed(&good());
+    let _ = v.rebalance(q, sig, p);
+}
+
+#[test]
+#[should_panic(expected = "ERR_QUOTE_TERMS")]
+fn attack_a30_oversized_quote_is_refused() {
+    let v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let _ = v.verify_quote(&"x".repeat(5000), "sig", NOW * NS_PER_SEC);
+}

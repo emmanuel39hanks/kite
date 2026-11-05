@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["vault", "mock-intents", "integration-tests"]
+
+# Contract builds: small, no debug info, and arithmetic overflow aborts instead of wrapping.
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true

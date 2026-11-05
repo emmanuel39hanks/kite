@@ -42,6 +42,9 @@ const AGENT_METHODS: &str = "rebalance,settle";
 const ONE_CLICK_SIGNER: &str = "ed25519:reYaWhvwu8Jzo3WUM3zhn6VrhuMEF4eADL17qtRVifc";
 /// A signed quote is only usable this long after 1Click issued it.
 const QUOTE_MAX_AGE_SECS: u64 = 300;
+/// A real signed 1Click quote is under 1 KB; anything far bigger is refused before parsing.
+const MAX_QUOTE_BYTES: usize = 4096;
+const MAX_SIGNATURE_CHARS: usize = 128;
 
 /// One asset in the plan.
 #[near(serializers = [json, borsh])]
@@ -417,6 +420,11 @@ impl Vault {
     /// `signature` is 1Click's `ed25519:…` signature from the same response.
     pub fn rebalance(&mut self, quote: String, signature: String, prices: Vec<Price>) -> Promise {
         self.assert_agent();
+        // One reported price per plan asset at most, no repeats: bounded work in the callback.
+        require!(prices.len() <= self.plan.len(), ERR_PRICE);
+        for (i, p) in prices.iter().enumerate() {
+            require!(!prices[..i].iter().any(|q| q.token == p.token), ERR_PRICE);
+        }
         let terms = self.verify_quote(&quote, &signature, env::block_timestamp());
         self.check_can_trade(&terms.sell, &terms.buy, terms.amount_in);
         ext_intents::ext(self.intents.clone())
@@ -615,6 +623,7 @@ impl Vault {
 
     /// Check 1Click's signature and the quote's terms. Returns what the trade may do.
     pub fn verify_quote(&self, quote: &str, signature: &str, now_ns: u64) -> QuoteTerms {
+        require!(quote.len() <= MAX_QUOTE_BYTES && signature.len() <= MAX_SIGNATURE_CHARS, ERR_QUOTE_TERMS);
         // 1Click signs base58(sha256(json)) with its manager key.
         let sig = signature.strip_prefix("ed25519:").unwrap_or(signature);
         let sig: [u8; 64] = near_sdk::bs58::decode(sig)
@@ -672,7 +681,7 @@ impl Vault {
     pub fn policy_check(&self, balances: &[u128], terms: &QuoteTerms, prices: &[Price]) -> PolicyCheck {
         require!(balances.len() == self.plan.len(), ERR_BALANCES);
         let (sell, buy) = (terms.sell.as_str(), terms.buy.as_str());
-        let idx = |token: &str| self.plan.iter().position(|t| t.token == token).unwrap();
+        let idx = |token: &str| self.plan.iter().position(|t| t.token == token).unwrap_or_else(|| env::panic_str(ERR_NOT_IN_PLAN));
         let (si, bi) = (idx(sell), idx(buy));
         let sell_dec = 10u128.pow(self.plan[si].decimals as u32);
         let buy_dec = 10u128.pow(self.plan[bi].decimals as u32);
@@ -749,6 +758,7 @@ impl Vault {
         if !confirmed && !late {
             return "waiting";
         }
+        require!(balances.len() == self.plan.len(), ERR_BALANCES);
         let pos = |token: &str| self.plan.iter().position(|t| t.token == token);
         let (Some(si), Some(bi)) = (pos(&p.sell), pos(&p.buy)) else {
             self.pending = None;

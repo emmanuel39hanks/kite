@@ -1,0 +1,14 @@
+[package]
+name = "mock-intents"
+version = "0.1.0"
+edition = "2021"
+description = "Test double for intents.near: a multi-token ledger with mt_transfer and mt_batch_balance_of. Sandbox tests only."
+license = "MIT"
+repository = "https://github.com/emmanuel39hanks/kite"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "5.30.0"
