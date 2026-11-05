@@ -16,7 +16,7 @@ import { useLive } from "@/lib/near/live";
 import { useWallet } from "@/lib/near/wallet";
 import { PLAN_DATA } from "@/lib/plans";
 import { driftOf, useKite, type Portfolio } from "@/lib/store";
-import { backtest, holdingsValue, useHistory, useMarket, useYields } from "@/lib/use-market";
+import { backtest, holdingsValue, useHistory, useMarket, useYields } from "@/lib/market/use-market";
 
 const RANGES = ["1W", "1M", "1Y"] as const;
 type Range = (typeof RANGES)[number];

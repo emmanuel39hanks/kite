@@ -15,7 +15,7 @@ import { useKite } from "@/lib/store";
 import { Icon, type IconName } from "./icons";
 import { PreviewBar } from "./preview-bar";
 import { Avatar, Badge, Button } from "./ui";
-import { usePreviewActions } from "@/lib/preview-actions";
+import { usePreviewActions } from "@/lib/preview/actions";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/console", label: "Home", icon: "dashboard" },

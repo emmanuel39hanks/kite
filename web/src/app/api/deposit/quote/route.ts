@@ -1,7 +1,7 @@
 import { NEAR } from "@/lib/near/config";
-import { ONECLICK } from "@/lib/oneclick";
+import { ONECLICK } from "@/lib/server/oneclick";
 import { SOURCES } from "@/lib/near/sources";
-import { clientIp, isKiteVault, isNearAccount, limited } from "@/lib/server-guards";
+import { clientIp, isKiteVault, isNearAccount, limited } from "@/lib/server/guards";
 
 /**
  * POST { source, amount (in source base units), vault, owner }

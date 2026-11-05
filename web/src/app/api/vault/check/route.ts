@@ -1,5 +1,5 @@
 import { runOnce } from "kite-worker";
-import { allowedVaults, clientIp, isKiteVault, limited } from "@/lib/server-guards";
+import { allowedVaults, clientIp, isKiteVault, limited } from "@/lib/server/guards";
 
 /**
  * POST { vault } → one check of the vault, with the same code as the daily cron.

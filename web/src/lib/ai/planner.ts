@@ -5,11 +5,11 @@
  * clamped and re-normalised here, and the person still reviews every number in
  * Create before anything is signed. Trades are always decided by the vault's rules.
  */
-import { assetById, earnVersionOf, type EarnId } from "./assets";
-import { onlyNumbersFrom } from "./text-guard";
-import { slice, type Slice } from "./mix";
-import type { Guardrails } from "./store";
-import type { Yields } from "./yields";
+import { assetById, earnVersionOf, type EarnId } from "@/lib/assets";
+import { onlyNumbersFrom } from "@/lib/ai/text-guard";
+import { slice, type Slice } from "@/lib/mix";
+import type { Guardrails } from "@/lib/store";
+import type { Yields } from "@/lib/market/yields";
 
 /** Runs in NEAR AI's attested TEEs and supports end-to-end encryption (checked 2026-11-03). */
 export const PLANNER_MODEL = "z-ai/glm-5.3-flash";

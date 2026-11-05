@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { runOnce } from "kite-worker";
-import { allowedVaults, safeEqual } from "@/lib/server-guards";
+import { allowedVaults, safeEqual } from "@/lib/server/guards";
 
 /**
  * Daily check for every vault in KITE_VAULTS (comma-separated).

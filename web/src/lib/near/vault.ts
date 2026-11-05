@@ -26,7 +26,7 @@ const yocto = (near: string) => {
 };
 const TGAS = 10n ** 12n;
 
-export function toContractPlan(mix: Slice[]): ContractTarget[] {
+function toContractPlan(mix: Slice[]): ContractTarget[] {
   return mix.map((s) => {
     const a = assetById(s.id);
     if (!a.live || !a.intentsId) throw new Error(`${a.name} can't be held yet`);
@@ -85,7 +85,7 @@ const provider = new JsonRpcProvider({ url: NEAR.rpc });
 const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
   provider.callFunction({ contractId, method, args }) as Promise<T>;
 
-export type VaultStatus = {
+type VaultStatus = {
   owner: string;
   agent: string | null;
   paused: boolean;

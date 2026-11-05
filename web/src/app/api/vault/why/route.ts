@@ -1,4 +1,4 @@
-import { isKiteVault } from "@/lib/server-guards";
+import { isKiteVault } from "@/lib/server/guards";
 
 const RPC = "https://rpc.mainnet.near.org";
 const ARCHIVAL = "https://archival-rpc.mainnet.near.org";

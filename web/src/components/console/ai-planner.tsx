@@ -12,12 +12,12 @@ import { useEffect, useState } from "react";
 import { Logo } from "@/components/logo";
 import { assetById, earnVersionOf } from "@/lib/assets";
 import type { Slice } from "@/lib/mix";
-import { askPrivately, warmUp, type Receipt } from "@/lib/private-ai";
-import { DRAFT_SCHEMA, normalise, systemPrompt, type Draft } from "@/lib/planner";
+import { askPrivately, warmUp, type Receipt } from "@/lib/ai/private-ai";
+import { DRAFT_SCHEMA, normalise, systemPrompt, type Draft } from "@/lib/ai/planner";
 import type { Guardrails } from "@/lib/store";
-import { assetStats, allowedNumbers } from "@/lib/planner-data";
+import { assetStats, allowedNumbers } from "@/lib/ai/planner-data";
 import { useKite } from "@/lib/store";
-import { useHistory, useYields } from "@/lib/use-market";
+import { useHistory, useYields } from "@/lib/market/use-market";
 import { Icon } from "./icons";
 import { Button, StatusNote } from "./ui";
 

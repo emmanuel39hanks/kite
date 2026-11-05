@@ -4,7 +4,7 @@ import "@near-wallet-selector/modal-ui/styles.css";
 import type { WalletSelector } from "@near-wallet-selector/core";
 import type { Action } from "@near-js/transactions";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { PREVIEW_ACCOUNT } from "@/lib/preview";
+import { PREVIEW_ACCOUNT } from "@/lib/preview/engine";
 import { NEAR } from "./config";
 
 type WalletCtx = {

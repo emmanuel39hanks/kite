@@ -1,8 +1,8 @@
-import type { LogoId } from "@/components/logo";
+import type { LogoId } from "@/lib/assets";
 
 export type Slice = { id: LogoId; weight: number; color: string };
 
-export const COLORS: Partial<Record<LogoId, string>> = {
+const COLORS: Partial<Record<LogoId, string>> = {
   btc: "#F7931A",
   eth: "#627EEA",
   sol: "#9945FF",

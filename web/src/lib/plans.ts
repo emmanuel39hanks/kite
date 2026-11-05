@@ -1,4 +1,4 @@
-import type { LogoId } from "@/components/logo";
+import type { LogoId } from "@/lib/assets";
 import { slice, type Slice } from "./mix";
 
 export type PlanData = {

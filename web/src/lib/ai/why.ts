@@ -1,5 +1,5 @@
-import { assetByIntentsId } from "./assets";
-import { onlyNumbersFrom } from "./text-guard";
+import { assetByIntentsId } from "@/lib/assets";
+import { onlyNumbersFrom } from "@/lib/ai/text-guard";
 import type { WhyFacts } from "@/app/api/vault/why/route";
 
 export const WHY_SCHEMA = {

@@ -57,7 +57,7 @@ NEAR Intents has no testnet, so Kite has a **preview mode**: live prices, **real
 | Every swap amount: 1Click `/v0/quote` with `dry: true` (`web/src/app/api/preview/quote`) | The wallet: 1,000 USDC and 5 NEAR |
 | Daily price history: Kraken, CoinGecko as fallback | Back-dated swap cost: a flat 0.3%, about what live quotes show |
 | Yields: Meta Pool, Lido, Morpho, Kamino APIs | |
-| The rebalance rule: `web/src/lib/preview.ts` mirrors `worker/src/drift.ts` and the contract | |
+| The rebalance rule: `web/src/lib/preview/engine.ts` mirrors `worker/src/drift.ts` and the contract | |
 
 ---
 
@@ -83,7 +83,7 @@ While a rebalance is in flight, **Home** shows a card driven by the vault's pend
 - `FAILED`: says failed, shows a reference, and **never claims delivery or safety**; where the money is must be checked against the vault balance.
 - `INCOMPLETE_DEPOSIT`: less arrived than the quote needed; a refund follows.
 
-Code: `web/src/components/console/swap-tracker.tsx`, `web/src/lib/swap-status.ts`.
+Code: `web/src/components/console/swap-tracker.tsx`, `web/src/lib/near/swap-status.ts`.
 
 ### History, including what the robot did while you were away
 
@@ -181,7 +181,7 @@ Five features use a model on NEAR AI Cloud. They share one design rule: **the mo
 | **Explain a refund or failure** | The swap card | Status, tickers, 1Click's refund reason (treated as data) | The model's "where is the money" must match what the status implies, or the standard text is used. No digits. |
 | **"Why?" on a rebalance** | Activity | Facts read from the vault's own `rebalance_started` log on chain (`/api/vault/why`): what was sold, bought, and how far over target | Numbers in the wording must be ones from those facts, or a fixed template is used |
 
-**How the private call works** (`web/src/lib/private-ai.ts`, `@nearai/inference-sdk` in the browser):
+**How the private call works** (`web/src/lib/ai/private-ai.ts`, `@nearai/inference-sdk` in the browser):
 1. The browser verifies NEAR AI's attestation for the model.
 2. It encrypts your message to the attested model key (X25519 + XChaCha20-Poly1305).
 3. Kite's server relays the encrypted bytes (`web/src/app/api/nearai/v1/[...path]`), adds the API key, allows only Kite's model and the endpoints the SDK needs, and rate-limits visitors.
@@ -198,10 +198,12 @@ Five features use a model on NEAR AI Cloud. They share one design rule: **the mo
 ```
 contracts/vault/   Rust vault (near-sdk 5.30): plan, guardrails, signed-quote checks, settle/breaker, close
 worker/            Node worker: drift maths, 1Click client + quote signatures, runOnce, attack script
-web/               Next.js 16: landing page, /console, and API routes
-plan/              The build plan and task notes
-RESEARCH.md        Background research (some points superseded)
-DEMO_SCRIPT.md     Script for the demo video
+web/               Next.js 16 app
+  src/app/           pages and API routes
+  src/components/   landing/ (marketing page), console/ (product UI), shared logo and charts
+  src/lib/           ai/ (private AI features and the checks on their output), market/ (prices, history, yields),
+                     near/ (wallet, vault calls, swap status), preview/ (no-wallet engine),
+                     server/ (route guards, 1Click client), shared assets, plans, mix, store
 ```
 
 | Task | Command |

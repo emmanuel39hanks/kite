@@ -2,7 +2,7 @@
 
 import { Logo } from "@/components/logo";
 import { ASSETS, price as fmtPrice } from "@/lib/assets";
-import { useMarket } from "@/lib/use-market";
+import { useMarket } from "@/lib/market/use-market";
 import { Change } from "./ui";
 
 /** Live price ticker: NEAR Intents prices, CoinGecko 24h change. Pauses on hover. */

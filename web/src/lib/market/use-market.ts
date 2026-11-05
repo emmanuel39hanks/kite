@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ASSETS } from "./assets";
-import type { History, Market, Quote } from "./market";
-import type { Slice } from "./mix";
-import type { Yields } from "./yields";
+import { ASSETS } from "@/lib/assets";
+import type { History, Market, Quote } from "@/lib/market/market";
+import type { Slice } from "@/lib/mix";
+import type { Yields } from "@/lib/market/yields";
 
 const FALLBACK: Market = {
   quotes: Object.fromEntries(ASSETS.filter((a) => a.live).map((a) => [a.id, { price: a.price, change24h: null }])),

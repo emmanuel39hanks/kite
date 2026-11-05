@@ -1,7 +1,7 @@
 import { Account, JsonRpcProvider, actions, teraToGas, type KeyPairString } from "near-api-js";
 import type { Limits, Target } from "./drift.js";
 
-export const RPC = process.env.NEAR_RPC ?? "https://rpc.mainnet.fastnear.com";
+const RPC = process.env.NEAR_RPC ?? "https://rpc.mainnet.fastnear.com";
 export const INTENTS = process.env.INTENTS_CONTRACT ?? "intents.near";
 
 export const provider = new JsonRpcProvider({ url: RPC });

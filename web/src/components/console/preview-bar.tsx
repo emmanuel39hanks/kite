@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { useWallet } from "@/lib/near/wallet";
-import { usePreviewActions } from "@/lib/preview-actions";
+import { usePreviewActions } from "@/lib/preview/actions";
 
 /** A thin strip on every console page while preview mode is on. */
 export function PreviewBar() {

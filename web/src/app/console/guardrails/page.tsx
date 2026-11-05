@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/console/icons";
 import { Badge, Button, Card, PageTitle, Slider, StatusNote, Switch } from "@/components/console/ui";
-import { GUARD_BOUNDS } from "@/lib/guard-bounds";
+import { GUARD_BOUNDS } from "@/lib/ai/guard-bounds";
 import { AiRules } from "@/components/console/ai-rules";
 import { accountUrl, NEAR } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";

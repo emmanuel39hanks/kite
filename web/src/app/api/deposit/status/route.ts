@@ -1,4 +1,4 @@
-import { ONECLICK } from "@/lib/oneclick";
+import { ONECLICK } from "@/lib/server/oneclick";
 
 /** GET ?address=… → 1Click swap status (PENDING_DEPOSIT, PROCESSING, SUCCESS, REFUNDED, FAILED…). */
 export async function GET(req: Request) {

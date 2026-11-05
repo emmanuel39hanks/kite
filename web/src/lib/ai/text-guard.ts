@@ -12,7 +12,7 @@ const NUMBER_WORDS =
 export const hasNumber = (s: string) => /\p{Nd}/u.test(normalise(s)) || NUMBER_WORDS.test(normalise(s));
 
 /** The numbers written in the text, as tokens ("6.2", "6,2", "44"). A comma or dot inside a number stays part of it. */
-export const numbersIn = (s: string) => normalise(s).match(/\d+(?:[.,]\d+)*/g) ?? [];
+const numbersIn = (s: string) => normalise(s).match(/\d+(?:[.,]\d+)*/g) ?? [];
 
 /** True if every number in the text is in the allowed set. */
 export const onlyNumbersFrom = (s: string, allowed: Set<string>) => numbersIn(s).every((n) => allowed.has(n));

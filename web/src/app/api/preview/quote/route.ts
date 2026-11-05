@@ -1,6 +1,6 @@
 import { ASSETS } from "@/lib/assets";
 import { SOURCES } from "@/lib/near/sources";
-import { ONECLICK } from "@/lib/oneclick";
+import { ONECLICK } from "@/lib/server/oneclick";
 
 const PREVIEW_VAULT = "kite.preview.near";
 const KNOWN = new Set([...ASSETS.map((a) => a.intentsId).filter(Boolean), ...Object.values(SOURCES).map((s) => s.asset)]);

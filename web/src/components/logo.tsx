@@ -1,21 +1,7 @@
 import Image from "next/image";
 
-export type LogoId =
-  | "btc"
-  | "eth"
-  | "sol"
-  | "near"
-  | "usdc"
-  | "xaut"
-  | "base"
-  | "arbitrum"
-  | "nvidia"
-  | "apple"
-  | "tesla"
-  | "stnear"
-  | "wsteth"
-  | "gtusdc"
-  | "ksol";
+import type { LogoId } from "@/lib/assets";
+
 
 const NAMES: Record<LogoId, string> = {
   btc: "Bitcoin",

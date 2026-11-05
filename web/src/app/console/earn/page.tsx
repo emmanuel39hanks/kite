@@ -5,7 +5,7 @@ import { Icon } from "@/components/console/icons";
 import { Logo } from "@/components/logo";
 import { ASSETS, assetById, usd, type EarnId } from "@/lib/assets";
 import { useKite } from "@/lib/store";
-import { useMarket, useYields } from "@/lib/use-market";
+import { useMarket, useYields } from "@/lib/market/use-market";
 
 /** What can go wrong, per earning asset. Plain and specific. */
 const RISKS: Record<EarnId, string[]> = {

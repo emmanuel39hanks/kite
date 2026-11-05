@@ -7,12 +7,13 @@ import { AiPlanner } from "@/components/console/ai-planner";
 import { Icon } from "@/components/console/icons";
 import { Badge, Button, Card, Change, Slider, Switch } from "@/components/console/ui";
 import { ValueChart } from "@/components/console/value-chart";
-import { Logo, type LogoId } from "@/components/logo";
+import { Logo } from "@/components/logo";
+import type { LogoId } from "@/lib/assets";
 import { ASSETS, assetById, baseOf, earnVersionOf, usd, price as fmtPrice } from "@/lib/assets";
 import { slice, type Slice } from "@/lib/mix";
 import { PLAN_DATA } from "@/lib/plans";
 import { DEFAULT_GUARDRAILS, useKite, type Guardrails } from "@/lib/store";
-import { backtest, useHistory, useMarket, useYields } from "@/lib/use-market";
+import { backtest, useHistory, useMarket, useYields } from "@/lib/market/use-market";
 
 const STEPS = ["Pick what to hold", "Choose how much", "Set the rules", "Name and review"] as const;
 

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { Button, StatusNote } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
-import { cleanProposal, GUARD_BOUNDS, GUARD_KEYS, GUARD_SCHEMA, guardPrompt, type GuardProposal } from "@/lib/guard-bounds";
-import { askPrivately, warmUp, type Receipt } from "@/lib/private-ai";
+import { cleanProposal, GUARD_BOUNDS, GUARD_KEYS, GUARD_SCHEMA, guardPrompt, type GuardProposal } from "@/lib/ai/guard-bounds";
+import { askPrivately, warmUp, type Receipt } from "@/lib/ai/private-ai";
 import type { Guardrails } from "@/lib/store";
 
 const LABEL: Record<keyof Guardrails, string> = { driftBand: "When Kite steps in", maxTradePct: "Biggest single trade", slippageBps: "Worst price accepted", tradesPerDay: "Trades per day" };

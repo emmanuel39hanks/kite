@@ -1,9 +1,9 @@
-import { hasNumber } from "./text-guard";
-import type { History } from "./market";
-import type { Slice } from "./mix";
-import type { Guardrails } from "./store";
-import { earnVersionOf } from "./assets";
-import type { Yields } from "./yields";
+import { hasNumber } from "@/lib/ai/text-guard";
+import type { History } from "@/lib/market/market";
+import type { Slice } from "@/lib/mix";
+import type { Guardrails } from "@/lib/store";
+import { earnVersionOf } from "@/lib/assets";
+import type { Yields } from "@/lib/market/yields";
 
 const CRYPTO = new Set(["btc", "eth", "sol", "near", "stnear", "wsteth", "ksol"]);
 const SAFE = new Set(["usdc", "xaut", "gtusdc"]);
@@ -103,7 +103,7 @@ export function reviewStats(h: History, plan: Slice[], currentWeights: Record<st
 }
 
 /** The statements the model may talk about, each tied to one number computed above. */
-export const STAT_KEYS = ["plan_return", "hold_return", "volatility", "max_drawdown", "top_asset", "crypto_share", "drift_now", "rebalances", "yearly_cost", "earn_yield"] as const;
+const STAT_KEYS = ["plan_return", "hold_return", "volatility", "max_drawdown", "top_asset", "crypto_share", "drift_now", "rebalances", "yearly_cost", "earn_yield"] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
 
 export function statValue(s: ReviewStats, k: StatKey): string {

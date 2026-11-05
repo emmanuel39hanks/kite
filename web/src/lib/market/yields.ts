@@ -1,7 +1,7 @@
 import { cacheLife } from "next/cache";
-import type { EarnId } from "./assets";
+import type { EarnId } from "@/lib/assets";
 
-export type Yield = { apy: number; source: string; url: string };
+type Yield = { apy: number; source: string; url: string };
 export type Yields = Partial<Record<EarnId, Yield>>;
 
 const get = async (url: string, init?: RequestInit) => {

@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { Badge, Button, Card, StatusNote } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
 import { assetById } from "@/lib/assets";
-import { askPrivately, warmUp, type Receipt } from "@/lib/private-ai";
-import { cleanReview, reviewPrompt, REVIEW_SCHEMA, reviewStats, statValue, SUGGESTIONS, type ReviewStats } from "@/lib/review";
+import { askPrivately, warmUp, type Receipt } from "@/lib/ai/private-ai";
+import { cleanReview, reviewPrompt, REVIEW_SCHEMA, reviewStats, statValue, SUGGESTIONS, type ReviewStats } from "@/lib/ai/review";
 import type { Portfolio } from "@/lib/store";
 import { useKite } from "@/lib/store";
-import { useHistory, useYields } from "@/lib/use-market";
+import { useHistory, useYields } from "@/lib/market/use-market";
 
 type Result = { stats: ReviewStats; verdict: "ok" | "watch" | "change"; bullets: { stat: Parameters<typeof statValue>[1]; text: string }[]; suggestion: string; receipt: Receipt };
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Logo, logoName } from "./logo";
-import { Donut, MixBar } from "./charts";
+import { Logo, logoName } from "@/components/logo";
+import { Donut, MixBar } from "@/components/charts";
 import { PLAN_DATA, type PlanData } from "@/lib/plans";
 
 type Plan = PlanData & { art: ReactNode };

@@ -1,4 +1,5 @@
-import { Logo, type LogoId } from "./logo";
+import { Logo } from "@/components/logo";
+import type { LogoId } from "@/lib/assets";
 
 const INK = "#0B0B0F";
 const NO = "#E5484D";

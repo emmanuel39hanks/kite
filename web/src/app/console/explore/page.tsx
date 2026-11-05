@@ -8,7 +8,7 @@ import { ValueChart } from "@/components/console/value-chart";
 import { Logo } from "@/components/logo";
 import { ASSETS, price as fmtPrice } from "@/lib/assets";
 import { PLAN_DATA } from "@/lib/plans";
-import { backtest, useHistory, useMarket } from "@/lib/use-market";
+import { backtest, useHistory, useMarket } from "@/lib/market/use-market";
 
 export default function ExplorePage() {
   const h = useHistory(365);

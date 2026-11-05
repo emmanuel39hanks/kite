@@ -1,4 +1,4 @@
-import { getLivePrices } from "@/lib/oneclick";
+import { getLivePrices } from "@/lib/server/oneclick";
 
 /** GET /api/prices → live USD prices for Kite's assets from NEAR Intents. */
 export async function GET() {

@@ -1,7 +1,7 @@
 import { assetByIntentsId } from "@/lib/assets";
 import { NEAR } from "@/lib/near/config";
-import { ONECLICK } from "@/lib/oneclick";
-import { clientIp, isKiteVault, limited } from "@/lib/server-guards";
+import { ONECLICK } from "@/lib/server/oneclick";
+import { clientIp, isKiteVault, limited } from "@/lib/server/guards";
 
 /**
  * POST { vault, usdc (base units), plan: [{ token, target_bps }] }

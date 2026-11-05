@@ -7,7 +7,8 @@ import { ConnectGate } from "@/components/console/connect-gate";
 import { Icon } from "@/components/console/icons";
 import { Badge, Button, Card, StatusNote } from "@/components/console/ui";
 import { Wordmark } from "@/components/kite-mark";
-import { Logo, type LogoId } from "@/components/logo";
+import { Logo } from "@/components/logo";
+import type { LogoId } from "@/lib/assets";
 import { assetById, usd } from "@/lib/assets";
 import type { Slice } from "@/lib/mix";
 import { planBySlug } from "@/lib/plans";
@@ -17,9 +18,9 @@ import { SOURCES as CHAIN_SOURCES } from "@/lib/near/sources";
 import { usdcBalance } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
 import { useKite } from "@/lib/store";
-import { useMarket } from "@/lib/use-market";
+import { useMarket } from "@/lib/market/use-market";
 import { PreviewBar } from "@/components/console/preview-bar";
-import { dryQuote, usePreview, type DryQuote } from "@/lib/preview";
+import { dryQuote, usePreview, type DryQuote } from "@/lib/preview/engine";
 
 type Step = "vault" | "money" | "live";
 const STEPS: { id: Step; label: string }[] = [

@@ -1,13 +1,14 @@
 import { Donut, MixBar } from "@/components/charts";
-import { Logo, logoName, type LogoId } from "@/components/logo";
-import { SiteNav } from "@/components/site-nav";
+import { Logo, logoName } from "@/components/logo";
+import type { LogoId } from "@/lib/assets";
+import { SiteNav } from "@/components/landing/site-nav";
 import { Wordmark } from "@/components/kite-mark";
-import { SkyVideo } from "@/components/sky-video";
+import { SkyVideo } from "@/components/landing/sky-video";
 import { slice } from "@/lib/mix";
-import { Plans } from "@/components/plans";
-import { Safety } from "@/components/safety";
+import { Plans } from "@/components/landing/plans";
+import { Safety } from "@/components/landing/safety";
 import { ASSETS, type EarnId } from "@/lib/assets";
-import { getYields } from "@/lib/yields";
+import { getYields } from "@/lib/market/yields";
 
 export default function Home() {
   return (

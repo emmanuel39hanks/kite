@@ -1,10 +1,10 @@
 import { cacheLife } from "next/cache";
-import { ASSETS } from "./assets";
-import { getLivePrices } from "./oneclick";
-import { getYields } from "./yields";
+import { ASSETS } from "@/lib/assets";
+import { getLivePrices } from "@/lib/server/oneclick";
+import { getYields } from "@/lib/market/yields";
 
 /** CoinGecko ids, as listed by NEAR Intents 1Click /tokens (coingeckoId). */
-export const GECKO: Record<string, string> = {
+const GECKO: Record<string, string> = {
   btc: "bitcoin",
   eth: "ethereum",
   sol: "solana",

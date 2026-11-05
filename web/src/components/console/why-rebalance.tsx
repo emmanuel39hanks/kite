@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import type { WhyFacts } from "@/app/api/vault/why/route";
-import { askPrivately, type Receipt } from "@/lib/private-ai";
-import { cleanWhy, whyInput, whyPrompt, WHY_SCHEMA, whyTemplate, type WhyInput } from "@/lib/why";
+import { askPrivately, type Receipt } from "@/lib/ai/private-ai";
+import { cleanWhy, whyInput, whyPrompt, WHY_SCHEMA, whyTemplate, type WhyInput } from "@/lib/ai/why";
 
 type Saved = { text: string; fromModel: boolean; input: WhyInput; receipt: Receipt | null; at: number };
 const KEY = (hash: string) => `kite-why:${hash}`;

@@ -1,6 +1,6 @@
 import { connection } from "next/server";
-import { PLANNER_MODEL } from "@/lib/planner";
-import { clientIp, limited } from "@/lib/server-guards";
+import { PLANNER_MODEL } from "@/lib/ai/planner";
+import { clientIp, limited } from "@/lib/server/guards";
 
 /**
  * A thin relay to NEAR AI Cloud for the private plan builder.

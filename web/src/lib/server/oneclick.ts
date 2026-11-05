@@ -1,5 +1,5 @@
 import { cacheLife } from "next/cache";
-import { ASSETS } from "./assets";
+import { ASSETS } from "@/lib/assets";
 
 export const ONECLICK = "https://1click.chaindefuser.com/v0";
 

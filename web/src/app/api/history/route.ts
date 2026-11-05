@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { getHistory } from "@/lib/market";
+import { getHistory } from "@/lib/market/market";
 
 const ALLOWED = [7, 30, 90, 365];
 

@@ -1,6 +1,21 @@
-import type { LogoId } from "@/components/logo";
+export type LogoId =
+  | "btc"
+  | "eth"
+  | "sol"
+  | "near"
+  | "usdc"
+  | "xaut"
+  | "base"
+  | "arbitrum"
+  | "nvidia"
+  | "apple"
+  | "tesla"
+  | "stnear"
+  | "wsteth"
+  | "gtusdc"
+  | "ksol";
 
-export type AssetKind = "Crypto" | "Stock" | "Gold" | "Digital dollar";
+type AssetKind = "Crypto" | "Stock" | "Gold" | "Digital dollar";
 
 export type Asset = {
   id: LogoId;
@@ -70,4 +85,3 @@ export const units = (n: number) =>
 /** A unit price for people. Tokens worth fractions of a cent (gtUSDCp) are shown per million. */
 export const price = (p: number, digits?: number) => (p > 0 && p < 0.01 ? `${usd(p * 1e6)} per 1M` : usd(p, digits ?? (p < 10 ? 3 : 2)));
 
-export const pct = (n: number, digits = 2) => `${n > 0 ? "+" : ""}${n.toFixed(digits)}%`;

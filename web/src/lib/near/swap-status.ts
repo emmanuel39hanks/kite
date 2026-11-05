@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 /** 1Click's swap statuses (docs.near-intents.org → Check swap execution status). */
-export type SwapState = "KNOWN_DEPOSIT_TX" | "PENDING_DEPOSIT" | "INCOMPLETE_DEPOSIT" | "PROCESSING" | "SUCCESS" | "REFUNDED" | "FAILED";
+type SwapState = "KNOWN_DEPOSIT_TX" | "PENDING_DEPOSIT" | "INCOMPLETE_DEPOSIT" | "PROCESSING" | "SUCCESS" | "REFUNDED" | "FAILED";
 
 type Tx = { hash: string; explorerUrl: string };
 export type SwapStatus = {
@@ -21,7 +21,7 @@ export type SwapStatus = {
   correlationId?: string;
 };
 
-export const isTerminal = (s: SwapStatus["status"]) => s === "SUCCESS" || s === "REFUNDED" || s === "FAILED";
+const isTerminal = (s: SwapStatus["status"]) => s === "SUCCESS" || s === "REFUNDED" || s === "FAILED";
 
 /** Where the money is, in plain words, for each status. */
 export function describe(s: SwapStatus["status"]): { step: 1 | 2 | 3; tone: "blue" | "green" | "red" | "amber"; label: string; where: string } {

@@ -1,5 +1,5 @@
 import { assetByIntentsId } from "@/lib/assets";
-import { isKiteVault } from "@/lib/server-guards";
+import { isKiteVault } from "@/lib/server/guards";
 
 const NEARBLOCKS = "https://api.nearblocks.io/v1";
 

@@ -1,4 +1,4 @@
-import type { History } from "./market";
+import type { History } from "@/lib/market/market";
 
 export type AssetStats = { ret30: number; ret90: number; volYear: number; maxDrawdown: number; corrBtc: number };
 

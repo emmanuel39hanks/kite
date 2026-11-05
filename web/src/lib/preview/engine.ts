@@ -11,10 +11,10 @@
  */
 
 import { useEffect, useState } from "react";
-import { assetById } from "./assets";
-import type { History } from "./market";
-import type { Slice } from "./mix";
-import type { Guardrails } from "./store";
+import { assetById } from "@/lib/assets";
+import type { History } from "@/lib/market/market";
+import type { Slice } from "@/lib/mix";
+import type { Guardrails } from "@/lib/store";
 
 export const PREVIEW_ACCOUNT = "you.preview";
 export const PREVIEW_VAULT = `kite.${PREVIEW_ACCOUNT}`;
@@ -22,7 +22,7 @@ const KEY = "kite-preview:v1";
 const EVENT = "kite-preview";
 
 /** Swap cost assumed when replaying the past: 1Click's 0.2% app fee plus ~0.1% spread, as seen in live quotes. */
-export const REPLAY_COST = 0.003;
+const REPLAY_COST = 0.003;
 
 export type PreviewVault = {
   createdAt: number;
@@ -134,7 +134,7 @@ export async function quoteSwap(sell: string, buy: string, units: number) {
 
 /* ───────────── The rebalance rule (mirrors worker/src/drift.ts and the contract) ───────────── */
 
-export type Row = { id: string; target: number; units: number; price: number; value: number; weight: number; drift: number };
+type Row = { id: string; target: number; units: number; price: number; value: number; weight: number; drift: number };
 
 export function rowsOf(plan: Slice[], balances: Record<string, number>, price: (id: string) => number) {
   const rows: Row[] = plan.map((s) => {

@@ -11,7 +11,7 @@ import { Logo } from "@/components/logo";
 import { assetById, price as fmtPrice } from "@/lib/assets";
 import { planBySlug } from "@/lib/plans";
 import { useKite } from "@/lib/store";
-import { backtest, useHistory, useMarket } from "@/lib/use-market";
+import { backtest, useHistory, useMarket } from "@/lib/market/use-market";
 
 const RANGES = ["1M", "3M", "1Y"] as const;
 type Range = (typeof RANGES)[number];

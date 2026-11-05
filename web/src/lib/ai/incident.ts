@@ -1,10 +1,10 @@
-import { hasNumber } from "./text-guard";
-import type { SwapStatus } from "./swap-status";
+import { hasNumber } from "@/lib/ai/text-guard";
+import type { SwapStatus } from "@/lib/near/swap-status";
 
-export type WhereMoney = "vault" | "swap_address" | "unknown";
+type WhereMoney = "vault" | "swap_address" | "unknown";
 
 /** Where the money is, decided by code from the status. The model's answer must agree with this. */
-export const expectedWhere = (s: SwapStatus["status"]): WhereMoney => (s === "REFUNDED" ? "vault" : s === "INCOMPLETE_DEPOSIT" ? "swap_address" : "unknown");
+const expectedWhere = (s: SwapStatus["status"]): WhereMoney => (s === "REFUNDED" ? "vault" : s === "INCOMPLETE_DEPOSIT" ? "swap_address" : "unknown");
 
 export const INCIDENT_SCHEMA = {
   name: "kite_incident",

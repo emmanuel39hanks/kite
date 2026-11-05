@@ -11,10 +11,10 @@ import { assetById, units as fmtUnits, usd } from "@/lib/assets";
 import { accountUrl } from "@/lib/near/config";
 import { nearBalance, usdcBalance } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
-import { usePreview } from "@/lib/preview";
-import type { LogoId } from "@/components/logo";
+import { usePreview } from "@/lib/preview/engine";
+import type { LogoId } from "@/lib/assets";
 import { useKite } from "@/lib/store";
-import { holdingsValue, useHistory, useMarket } from "@/lib/use-market";
+import { holdingsValue, useHistory, useMarket } from "@/lib/market/use-market";
 
 const RANGES = ["1W", "1M", "1Y"] as const;
 type Range = (typeof RANGES)[number];

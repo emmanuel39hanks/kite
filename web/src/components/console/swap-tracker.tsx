@@ -5,10 +5,10 @@ import { Icon } from "@/components/console/icons";
 import { Logo } from "@/components/logo";
 import { assetByIntentsId } from "@/lib/assets";
 import { txUrl } from "@/lib/near/config";
-import { cleanIncident, INCIDENT_SCHEMA, incidentPrompt } from "@/lib/incident";
-import { askPrivately } from "@/lib/private-ai";
-import { safeHttps } from "@/lib/text-guard";
-import { describe, useSwapStatus } from "@/lib/swap-status";
+import { cleanIncident, INCIDENT_SCHEMA, incidentPrompt } from "@/lib/ai/incident";
+import { askPrivately } from "@/lib/ai/private-ai";
+import { safeHttps } from "@/lib/ai/text-guard";
+import { describe, useSwapStatus } from "@/lib/near/swap-status";
 import { useState } from "react";
 
 const STEPS = ["Left your vault", "Being swapped", "Back in your vault"];

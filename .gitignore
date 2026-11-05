@@ -8,3 +8,6 @@ worker/dist
 web/out
 *.tsbuildinfo
 .vercel
+
+# Local working notes (not part of the repository)
+DEMO_SCRIPT.md

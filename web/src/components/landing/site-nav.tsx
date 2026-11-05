@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Wordmark } from "./kite-mark";
+import { Wordmark } from "@/components/kite-mark";
 
 const LINKS = [
   { href: "#how", label: "How it works" },

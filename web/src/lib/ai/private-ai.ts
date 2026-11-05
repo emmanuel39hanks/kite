@@ -5,7 +5,7 @@
  * Verify the model's attestation, encrypt the message to it, get a signed answer, check the signature.
  * The SDK throws if any step fails, so a returned receipt means every step passed.
  */
-import { PLANNER_MODEL } from "./planner";
+import { PLANNER_MODEL } from "@/lib/ai/planner";
 
 export type Stage = "verify" | "ask" | "sign";
 export type Receipt = { model: string; completionId: string; signatureKind: "provider_tee" | "gateway"; modelReports: number; verifiedAt: number };

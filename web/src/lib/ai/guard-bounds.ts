@@ -1,5 +1,5 @@
-import { hasNumber } from "./text-guard";
-import type { Guardrails } from "./store";
+import { hasNumber } from "@/lib/ai/text-guard";
+import type { Guardrails } from "@/lib/store";
 
 /**
  * The ranges the app allows for each rule. All sit inside what the vault contract accepts

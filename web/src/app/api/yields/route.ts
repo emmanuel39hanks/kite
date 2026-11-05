@@ -1,4 +1,4 @@
-import { getYields } from "@/lib/yields";
+import { getYields } from "@/lib/market/yields";
 
 /** GET /api/yields → live APY per earning asset, from Meta Pool, Lido, Morpho and Kamino. */
 export async function GET() {

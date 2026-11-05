@@ -5,9 +5,9 @@
  * results, nothing signed. Swaps are priced by real 1Click dry quotes.
  */
 import { useCallback } from "react";
-import { assetById, units, usd } from "./assets";
-import type { History, Market } from "./market";
-import type { Slice } from "./mix";
+import { assetById, units, usd } from "@/lib/assets";
+import type { History, Market } from "@/lib/market/market";
+import type { Slice } from "@/lib/mix";
 import {
   applySwap,
   dryQuote,
@@ -24,9 +24,9 @@ import {
   updatePreview,
   type DryQuote,
   type PreviewVault,
-} from "./preview";
-import { NEAR } from "./near/config";
-import { useKite, type Guardrails } from "./store";
+} from "@/lib/preview/engine";
+import { NEAR } from "@/lib/near/config";
+import { useKite, type Guardrails } from "@/lib/store";
 
 const sim = { sim: true } as const;
 const VAULT_COST = Number(NEAR.vaultStorageNear) + 0.01;
