@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { verifyAllocation } from "./allocate-check";
+import { verifyAllocation, verifyDeposit } from "./allocate-check";
 
 const USDC = "nep141:usdc";
 const BTC = "nep141:btc";
@@ -67,4 +67,21 @@ test("refuses a loose slippage, a wrong swap type, or a referral", async () => {
 
 test("nothing to invest gives a plain message, not a quote error", async () => {
   await assert.rejects(run([]), /nothing to invest/);
+});
+
+const dep = (o: Record<string, unknown> = {}) =>
+  stored({ depositType: "ORIGIN_CHAIN", originAsset: "nep141:btc", destinationAsset: USDC, refundTo: "alex.near", amount: "5000", ...o }) as never;
+const runDep = (o: Record<string, unknown> = {}) =>
+  verifyDeposit({ address: "cccccccc33", vault, owner: "alex.near", sourceAsset: "nep141:btc", usdcToken: USDC, amount: "5000", fetchStatus: async () => dep(o) });
+
+test("a cross-chain deposit address that pays this vault and refunds this owner passes", async () => {
+  await runDep();
+});
+
+test("a deposit address that pays or refunds someone else is not shown", async () => {
+  await assert.rejects(runDep({ recipient: "thief.near" }), /didn't check out/);
+  await assert.rejects(runDep({ refundTo: "thief.near" }));
+  await assert.rejects(runDep({ destinationAsset: "nep141:other" }));
+  await assert.rejects(runDep({ amount: "9" }));
+  await assert.rejects(runDep({ appFees: [{ recipient: "thief", fee: 20 }] }));
 });

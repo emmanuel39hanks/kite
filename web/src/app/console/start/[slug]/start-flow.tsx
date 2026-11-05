@@ -14,6 +14,7 @@ import type { Slice } from "@/lib/mix";
 import { planBySlug } from "@/lib/plans";
 import { liveAvailable, NEAR, txUrl } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";
+import { verifyDeposit } from "@/lib/near/allocate-check";
 import { SOURCES as CHAIN_SOURCES } from "@/lib/near/sources";
 import { usdcBalance } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
@@ -388,6 +389,8 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
       const r = await fetch("/api/deposit/quote", { method: "POST", body: JSON.stringify({ source: src.id, amount: base.toString(), vault: live.vault, owner: k.account }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Couldn't get a deposit address. Try a larger amount.");
+      // This send can't be undone, so check the address with NEAR Intents itself before showing it.
+      await verifyDeposit({ address: String(d.depositAddress), vault: live.vault, owner: k.account!, sourceAsset: c.asset, usdcToken: NEAR.usdc, amount: base.toString() });
       setQuote(d);
     });
 

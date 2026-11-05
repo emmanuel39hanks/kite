@@ -1,5 +1,5 @@
 import { runOnce } from "kite-worker";
-import { clientIp, isKiteVault, limited } from "@/lib/server/guards";
+import { clientIp, crossSite, refuseCrossSite, isKiteVault, limited } from "@/lib/server/guards";
 
 /**
  * POST { vault } → what Kite would do for this vault right now: real balances and a real quote, nothing sent.
@@ -7,6 +7,7 @@ import { clientIp, isKiteVault, limited } from "@/lib/server/guards";
  * rebalances come only from the daily cron (which needs CRON_SECRET) or the worker CLI.
  */
 export async function POST(req: Request) {
+  if (crossSite(req)) return refuseCrossSite();
   if (limited(`check:${clientIp(req)}`, 20, 10 * 60_000)) return Response.json({ error: "Too many checks. Try again in a few minutes." }, { status: 429 });
   let vault: unknown;
   try {

@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { PLANNER_MODEL } from "@/lib/ai/planner";
-import { clientIp, limited } from "@/lib/server/guards";
+import { clientIp, crossSite, limited, refuseCrossSite } from "@/lib/server/guards";
 
 /**
  * A thin relay to NEAR AI Cloud for the private plan builder.
@@ -52,6 +52,7 @@ function topLevelKeys(text: string): string[] | null {
 
 async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   await connection();
+  if (req.method === "POST" && crossSite(req)) return refuseCrossSite();
   const key = process.env.NEARAI_API_KEY;
   if (!key) return Response.json({ error: "The private plan builder isn't configured on this deployment (NEARAI_API_KEY)." }, { status: 503 });
   const { path } = await ctx.params;

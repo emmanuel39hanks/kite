@@ -31,4 +31,18 @@ export function limited(key: string, max: number, windowMs: number) {
   return recent.length > max;
 }
 
+/** True for a browser request that comes from another website. A page on any site can fire a POST at ours from each of its visitors, each with their own IP, so a per-IP limit alone does not stop it. */
+export function crossSite(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return false; // not a browser form/fetch; the per-IP limit still applies
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? new URL(req.url).host;
+  try {
+    return new URL(origin).host !== host;
+  } catch {
+    return true;
+  }
+}
+
+export const refuseCrossSite = () => Response.json({ error: "Cross-site request refused" }, { status: 403 });
+
 export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";

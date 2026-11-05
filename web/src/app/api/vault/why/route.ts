@@ -1,4 +1,4 @@
-import { isKiteVault } from "@/lib/server/guards";
+import { clientIp, isKiteVault, limited } from "@/lib/server/guards";
 
 const RPC = "https://rpc.mainnet.near.org";
 const ARCHIVAL = "https://archival-rpc.mainnet.near.org";
@@ -11,6 +11,7 @@ export async function GET(req: Request) {
   const vault = q.get("vault") ?? "";
   const hash = q.get("hash") ?? "";
   if (!isKiteVault(vault) || !/^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(hash)) return Response.json({ error: "bad request" }, { status: 400 });
+  if (limited(`why:${clientIp(req)}`, 30, 10 * 60_000)) return Response.json({ error: "Too many requests" }, { status: 429 });
   const ask = async (url: string) => {
     const r = await fetch(url, {
       method: "POST",

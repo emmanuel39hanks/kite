@@ -108,8 +108,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const outcome = await wallet.signAndSendTransaction({ receiverId, actions });
     const hash = (outcome as { transaction?: { hash?: string } } | void)?.transaction?.hash;
     if (!hash) throw new Error("The wallet didn't return a transaction");
-    const failure = (outcome as { status?: { Failure?: unknown } }).status?.Failure;
+    const o = outcome as { status?: { Failure?: unknown }; receipts_outcome?: { outcome?: { status?: { Failure?: unknown } } }[] };
+    const failure = o.status?.Failure;
     if (failure) throw new Error(`Transaction failed: ${JSON.stringify(failure).slice(0, 200)}`);
+    // The first receipt can succeed while a later step (a transfer out of NEAR Intents, say) fails. Don't call that done.
+    const later = (o.receipts_outcome ?? []).find((r) => r.outcome?.status?.Failure)?.outcome?.status?.Failure;
+    if (later) throw new Error(`Part of the transaction failed, so check your vault before trying again: ${JSON.stringify(later).slice(0, 200)}`);
     return hash;
   }, []);
   const send = useCallback<WalletCtx["send"]>(

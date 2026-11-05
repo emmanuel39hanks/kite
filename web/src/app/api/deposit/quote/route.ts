@@ -1,7 +1,7 @@
 import { NEAR } from "@/lib/near/config";
 import { ONECLICK } from "@/lib/server/oneclick";
 import { SOURCES } from "@/lib/near/sources";
-import { clientIp, isKiteVault, isNearAccount, limited } from "@/lib/server/guards";
+import { clientIp, crossSite, refuseCrossSite, isKiteVault, isNearAccount, limited } from "@/lib/server/guards";
 
 /**
  * POST { source, amount (in source base units), vault, owner }
@@ -9,6 +9,7 @@ import { clientIp, isKiteVault, isNearAccount, limited } from "@/lib/server/guar
  * credited to the vault inside NEAR Intents; refunds go to the owner's Intents account.
  */
 export async function POST(req: Request) {
+  if (crossSite(req)) return refuseCrossSite();
   if (limited(`dep:${clientIp(req)}`, 15, 10 * 60_000)) return Response.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
   let b: Record<string, unknown>;
   try {
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   if (!b || typeof b !== "object") return Response.json({ error: "Bad request" }, { status: 400 });
   const { source, amount, vault, owner } = b as { source: string; amount: string; vault: string; owner: string };
   const src = typeof source === "string" && Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
-  if (!src || typeof amount !== "string" || !/^\d{1,30}$/.test(amount) || !isKiteVault(vault) || !isNearAccount(owner)) {
+  if (!src || typeof amount !== "string" || !/^\d{1,30}$/.test(amount) || !isKiteVault(vault) || !isNearAccount(owner) || vault !== `kite.${owner}`) {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
   const body = {

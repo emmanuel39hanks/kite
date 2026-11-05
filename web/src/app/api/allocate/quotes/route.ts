@@ -1,7 +1,7 @@
 import { assetByIntentsId } from "@/lib/assets";
 import { NEAR } from "@/lib/near/config";
 import { ONECLICK } from "@/lib/server/oneclick";
-import { clientIp, isKiteVault, limited } from "@/lib/server/guards";
+import { clientIp, crossSite, refuseCrossSite, isKiteVault, limited } from "@/lib/server/guards";
 
 /**
  * POST { vault, usdc (base units), plan: [{ token, target_bps }] }
@@ -9,6 +9,7 @@ import { clientIp, isKiteVault, limited } from "@/lib/server/guards";
  * The console then asks the owner to sign `vault.allocate` with these deposit addresses.
  */
 export async function POST(req: Request) {
+  if (crossSite(req)) return refuseCrossSite();
   if (limited(`alloc:${clientIp(req)}`, 10, 10 * 60_000)) return Response.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
   let body: { vault?: unknown; usdc?: unknown; plan?: unknown };
   try {

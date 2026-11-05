@@ -65,3 +65,47 @@ export async function verifyAllocation(opts: {
     }),
   );
 }
+
+/**
+ * The same independent check for a cross-chain deposit address, before it is shown as "send your coins here".
+ * That send can't be undone, so the address must be a 1Click swap that pays this vault and refunds this owner.
+ */
+export async function verifyDeposit(opts: {
+  address: string;
+  vault: string;
+  owner: string;
+  sourceAsset: string;
+  usdcToken: string;
+  amount: string;
+  fetchStatus?: (address: string) => Promise<Stored>;
+}) {
+  const { address, vault, owner, sourceAsset, usdcToken, amount } = opts;
+  const get =
+    opts.fetchStatus ??
+    (async (a: string) => {
+      for (let i = 0; i < 4; i++) {
+        const r = await fetch(`${STATUS}?depositAddress=${encodeURIComponent(a)}`, { cache: "no-store" });
+        if (r.ok) return (await r.json()) as Stored;
+        if (i < 3) await new Promise((res) => setTimeout(res, 1500));
+      }
+      throw new Error("unknown deposit address");
+    });
+  const bad = (why: string): never => {
+    throw new Error(`The deposit address didn't check out (${why}), so it isn't shown. Nothing was sent. Try again in a moment.`);
+  };
+  let q: Record<string, unknown> | undefined;
+  try {
+    q = (await get(address)).quoteResponse?.quoteRequest;
+  } catch {
+    return bad("NEAR Intents doesn't know it");
+  }
+  if (!q) return bad("no stored request");
+  const ok =
+    q.recipient === vault && q.recipientType === "INTENTS" && q.refundTo === owner && q.refundType === "INTENTS" && q.depositType === "ORIGIN_CHAIN" &&
+    q.originAsset === sourceAsset && q.destinationAsset === usdcToken && q.amount === amount && q.dry === false && q.swapType === "EXACT_INPUT" &&
+    typeof q.slippageTolerance === "number" && q.slippageTolerance <= MAX_SLIPPAGE_BPS;
+  if (!ok) return bad("not a swap into your vault");
+  for (const k of ["referral", "customRecipientMsg", "virtualChainRecipient", "virtualChainRefundRecipient"]) if (q[k]) return bad("unexpected field");
+  const fees = Array.isArray(q.appFees) ? (q.appFees as { recipient?: string; fee?: number }[]) : [];
+  if (fees.some((f) => f.recipient !== ONECLICK_FEE_RECIPIENT || !(typeof f.fee === "number" && f.fee <= MAX_FEE_BPS))) return bad("unexpected fee");
+}

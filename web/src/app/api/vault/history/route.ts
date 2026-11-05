@@ -1,5 +1,5 @@
 import { assetByIntentsId } from "@/lib/assets";
-import { isKiteVault } from "@/lib/server/guards";
+import { clientIp, isKiteVault, limited } from "@/lib/server/guards";
 
 const NEARBLOCKS = "https://api.nearblocks.io/v1";
 
@@ -14,6 +14,7 @@ export type ChainEvent = {
 
 type Tx = {
   transaction_hash: string;
+  predecessor_account_id?: string;
   block_timestamp: string;
   receiver_account_id: string;
   outcomes?: { status?: boolean };
@@ -26,6 +27,7 @@ const num = (base: string, decimals: number) => Number(base) / 10 ** decimals;
 export async function GET(req: Request) {
   const vault = new URL(req.url).searchParams.get("vault") ?? "";
   if (!isKiteVault(vault)) return Response.json({ error: "bad vault" }, { status: 400 });
+  if (limited(`hist:${clientIp(req)}`, 60, 10 * 60_000)) return Response.json({ error: "Too many requests" }, { status: 429 });
   try {
     const r = await fetch(`${NEARBLOCKS}/account/${vault}/txns?per_page=100&order=desc`, { next: { revalidate: 20 } });
     if (!r.ok) return Response.json({ error: "NearBlocks unavailable" }, { status: 502 });
@@ -36,7 +38,8 @@ export async function GET(req: Request) {
     const seen = new Set<string>();
     const out: ChainEvent[] = [];
     for (const t of txns) {
-      if (t.receiver_account_id !== vault || seen.has(t.transaction_hash)) continue;
+      // Kite's key signs as the vault itself, so a call from anyone else is a stranger poking the vault, not Kite.
+      if (t.receiver_account_id !== vault || t.predecessor_account_id !== vault || seen.has(t.transaction_hash)) continue;
       const a = t.actions?.find((x) => x.action === "FUNCTION_CALL" && (x.method === "rebalance" || x.method === "settle"));
       if (!a) continue;
       const ev: ChainEvent = { hash: t.transaction_hash, at: Math.floor(Number(t.block_timestamp) / 1e6), method: a.method as "rebalance" | "settle", ok: !failed.has(t.transaction_hash) };
