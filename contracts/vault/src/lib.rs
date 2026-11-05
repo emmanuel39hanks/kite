@@ -214,7 +214,7 @@ pub struct QuoteTerms {
 trait SelfCallbacks {
     fn on_rebalance_balances(&mut self, terms: QuoteTerms, prices: Vec<Price>) -> bool;
     fn on_rebalance_sent(&mut self) -> bool;
-    fn on_settle_balances(&mut self) -> String;
+    fn on_settle_balances(&mut self, started_ns: u64, confirmed: bool) -> String;
     fn on_close_balances(&mut self) -> Promise;
 }
 
@@ -487,17 +487,31 @@ impl Vault {
 
     /// Anyone may call: confirms a pending swap, or trips the breaker if it fell short in time.
     pub fn settle(&mut self) -> Promise {
-        require!(self.pending.is_some(), ERR_NO_PENDING);
+        // Remember which swap this is and whether its transfer out was already confirmed. Only a balance
+        // read sent after that confirmation can see the transfer, so only such a read may judge the swap.
+        let (started_ns, confirmed) = match &self.pending {
+            Some(p) => (p.started_ns, p.sent),
+            None => env::panic_str(ERR_NO_PENDING),
+        };
         ext_intents::ext(self.intents.clone())
             .with_static_gas(GAS_VIEW)
             .mt_batch_balance_of(env::current_account_id(), self.tokens())
-            .then(ext_self::ext(env::current_account_id()).with_static_gas(GAS_CALLBACK).on_settle_balances())
+            .then(ext_self::ext(env::current_account_id()).with_static_gas(GAS_CALLBACK).on_settle_balances(started_ns, confirmed))
     }
 
     #[private]
-    pub fn on_settle_balances(&mut self, #[callback_result] balances: Result<Vec<U128>, PromiseError>) -> String {
+    pub fn on_settle_balances(
+        &mut self,
+        started_ns: u64,
+        confirmed: bool,
+        #[callback_result] balances: Result<Vec<U128>, PromiseError>,
+    ) -> String {
         let balances: Vec<u128> = balances.unwrap_or_else(|_| env::panic_str(ERR_BALANCES)).into_iter().map(|b| b.0).collect();
-        self.settle_with(&balances, env::block_timestamp()).to_string()
+        // A different swap than the one this read was for: say nothing about it.
+        if self.pending.as_ref().map(|p| p.started_ns) != Some(started_ns) {
+            return "waiting".to_string();
+        }
+        self.settle_inner(&balances, env::block_timestamp(), confirmed).to_string()
     }
 
     /* ───────────── views ───────────── */
@@ -718,6 +732,12 @@ impl Vault {
 
     /// Settlement given fresh balances. Returns "settled", "refunded", "breaker" or "waiting".
     pub fn settle_with(&mut self, balances: &[u128], now_ns: u64) -> &'static str {
+        let sent = self.pending.as_ref().is_some_and(|p| p.sent);
+        self.settle_inner(balances, now_ns, sent)
+    }
+
+    /// `confirmed`: the transfer out was confirmed before these balances were read.
+    fn settle_inner(&mut self, balances: &[u128], now_ns: u64, confirmed: bool) -> &'static str {
         let p = match self.pending.clone() {
             Some(p) => p,
             None => return "none",
@@ -726,7 +746,7 @@ impl Vault {
         // window the transfer has landed or failed either way, so judge it normally: an unconfirmed
         // swap must never block the vault forever.
         let late = now_ns.saturating_sub(p.started_ns) > self.limits.settle_window_secs * NS_PER_SEC;
-        if !p.sent && !late {
+        if !confirmed && !late {
             return "waiting";
         }
         let pos = |token: &str| self.plan.iter().position(|t| t.token == token);

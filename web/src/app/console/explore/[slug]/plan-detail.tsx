@@ -38,7 +38,7 @@ export function PlanDetail({ slug }: { slug: string }) {
     <>
       <div className="flex flex-wrap items-end justify-between gap-5 pt-8 pb-7 sm:pt-10">
         <div>
-          <Link href="/console/explore" className="mb-4 inline-flex items-center gap-1.5 text-[14px] text-[#909090] hover:text-black">
+          <Link href="/console/explore" className="mb-4 inline-flex items-center gap-1.5 text-[14px] text-[#6b6b6b] hover:text-black">
             <Icon name="arrow-left" size={16} /> Explore
           </Link>
           <div className="flex items-center gap-4">
@@ -49,7 +49,7 @@ export function PlanDetail({ slug }: { slug: string }) {
             </div>
             <h1 className="text-[30px] leading-9 tracking-[-0.05em]">{plan.name}</h1>
           </div>
-          <p className="mt-2 text-[16px] text-[#909090]">{plan.who}</p>
+          <p className="mt-2 text-[16px] text-[#6b6b6b]">{plan.who}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
           <Button onClick={customise} icon="create">
@@ -81,14 +81,14 @@ export function PlanDetail({ slug }: { slug: string }) {
         <Card className="flex min-h-[340px] flex-col overflow-hidden pt-6">
           <div className="flex flex-wrap items-start justify-between gap-4 px-6">
             <div>
-              <div className="text-[16px] tracking-[-0.02em] text-[#909090]">$1,000 in this plan, rebalanced daily</div>
+              <div className="text-[16px] tracking-[-0.02em] text-[#6b6b6b]">$1,000 in this plan, rebalanced daily</div>
               {plan.comingSoon ? (
                 <div className="text-[48px] leading-[56px] tracking-[-0.04em] text-black/25">–</div>
               ) : (
                 <Money value={end} className="text-[48px] leading-[56px] tracking-[-0.04em]" />
               )}
               <div className="text-[14px]">
-                <Change value={change} /> <span className="text-[#909090]">past {range === "1Y" ? "year" : range === "3M" ? "3 months" : "month"}</span>
+                <Change value={change} /> <span className="text-[#6b6b6b]">past {range === "1Y" ? "year" : range === "3M" ? "3 months" : "month"}</span>
               </div>
             </div>
             <Segmented options={RANGES} value={range} onChange={setRange} label="Chart range" />
@@ -108,14 +108,14 @@ export function PlanDetail({ slug }: { slug: string }) {
             <Row label="Swap cost" value="About 0.3–0.7%" />
             <Row label="Withdraw" value="Any time, only you" />
           </dl>
-          <p className="p-4 text-[14px] leading-5 text-[#909090]">{plan.goodFor}</p>
+          <p className="p-4 text-[14px] leading-5 text-[#6b6b6b]">{plan.goodFor}</p>
         </Card>
       </div>
 
       <Card className="mt-3 overflow-hidden">
         <div className="p-5 pb-4">
           <h2 className="text-[22px] tracking-[-0.05em]">What&apos;s inside, and why</h2>
-          <p className="mt-1 max-w-[62ch] text-[15px] text-[#909090]">{plan.idea}</p>
+          <p className="mt-1 max-w-[62ch] text-[15px] text-[#6b6b6b]">{plan.idea}</p>
           <MixBar slices={plan.mix} className="mt-4 h-2" />
         </div>
         <ul className="divide-y divide-black/[0.05] bg-white">
@@ -128,10 +128,10 @@ export function PlanDetail({ slug }: { slug: string }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[16px] tracking-[-0.02em]">{a.name}</span>
-                    <span className="text-[13px] text-[#909090]">{a.ticker}</span>
+                    <span className="text-[13px] text-[#6b6b6b]">{a.ticker}</span>
                     {!a.live && <Badge>Coming soon</Badge>}
                   </div>
-                  <p className="text-[14px] text-[#909090]">{plan.why[s.id]}</p>
+                  <p className="text-[14px] text-[#6b6b6b]">{plan.why[s.id]}</p>
                 </div>
                 {a.live && (
                   <div className="hidden text-right sm:block">
@@ -152,7 +152,7 @@ export function PlanDetail({ slug }: { slug: string }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-black/[0.05] py-3.5 text-[15px] last:border-0">
-      <dt className="text-[#909090]">{label}</dt>
+      <dt className="text-[#6b6b6b]">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

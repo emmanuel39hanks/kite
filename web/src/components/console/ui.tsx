@@ -171,7 +171,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, s
           role="radio"
           aria-checked={o === value}
           onClick={() => onChange(o)}
-          className={`relative z-10 inline-flex cursor-pointer items-center justify-center rounded-lg tracking-[-0.02em] transition-colors ${h} ${o === value ? "text-black" : "text-[#909090] hover:text-black/70"}`}
+          className={`relative z-10 inline-flex cursor-pointer items-center justify-center rounded-lg tracking-[-0.02em] transition-colors ${h} ${o === value ? "text-black" : "text-[#6b6b6b] hover:text-black/70"}`}
         >
           {o}
         </button>
@@ -235,7 +235,7 @@ export function Empty({ title, text, action }: { title: string; text: string; ac
   return (
     <div className="px-6 py-14 text-center">
       <div className="text-[18px] leading-7">{title}</div>
-      <p className="mx-auto mt-2 max-w-[46ch] text-[14px] leading-5 text-[#909090]">{text}</p>
+      <p className="mx-auto mt-2 max-w-[46ch] text-[14px] leading-5 text-[#6b6b6b]">{text}</p>
       {action && <div className="mt-5 flex justify-center gap-2">{action}</div>}
     </div>
   );

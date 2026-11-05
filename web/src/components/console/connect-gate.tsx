@@ -18,7 +18,7 @@ export function ConnectGate({ title = "Connect your NEAR wallet", text }: { titl
             ))}
           </div>
           <h2 className="mt-6 text-[34px] leading-[1.05] tracking-[-0.05em]">{title}</h2>
-          <p className="mt-3 max-w-[46ch] text-[16px] leading-6 text-[#909090]">
+          <p className="mt-3 max-w-[46ch] text-[16px] leading-6 text-[#6b6b6b]">
             {text ?? "Your Kite vault lives on your own NEAR account. Connect to see your portfolio, or to create your vault in one signature."}
           </p>
           <div className="mt-7 flex flex-wrap gap-2.5">
@@ -29,7 +29,7 @@ export function ConnectGate({ title = "Connect your NEAR wallet", text }: { titl
               Try the preview
             </Button>
           </div>
-          <p className="mt-4 text-[13px] leading-5 text-[#909090]">
+          <p className="mt-4 text-[13px] leading-5 text-[#6b6b6b]">
             HOT, Meteor, Intear, Sender, Nightly and OKX are supported. No wallet? The preview runs the whole flow with live prices and real NEAR Intents quotes, and never signs anything.
           </p>
         </div>
@@ -45,7 +45,7 @@ export function ConnectGate({ title = "Connect your NEAR wallet", text }: { titl
               </span>
               <div>
                 <div className="text-[14px] font-medium">{t}</div>
-                <p className="text-[13px] leading-5 text-[#909090]">{d}</p>
+                <p className="text-[13px] leading-5 text-[#6b6b6b]">{d}</p>
               </div>
             </li>
           ))}

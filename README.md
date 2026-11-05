@@ -17,13 +17,13 @@ Each row: do this, see that.
 | Do this | You should see |
 |---|---|
 | `sh scripts/setup.sh` | Installs the worker, then the web app (the web app links the worker package, so the order matters). Run this once from a fresh clone. |
-| `cd contracts/vault && cargo test` | **71 tests pass**, including **34 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
-| `npm test --prefix worker` | **9 tests pass** (drift maths, the real 1Click signature, and reading the vault's answer to each call) |
+| `cd contracts/vault && cargo test` | **73 tests pass**, including **35 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
+| `npm test --prefix worker` | **10 tests pass** (drift maths, the real 1Click signature, reading the vault's answer to each call, and the gas check) |
 | `npm test --prefix web` | **33 tests pass**: the checks on model output (Unicode-safe number guard, clamped rules, template fallbacks), the pre-signing check on swap addresses (every field on its own), and the preview engine's rebalance rule |
 | `npm run dev --prefix web`, open http://localhost:3000/console?preview=1 | The full app with a simulated vault, live prices and **real 1Click quotes** (`dry: true`). No wallet, nothing signed. Walkthrough below. |
 | `cd worker && npm run attack -- --vault kite.<owner>.near` | Real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan are sent to the vault's free `check_quote` view. **Every one is refused.** (Needs a created vault.) |
 | `npm run typecheck --prefix web && npm run lint --prefix web && npm run build --prefix web` | Clean type check, no lint warnings, production build |
-| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `eb567036b96fbd61…`, the contract the app deploys (230,766 bytes) |
+| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `d9e6ac162d6dc6d8…`, the contract the app deploys (233,280 bytes) |
 
 **What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests (`cargo test` needs no wasm target); to rebuild the wasm also `rustup target add wasm32-unknown-unknown` and `cargo-near`. The preview and every command above need **no environment variables and no funds**. The public "check now" route is always a dry run; real rebalances come from the daily cron (needs `CRON_SECRET` and `KITE_AGENT_KEY`) or the worker CLI. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's worker key, so the preview is the judge path.
 
@@ -31,7 +31,7 @@ Each row: do this, see that.
 
 | | Status |
 |---|---|
-| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 71 tests pass. |
+| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 73 tests pass. |
 | Worker and web app | Built and deployed at usekite.xyz. |
 | Preview mode with real quotes | Works. Simulated vault, real prices and quotes. |
 | **First end-to-end run on NEAR mainnet with real funds** | **Not done yet.** Transaction links will go in this README once it is. |
@@ -138,19 +138,20 @@ We played an attacker who stole Kite's key and tried everything we could think o
 | Burn the daily trade count with dust trades | Your vault (nothing under $1) | `ERR_TOO_SMALL` |
 | Ask for a quote that needs a deposit memo, so the swap never starts | Your vault | `ERR_QUOTE_TERMS` |
 | Call `settle` before the money has left, so the vault forgets the swap | Your vault (a swap is judged only once the transfer to 1Click is confirmed, or the settle window has passed) | `settle` answers `waiting` |
+| Time a `settle` so its balance read misses the transfer out, making the swap look refunded | Your vault (only a read sent after the transfer was confirmed may judge the swap) | `settle` answers `waiting` |
 | Sell so much that a holding overshoots its target | Your vault (a trade may not pass the target by more than the band) | `ERR_TOO_BIG` |
 | Keep trading after a swap goes missing | `settle` trips a breaker after the settle window, pausing the vault | `ERR_PAUSED` |
 
 **Run the attacks yourself:**
-- **Contract tests:** `cd contracts/vault && cargo test attack_` runs the 34 attack tests (71 tests in total). Each new check was also confirmed by deleting it from the code and watching a named test fail.
+- **Contract tests:** `cd contracts/vault && cargo test attack_` runs the 35 attack tests (73 tests in total). Each new check was also confirmed by deleting it from the code and watching a named test fail.
 - **Against a live vault, free:** `cd worker && npm run attack -- --vault kite.<owner>.near`.
 - **As real transactions:** add `--send` with the agent key. Each refusal gets a transaction hash. Add `--out file.md` to save the transcript.
 
-**Threat model:** a fully compromised worker still can't move money anywhere except a 1Click swap that pays your vault. It can still make trades you didn't need, inside your guardrails and rate limits. The worst case is swap costs, and it has a number: each trade can lose at most your price limit (default 1%) of the amount traded (default at most 10% of the portfolio), but the vault checks two things, the quote's output value and its guaranteed minimum, so a fill at the minimum can cost close to twice that. At the defaults that is up to about 0.2% of the portfolio per trade and at most 4 trades a day, so **up to about 0.8% a day**, until you revoke Kite's key or pause the vault. A simulated thief with a lying third price could not loop trades indefinitely: the no-overshoot rule stops it after a few.
+**Threat model:** a fully compromised worker still can't move money anywhere except a 1Click swap that pays your vault. It can still make trades you didn't need, inside your guardrails and rate limits. The worst case is swap costs, and it has a number: each trade can lose at most your price limit (default 1%) of the amount traded (default at most 10% of the portfolio), but the vault checks two things, the quote's output value and its guaranteed minimum, so a fill at the minimum can cost close to twice that. At the defaults that is up to about 0.2% of the portfolio per trade and at most 4 trades a day, so **up to about 0.8% a day**, until you revoke Kite's key or pause the vault. We chose not to add a separate daily loss cap: this bound already follows from the limits you set, and tightening those (band, trade size, price limit, trades a day) tightens it. A simulated thief with a lying third price could not loop trades indefinitely: the no-overshoot rule stops it after a few.
 
 **Defaults:** a holding must drift 5 points before Kite acts, one trade moves at most 10% of the portfolio, a swap may cost at most 1% fees included, at most 4 trades a day (the four-hour gap between trades allows at most 6), and a swap that hasn't landed after 30 minutes pauses the vault. You can change all of these.
 
-**Gaps we found and closed:** (1) the first version took the deposit address and reference prices from the worker. Writing the attack suite showed a stolen key could have pointed one trade at itself; verifying 1Click's signature on-chain closed it. (2) Review found the vault ignored referral and redirect fields in the signed quote; they are now refused. (3) A zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account; both are fixed. (4) Trades under $1 are refused, so dust can't burn the daily trade count. (5) `settle` called before the transfer out landed could clear a pending swap; the vault now waits for the transfer, and judges the swap anyway once the settle window ends, so it can never be stuck.
+**Gaps we found and closed:** (1) the first version took the deposit address and reference prices from the worker. Writing the attack suite showed a stolen key could have pointed one trade at itself; verifying 1Click's signature on-chain closed it. (2) Review found the vault ignored referral and redirect fields in the signed quote; they are now refused. (3) A zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account; both are fixed. (4) Trades under $1 are refused, so dust can't burn the daily trade count. (5) `settle` called before the transfer out landed could clear a pending swap; the vault now waits for the transfer, and judges the swap anyway once the settle window ends, so it can never be stuck. (6) A `settle` whose balance read was sent before the transfer was confirmed could see stale balances and call the swap refunded; such a read is now ignored.
 
 ---
 
@@ -239,7 +240,7 @@ web/               Next.js 16 app
 - **Vercel project settings:** Root Directory `web`, with "Include source files outside of the Root Directory" turned on (the build installs the linked `worker` package; `web/vercel.json` sets the install command). The cron is `0 0 * * *` (daily, which fits the Hobby plan; timing can drift by up to an hour).
 - **Production environment:** `NEXT_PUBLIC_KITE_AGENT_PK` (required to create a real vault: without it only the preview works), `KITE_AGENT_KEY`, `CRON_SECRET`, `KITE_VAULTS`, `NEARAI_API_KEY`. A paid `NEAR_RPC` and a `ONECLICK_JWT` are recommended. The full list is in the table above and in `web/.env.example`.
 - **Failures are loud:** `/api/cron` logs one JSON line per vault (`cron: vault` or `vault-failed`) and answers 500 if any vault failed.
-- **Before real money:** run one small vault end to end on mainnet and record the transactions here; generate a dedicated worker key; confirm the allowance behaviour above; get an external audit.
+- **Before real money:** run one small vault end to end on mainnet and record the transactions here; generate a dedicated worker key; measure the gas a real rebalance uses; get an external audit.
 
 ## Credits and notes
 

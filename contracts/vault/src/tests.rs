@@ -882,3 +882,53 @@ fn close_checks_extra_tokens_once() {
 
 /// 1Click's signature on the quote in `verifies_a_real_1click_signature`.
 const REAL_SIG: &str = "ed25519:7XRRcve6kEgqHdKGWZ5QwXNmk7bn2vmNeFoMdfipTauyTu8spkDwM5SgM9u4WfEYJqDNaHt6RAEnhGgSQRGuvZB";
+
+/// A balance read that was sent before the transfer out was confirmed may land after it is.
+/// That read can't see the transfer, so it must not judge the swap (it would look like a refund).
+#[test]
+fn attack_a28_stale_balance_read_cannot_settle() {
+    let mut v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let t = terms(&v, &good());
+    let _ = v.on_rebalance_balances(balances_ok(), t, prices());
+    let started = v.get_status().pending.unwrap().started_ns;
+    let _ = v.on_rebalance_sent(Ok(()));
+    let stale: Vec<U128> = drifted_balances().into_iter().map(U128).collect();
+    assert_eq!(v.on_settle_balances(started, false, Ok(stale.clone())), "waiting");
+    assert!(v.get_status().pending.is_some(), "a stale read must not clear the swap");
+    // A read for some other swap says nothing either.
+    assert_eq!(v.on_settle_balances(started + 1, true, Ok(stale.clone())), "waiting");
+    assert!(v.get_status().pending.is_some());
+    // A read sent after the confirmation is judged: the same balances now mean a refund.
+    assert_eq!(v.on_settle_balances(started, true, Ok(stale)), "refunded");
+    assert!(v.get_status().pending.is_none());
+}
+
+/// settle() tells its callback whether the transfer was confirmed when the balance read was sent.
+#[test]
+fn settle_records_whether_the_transfer_was_confirmed() {
+    use near_sdk::mock::MockAction;
+    let args_of_callback = || {
+        near_sdk::test_utils::get_created_receipts()
+            .into_iter()
+            .flat_map(|r| r.actions)
+            .find_map(|a| match a {
+                MockAction::FunctionCallWeight { method_name, args, .. } if method_name == b"on_settle_balances" => {
+                    Some(String::from_utf8(args).unwrap())
+                }
+                _ => None,
+            })
+            .expect("settle schedules on_settle_balances")
+    };
+    let mut v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let t = terms(&v, &good());
+    let _ = v.on_rebalance_balances(balances_ok(), t, prices());
+    ctx(vault_id(), 0, NOW + 31);
+    let _ = v.settle();
+    assert!(args_of_callback().contains(r#""confirmed":false"#));
+    let _ = v.on_rebalance_sent(Ok(()));
+    ctx(vault_id(), 0, NOW + 32);
+    let _ = v.settle();
+    assert!(args_of_callback().contains(r#""confirmed":true"#));
+}

@@ -131,13 +131,13 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
         <div className="mt-6 rounded-2xl bg-white pt-5 shadow-[0_0_6px_rgba(0,0,0,0.02),0_2px_2px_rgba(0,0,0,0.04)]">
           <div className="flex flex-wrap items-start justify-between gap-4 px-5">
             <div>
-              <div className="text-[16px] tracking-[-0.02em] text-[#909090]">Total value</div>
+              <div className="text-[16px] tracking-[-0.02em] text-[#6b6b6b]">Total value</div>
               {walletValue === null && k.vaultFound === null ? (
                 <div className="mt-1 h-14 w-56 animate-pulse rounded-xl bg-black/[0.05]" />
               ) : (
                 <Money value={total} className="text-[44px] leading-[52px] tracking-[-0.04em]" />
               )}
-              <div className="text-[14px] text-[#909090]">
+              <div className="text-[14px] text-[#6b6b6b]">
                 Vault {usd(p?.value ?? 0)} · Wallet {walletValue === null ? "–" : usd(walletValue)}
               </div>
             </div>
@@ -146,14 +146,14 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
           {p && series.data.length ? (
             <>
               <div className="px-5 pt-1 text-[14px]">
-                <Change value={change} /> <span className="text-[#909090]">vault, past {range === "1W" ? "week" : range === "1M" ? "month" : "year"}</span>
+                <Change value={change} /> <span className="text-[#6b6b6b]">vault, past {range === "1W" ? "week" : range === "1M" ? "month" : "year"}</span>
               </div>
               <div className="mt-3">
                 <ValueChart data={series.data} dates={series.dates} height={180} />
               </div>
             </>
           ) : (
-            <div className="grid h-[200px] place-items-center px-5 text-center text-[15px] text-[#909090]">
+            <div className="grid h-[200px] place-items-center px-5 text-center text-[15px] text-[#6b6b6b]">
               {k.vaultFound === false ? "No vault yet, so there's no history to chart." : "Loading history…"}
             </div>
           )}
@@ -170,7 +170,7 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-[18px] tracking-[-0.03em]">{p.name}</div>
-                      <button type="button" onClick={() => copy(p.vault)} className="mt-0.5 flex cursor-pointer items-center gap-1.5 text-[13px] text-[#909090] hover:text-black">
+                      <button type="button" onClick={() => copy(p.vault)} className="mt-0.5 flex cursor-pointer items-center gap-1.5 text-[13px] text-[#6b6b6b] hover:text-black">
                         {p.vault} <Icon name={copied === p.vault ? "check" : "copy"} size={12} />
                       </button>
                     </div>
@@ -187,7 +187,7 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
                         <Logo id={t.id} size={32} />
                         <div className="min-w-0 flex-1 leading-tight">
                           <div className="text-[15px]">{a.name}</div>
-                          <div className="text-[13px] text-[#909090] tabular-nums">
+                          <div className="text-[13px] text-[#6b6b6b] tabular-nums">
                             {fmtUnits(units)} {a.ticker} · target {t.weight}%
                           </div>
                         </div>
@@ -208,14 +208,14 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
         <div>
           <SectionTitle actions={!preview && <Button size="sm" href={accountUrl(account)} external icon="external">NearBlocks</Button>}>Wallet</SectionTitle>
           <Card className="overflow-hidden">
-            <p className="p-5 pb-4 text-[14px] leading-5 text-[#909090]">{preview ? "The simulated wallet the preview starts you with, plus anything you withdraw from the vault." : "What's in your NEAR account itself, outside the vault."} Creating a vault takes a 2.6 NEAR deposit (you get it back when you close it) plus a little for fees.</p>
+            <p className="p-5 pb-4 text-[14px] leading-5 text-[#6b6b6b]">{preview ? "The simulated wallet the preview starts you with, plus anything you withdraw from the vault." : "What's in your NEAR account itself, outside the vault."} Creating a vault takes a 2.6 NEAR deposit (you get it back when you close it) plus a little for fees.</p>
             <ul className="divide-y divide-black/[0.05] bg-white">
               {walletRows.map(([id, amount]) => [id, assetById(id).ticker, amount] as const).map(([id, ticker, amount]) => (
                 <li key={id} className="flex items-center gap-3 px-5 py-3.5">
                   <Logo id={id} size={32} />
                   <div className="min-w-0 flex-1 leading-tight">
                     <div className="text-[15px]">{assetById(id).name}</div>
-                    <div className="text-[13px] text-[#909090] tabular-nums">{amount === undefined ? "…" : `${fmtUnits(amount)} ${ticker}`}</div>
+                    <div className="text-[13px] text-[#6b6b6b] tabular-nums">{amount === undefined ? "…" : `${fmtUnits(amount)} ${ticker}`}</div>
                   </div>
                   <div className="text-right text-[15px] tabular-nums">{amount === undefined ? "–" : usd(amount * quote(id).price)}</div>
                 </li>

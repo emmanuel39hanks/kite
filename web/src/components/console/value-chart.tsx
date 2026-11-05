@@ -89,7 +89,7 @@ export function ValueChart({
             style={{ left: `${Math.min(88, Math.max(12, (hp[0] / W) * 100))}%` }}
           >
             <div className="tabular-nums">{format(data[hover])}</div>
-            {dates?.[hover] && <div className="text-[#909090]">{new Date(dates[hover]).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>}
+            {dates?.[hover] && <div className="text-[#6b6b6b]">{new Date(dates[hover]).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>}
           </div>
         </>
       )}

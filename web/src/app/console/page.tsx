@@ -67,7 +67,7 @@ function NoVault() {
       <PageTitle actions={<Button href="/console/create" icon="create">Create a plan</Button>}>Home</PageTitle>
       <Card className="p-8 sm:p-12">
         <h2 className="text-[34px] leading-[1.05] tracking-[-0.05em]">You don&apos;t have a vault yet</h2>
-        <p className="mt-3 max-w-[52ch] text-[16px] leading-6 text-[#909090]">
+        <p className="mt-3 max-w-[52ch] text-[16px] leading-6 text-[#6b6b6b]">
           Pick a plan to start. One signature creates your vault on NEAR; then add money from any chain and Kite keeps the mix on target.
         </p>
       </Card>
@@ -92,12 +92,12 @@ function NoVault() {
                   ) : (
                     <div className="text-right">
                       <Change value={ret} className="text-[15px]" />
-                      <div className="text-[12px] text-[#909090]">past year</div>
+                      <div className="text-[12px] text-[#6b6b6b]">past year</div>
                     </div>
                   )}
                 </div>
                 <h3 className="mt-6 text-[22px] tracking-[-0.04em]">{p.name}</h3>
-                <p className="mt-1 text-[14px] text-[#909090]">{p.who}</p>
+                <p className="mt-1 text-[14px] text-[#6b6b6b]">{p.who}</p>
                 <MixBar slices={p.mix} className="mt-5 h-1.5" />
               </Card>
             </Link>
@@ -209,7 +209,7 @@ function Live({ p }: { p: Portfolio }) {
         <Card className="flex min-h-[342px] flex-col overflow-hidden pt-6">
           <div className="flex flex-wrap items-start justify-between gap-4 px-6">
             <div>
-              <div className="text-[16px] tracking-[-0.02em] text-[#909090]">Total value</div>
+              <div className="text-[16px] tracking-[-0.02em] text-[#6b6b6b]">Total value</div>
               <Money value={p.value} className="text-[48px] leading-[56px] tracking-[-0.04em]" />
               <div className="text-[14px] tracking-[-0.02em]">
                 <span className={rangeChange >= 0 ? "text-[#05a800]" : "text-rose-500"}>
@@ -217,7 +217,7 @@ function Live({ p }: { p: Portfolio }) {
                   {usd(Math.abs(rangeChange))} ({rangePct >= 0 ? "+" : ""}
                   {rangePct.toFixed(2)}%)
                 </span>{" "}
-                <span className="text-[#909090]">past {RANGE_WORD[range]}</span>
+                <span className="text-[#6b6b6b]">past {RANGE_WORD[range]}</span>
               </div>
               {pnl !== null && (
                 <div className="mt-0.5 text-[14px] tracking-[-0.02em]">
@@ -226,7 +226,7 @@ function Live({ p }: { p: Portfolio }) {
                     {usd(Math.abs(pnl))} ({pnlPct >= 0 ? "+" : ""}
                     {pnlPct.toFixed(2)}%)
                   </span>{" "}
-                  <span className="text-[#909090]">profit and loss on {usd(p.invested!)} put in</span>
+                  <span className="text-[#6b6b6b]">profit and loss on {usd(p.invested!)} put in</span>
                 </div>
               )}
             </div>
@@ -253,11 +253,11 @@ function Live({ p }: { p: Portfolio }) {
             aside={p.paused ? <Badge tone="red">Paused</Badge> : !invested ? <Badge>Not invested</Badge> : offPlan ? <Badge tone="amber">Rebalance due</Badge> : <Badge tone="green">On plan</Badge>}
           >
             <span className="text-[28px] leading-9 tracking-[-0.05em] tabular-nums">{worst.toFixed(1)}</span>
-            <span className="text-[14px] text-[#909090]"> of {k.guardrails.driftBand} pts allowed drift</span>
+            <span className="text-[14px] text-[#6b6b6b]"> of {k.guardrails.driftBand} pts allowed drift</span>
           </Stat>
           <Stat label="Next check" aside={k.keyActive ? <Badge tone="green">Kite&apos;s key on</Badge> : <Badge>Key revoked</Badge>}>
             <Countdown />
-            {live.preview && <p className="mt-1 text-[12px] leading-4 text-[#909090]">Preview has no daily job. Press Check now to run it.</p>}
+            {live.preview && <p className="mt-1 text-[12px] leading-4 text-[#6b6b6b]">Preview has no daily job. Press Check now to run it.</p>}
           </Stat>
         </div>
       </div>
@@ -276,7 +276,7 @@ function Live({ p }: { p: Portfolio }) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-[15px] tracking-[-0.02em]">
               <thead>
-                <tr className="text-left text-[14px] text-[#909090]">
+                <tr className="text-left text-[14px] text-[#6b6b6b]">
                   <th className="px-5 py-3.5 font-normal">Asset</th>
                   <th className="px-5 py-3.5 text-right font-normal">Price</th>
                   <th className="px-5 py-3.5 text-right font-normal">Holding</th>
@@ -298,7 +298,7 @@ function Live({ p }: { p: Portfolio }) {
                           <Logo id={r.id} size={32} />
                           <div className="leading-tight">
                             <div>{a.name}</div>
-                            <div className="text-[13px] text-[#909090]">
+                            <div className="text-[13px] text-[#6b6b6b]">
                               {a.ticker}
                               {a.earn && yields[r.id as keyof typeof yields] && (
                                 <span className="text-[#05a800]"> · earns {yields[r.id as keyof typeof yields]!.apy.toFixed(1)}%</span>
@@ -313,12 +313,12 @@ function Live({ p }: { p: Portfolio }) {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="tabular-nums">{usd(units * q.price)}</div>
-                        <div className="text-[13px] text-[#909090] tabular-nums">
+                        <div className="text-[13px] text-[#6b6b6b] tabular-nums">
                           {fmtUnits(units)} {a.ticker}
                         </div>
                       </td>
                       {p.cost && <ReturnCell value={units * q.price} cost={p.cost[r.id] ?? 0} />}
-                      <td className="px-5 py-4 text-right text-[#909090] tabular-nums">{r.weight}%</td>
+                      <td className="px-5 py-4 text-right text-[#6b6b6b] tabular-nums">{r.weight}%</td>
                       <td className="px-5 py-4 text-right tabular-nums">{invested ? `${r.current.toFixed(1)}%` : "–"}</td>
                       <td className="px-5 py-4">
                         <DriftMeter drift={invested ? r.drift : 0} band={k.guardrails.driftBand} />
@@ -355,7 +355,7 @@ function Live({ p }: { p: Portfolio }) {
 }
 
 function ReturnCell({ value, cost }: { value: number; cost: number }) {
-  if (cost < 0.01) return <td className="px-5 py-4 text-right text-[#909090]">–</td>;
+  if (cost < 0.01) return <td className="px-5 py-4 text-right text-[#6b6b6b]">–</td>;
   const gain = value - cost;
   return (
     <td className="px-5 py-4 text-right">
@@ -372,7 +372,7 @@ function Stat({ label, aside, children }: { label: string; aside?: React.ReactNo
   return (
     <Card className="flex min-h-[106px] flex-col justify-between gap-2 p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[16px] tracking-[-0.02em] text-[#909090]">{label}</span>
+        <span className="text-[16px] tracking-[-0.02em] text-[#6b6b6b]">{label}</span>
         {aside}
       </div>
       <div>{children}</div>
@@ -394,7 +394,7 @@ function Countdown() {
       <span className="text-[28px] leading-9 tracking-[-0.05em] tabular-nums">
         {Math.floor(mins / 60)}h {mins % 60}m
       </span>
-      <span className="text-[14px] text-[#909090]"> at 00:00 UTC</span>
+      <span className="text-[14px] text-[#6b6b6b]"> at 00:00 UTC</span>
     </>
   );
 }
@@ -456,7 +456,7 @@ function Notice({ icon, title, text, children }: { icon: IconName; title: string
       </span>
       <div className="min-w-0 flex-1">
         <h3 className="text-[15px] tracking-[-0.02em]">{title}</h3>
-        <p className="mt-0.5 text-[13px] leading-5 text-[#909090]">{text}</p>
+        <p className="mt-0.5 text-[13px] leading-5 text-[#6b6b6b]">{text}</p>
         {children && <div className="mt-3">{children}</div>}
       </div>
     </Card>
@@ -479,7 +479,7 @@ function DriftMeter({ drift, band }: { drift: number; band: number }) {
           style={{ left: `${50 + pos * 50}%` }}
         />
       </div>
-      <span className={`w-11 text-right text-[13px] tabular-nums ${over ? "text-[#8a5a00]" : "text-[#909090]"}`}>
+      <span className={`w-11 text-right text-[13px] tabular-nums ${over ? "text-[#8a5a00]" : "text-[#6b6b6b]"}`}>
         {drift > 0 ? "+" : ""}
         {drift.toFixed(1)}
       </span>

@@ -115,6 +115,28 @@ export async function readVault(vault: string): Promise<VaultState> {
   return { plan, limits, status, balances: balances.map((b) => BigInt(b)) };
 }
 
+/**
+ * NEAR Kite's key can still spend on gas, or null if unknown: the smaller of the key's allowance and the
+ * vault's NEAR not locked for storage. The worker refuses to trade under 0.05; the owner tops it up.
+ */
+export async function kiteGasLeft(vault: string): Promise<number | null> {
+  if (!NEAR.agentPublicKey) return null;
+  try {
+    const q = (r: Record<string, string>) => provider.query({ finality: "final", account_id: vault, ...r } as never) as unknown;
+    const [key, acct] = (await Promise.all([q({ request_type: "view_access_key", public_key: NEAR.agentPublicKey }), q({ request_type: "view_account" })])) as [
+      { permission?: { FunctionCall?: { allowance?: string | null } } | string },
+      { amount: string; storage_usage: number },
+    ];
+    const free = BigInt(acct.amount) - BigInt(acct.storage_usage) * 10n ** 19n;
+    let left = free > 0n ? free : 0n;
+    const allowance = typeof key.permission === "object" ? key.permission.FunctionCall?.allowance : null;
+    if (allowance != null && BigInt(allowance) < left) left = BigInt(allowance);
+    return Number(left / 10n ** 18n) / 1e6;
+  } catch {
+    return null;
+  }
+}
+
 /** Spendable NEAR on an account, in NEAR (not yocto). */
 export async function nearBalance(account: string): Promise<number> {
   try {

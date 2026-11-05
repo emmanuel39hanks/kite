@@ -21,7 +21,7 @@ export function PreviewBar() {
             <span className="h-2 w-2 rounded-full bg-[linear-gradient(#b9defe,#8cc6f6)] ring-1 ring-black/10" aria-hidden />
             Preview
           </span>
-          <span className="order-last basis-full text-[#909090] sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
+          <span className="order-last basis-full text-[#6b6b6b] sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto">
             Live prices and real NEAR Intents quotes. Your vault and wallet are simulated in this browser, and nothing is signed or sent.
           </span>
           <span className="ml-auto flex gap-3 sm:ml-0">

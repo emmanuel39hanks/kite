@@ -42,7 +42,7 @@ export default function EarnPage() {
   return (
     <>
       <PageTitle actions={<Button variant="primary" href="/console/create" icon="create">Create a plan that earns</Button>}>Earn</PageTitle>
-      <p className="-mt-4 mb-8 max-w-[64ch] text-[16px] leading-6 text-[#909090]">
+      <p className="-mt-4 mb-8 max-w-[64ch] text-[16px] leading-6 text-[#6b6b6b]">
         Hold the same thing and let it earn. Each of these is a staked or lent version of an asset you already know, with the same price moves plus a yield. They sit in
         your own vault in NEAR Intents, and Kite rebalances them like anything else.
       </p>
@@ -52,9 +52,9 @@ export default function EarnPage() {
           {earning.length ? (
             <div className="flex flex-wrap items-end justify-between gap-6">
               <div>
-                <div className="text-[16px] tracking-[-0.02em] text-[#909090]">Your vault earns</div>
+                <div className="text-[16px] tracking-[-0.02em] text-[#6b6b6b]">Your vault earns</div>
                 <div className="mt-1 text-[44px] leading-[52px] tracking-[-0.04em] tabular-nums">{usd(perYear)}</div>
-                <div className="text-[14px] text-[#909090]">
+                <div className="text-[14px] text-[#6b6b6b]">
                   a year at today&apos;s rates · about {blended.toFixed(2)}% on {usd(p.value)}
                 </div>
               </div>
@@ -64,7 +64,7 @@ export default function EarnPage() {
                     <Logo id={e.id} size={28} />
                     <div className="leading-tight">
                       <div className="text-[14px]">{assetById(e.id).name}</div>
-                      <div className="text-[12px] text-[#909090] tabular-nums">
+                      <div className="text-[12px] text-[#6b6b6b] tabular-nums">
                         {usd(e.value)} · <span className="text-[#05a800]">{e.apy.toFixed(1)}%</span>
                       </div>
                     </div>
@@ -76,7 +76,7 @@ export default function EarnPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <div className="text-[18px] tracking-[-0.03em]">Your vault isn&apos;t earning yet</div>
-                <p className="mt-1 max-w-[60ch] text-[14px] leading-5 text-[#909090]">
+                <p className="mt-1 max-w-[60ch] text-[14px] leading-5 text-[#6b6b6b]">
                   {couldEarn.length
                     ? `Your ${couldEarn.map((t) => assetById(t.id).name).join(" and ")} could earn instead of sitting still. Turn on Earn when you create a plan; switching a live vault over is next on Kite's list.`
                     : "Your plan doesn't hold NEAR, ETH, USDC or SOL, the four assets that have an earning version today."}
@@ -102,20 +102,20 @@ export default function EarnPage() {
                   <Logo id={a.id} size={44} />
                   <div className="leading-tight">
                     <div className="text-[18px] tracking-[-0.03em]">{a.name}</div>
-                    <div className="text-[13px] text-[#909090]">
+                    <div className="text-[13px] text-[#6b6b6b]">
                       Instead of {base.name} · held as {a.ticker}
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-[28px] leading-8 tracking-[-0.04em] tabular-nums text-[#05a800]">{y ? `${y.apy.toFixed(1)}%` : "–"}</div>
-                  <div className="text-[12px] text-[#909090]">a year{y ? `, ${y.source}` : ""}</div>
+                  <div className="text-[12px] text-[#6b6b6b]">a year{y ? `, ${y.source}` : ""}</div>
                 </div>
               </div>
               <p className="mt-4 text-[14px] leading-5">
                 Earns from {a.earn!.how}, through {a.earn!.issuer}.
               </p>
-              <ul className="mt-3 space-y-1.5 text-[13px] leading-5 text-[#909090]">
+              <ul className="mt-3 space-y-1.5 text-[13px] leading-5 text-[#6b6b6b]">
                 <li className="flex gap-2">
                   <Icon name="refresh" size={15} className="mt-0.5 shrink-0" />
                   Costs about 1–2% to switch in and back out, so it pays off over months. Kite&apos;s vault allows up to {(a.slippageBps ?? 100) / 100}% per swap for it.

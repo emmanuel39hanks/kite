@@ -58,7 +58,7 @@ export function VaultReview({ p }: { p: Portfolio }) {
     return (
       <Card className="p-5">
         <div className="text-[16px] tracking-[-0.02em]">Review your plan</div>
-        <p className="mt-1 text-[14px] text-[#909090]">Price history isn&apos;t available for every part of this plan yet, so there&apos;s nothing to review.</p>
+        <p className="mt-1 text-[14px] text-[#6b6b6b]">Price history isn&apos;t available for every part of this plan yet, so there&apos;s nothing to review.</p>
       </Card>
     );
 
@@ -67,7 +67,7 @@ export function VaultReview({ p }: { p: Portfolio }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[16px] tracking-[-0.02em]">Review your plan</div>
-          <p className="mt-0.5 max-w-[58ch] text-[13px] leading-5 text-[#909090]">
+          <p className="mt-0.5 max-w-[58ch] text-[13px] leading-5 text-[#6b6b6b]">
             Real numbers from the last {stats.days} days of prices, worked out here in your browser. A private model on NEAR AI explains what they mean. It sees percentages only, never your amounts or wallet.{p.target.some((t) => assetById(t.id).earn) && " For the earning parts, history is an estimate built from the plain asset."}
           </p>
         </div>

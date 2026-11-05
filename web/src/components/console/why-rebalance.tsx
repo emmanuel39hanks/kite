@@ -66,7 +66,7 @@ export function WhyRebalance({ vault, hash }: { vault: string; hash: string }) {
   return (
     <div className="mt-1.5 rounded-xl bg-[#f5f5f7] px-3 py-2 text-[13px] leading-5">
       <p>{saved.text}</p>
-      <p className="mt-1 text-[12px] text-[#909090]">
+      <p className="mt-1 text-[12px] text-[#6b6b6b]">
         Facts read from the vault&apos;s own log: {saved.input.sell} {saved.input.overByPts} pts over target.{" "}
         {saved.fromModel && saved.receipt
           ? `Worded by a private model on NEAR AI (${saved.receipt.signatureKind === "provider_tee" ? "signed by its hardware" : "signed by NEAR AI's gateway"}), checked in this browser. Signature id ${saved.receipt.completionId.slice(0, 12)}…, saved on this device. NEAR AI hasn't promised how long it can be re-checked.`

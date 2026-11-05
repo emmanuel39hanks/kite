@@ -169,14 +169,14 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
           />
         </div>
         <ul className="max-h-[50vh] overflow-y-auto p-2">
-          {results.length === 0 && <li className="px-4 py-6 text-center text-[14px] text-[#909090]">No matches.</li>}
+          {results.length === 0 && <li className="px-4 py-6 text-center text-[14px] text-[#6b6b6b]">No matches.</li>}
           {results.map((r) => (
             <li key={`${r.sub}-${r.key}`}>
               <button type="button" onClick={() => go(r.href)} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-[#f5f5f7]">
                 <Logo id={r.logo} size={30} />
                 <span className="flex-1">
                   <span className="block text-[15px]">{r.label}</span>
-                  <span className="block text-[12px] text-[#909090]">{r.sub}</span>
+                  <span className="block text-[12px] text-[#6b6b6b]">{r.sub}</span>
                 </span>
                 <Icon name="arrow-right" size={16} className="text-black/30" />
               </button>
@@ -215,7 +215,7 @@ function AccountArea() {
           <Avatar seed={w.accountId} />
           <span className="max-w-[160px] truncate text-[14px] tracking-[-0.02em]">{w.preview ? "Preview" : short}</span>
           <span className="grid h-6 w-6 place-items-center rounded-full bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
-            <Icon name="dots" size={14} className="text-[#909090]" />
+            <Icon name="dots" size={14} className="text-[#6b6b6b]" />
           </span>
         </button>
       </Menu.Trigger>
@@ -226,7 +226,7 @@ function AccountArea() {
           className="z-50 min-w-[240px] rounded-2xl bg-white p-1.5 outline-none shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] ring-1 ring-black/5"
         >
           <div className="px-3 pt-2 pb-2.5">
-            <div className="text-[12px] text-[#909090]">{w.preview ? "Previewing as" : "Signed in as"}</div>
+            <div className="text-[12px] text-[#6b6b6b]">{w.preview ? "Previewing as" : "Signed in as"}</div>
             <div className="flex items-center gap-2">
               <span className="truncate text-[14px]">{w.accountId}</span>
               {w.preview && <Badge>Simulated</Badge>}

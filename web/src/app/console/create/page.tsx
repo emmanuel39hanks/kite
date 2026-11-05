@@ -45,7 +45,7 @@ function Wizard({ initialName, initialMix, initialRules }: { initialName: string
     <div className="mx-auto max-w-[880px]">
       <div className="pt-8 pb-6 sm:pt-10">
         <h1 className="text-[30px] leading-9 tracking-[-0.05em]">Create a plan</h1>
-        <p className="mt-1 text-[16px] text-[#909090]">Four quick steps. Nothing is signed or spent until you create your vault at the end.</p>
+        <p className="mt-1 text-[16px] text-[#6b6b6b]">Four quick steps. Nothing is signed or spent until you create your vault at the end.</p>
       </div>
 
       <ol className="mb-5 grid grid-cols-4 gap-2" aria-label="Steps">
@@ -69,7 +69,7 @@ function Wizard({ initialName, initialMix, initialRules }: { initialName: string
 
       <Card className="p-2">
         <div className="rounded-2xl bg-white p-5 shadow-[0_2px_2px_rgba(0,0,0,0.04)] sm:p-7">
-          <div className="text-[13px] text-[#909090] sm:hidden">
+          <div className="text-[13px] text-[#6b6b6b] sm:hidden">
             Step {step + 1} of {STEPS.length}
           </div>
           {step === 0 && (
@@ -97,7 +97,7 @@ function Wizard({ initialName, initialMix, initialRules }: { initialName: string
             <span />
           )}
           <div className="flex items-center gap-3">
-            <span className="hidden text-[13px] text-[#909090] sm:inline">{hint(step, mix, total)}</span>
+            <span className="hidden text-[13px] text-[#6b6b6b] sm:inline">{hint(step, mix, total)}</span>
             {step < STEPS.length - 1 ? (
               <Button variant="primary" iconRight="arrow-right" onClick={() => setStep(step + 1)} disabled={!canNext}>
                 Next
@@ -132,14 +132,14 @@ function PickStep({ mix, setMix, onDraft }: { mix: Slice[]; setMix: (m: Slice[])
   return (
     <>
       <h2 className="text-[24px] tracking-[-0.04em]">What do you want to hold?</h2>
-      <p className="mt-1 text-[15px] text-[#909090]">Pick two or more. Mixing things that move differently, like Bitcoin and gold, smooths out the ride.</p>
+      <p className="mt-1 text-[15px] text-[#6b6b6b]">Pick two or more. Mixing things that move differently, like Bitcoin and gold, smooths out the ride.</p>
 
       <div className="mt-5">
         <AiPlanner onUse={onDraft} />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <span className="text-[13px] text-[#909090]">Or start from:</span>
+        <span className="text-[13px] text-[#6b6b6b]">Or start from:</span>
         {PLAN_DATA.filter((p) => !p.comingSoon).map((p) => (
           <button
             key={p.slug}
@@ -179,14 +179,14 @@ function PickStep({ mix, setMix, onDraft }: { mix: Slice[]; setMix: (m: Slice[])
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[15px] tracking-[-0.02em]">{a.name}</span>
-                  <span className="text-[12px] text-[#909090]">{a.kind}</span>
+                  <span className="text-[12px] text-[#6b6b6b]">{a.kind}</span>
                 </div>
-                <p className="truncate text-[13px] text-[#909090]">{a.blurb}</p>
+                <p className="truncate text-[13px] text-[#6b6b6b]">{a.blurb}</p>
               </div>
               {a.live ? (
                 <div className="shrink-0 text-right">
                   <div className="text-[13px] tabular-nums">{fmtPrice(q.price)}</div>
-                  <div className="text-[11px] text-[#909090]">
+                  <div className="text-[11px] text-[#6b6b6b]">
                     1y <Change value={a.id === "usdc" ? 0 : yr} className="text-[11px]" />
                   </div>
                 </div>
@@ -265,7 +265,7 @@ function AmountStep({ mix, setMix }: { mix: Slice[]; setMix: (m: Slice[]) => voi
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-[24px] tracking-[-0.04em]">How much of each?</h2>
-          <p className="mt-1 text-[15px] text-[#909090]">Drag a slider and the others adjust, so it always adds up to 100%.</p>
+          <p className="mt-1 text-[15px] text-[#6b6b6b]">Drag a slider and the others adjust, so it always adds up to 100%.</p>
         </div>
         <Button size="sm" variant="ghost" onClick={() => setMix(evenly(mix))}>
           Split evenly
@@ -294,7 +294,7 @@ function AmountStep({ mix, setMix }: { mix: Slice[]; setMix: (m: Slice[]) => voi
                     <span className="text-black">
                       Earn {y ? `${y.apy.toFixed(1)}% a year` : "a yield"}
                     </span>{" "}
-                    <span className="text-[#909090]">
+                    <span className="text-[#6b6b6b]">
                       as {earnAsset.ticker}: {earnAsset.earn!.how}, via {earnAsset.earn!.issuer}.
                     </span>
                   </div>
@@ -307,7 +307,7 @@ function AmountStep({ mix, setMix }: { mix: Slice[]; setMix: (m: Slice[]) => voi
 
       <MixBar slices={mix} className="mt-5 h-2" />
       {earning.length > 0 && (
-        <p className="mt-3 text-[13px] leading-5 text-[#909090]">
+        <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">
           <span className="text-black">About {blended.toFixed(2)}% a year from yield across the plan</span>, on top of price moves. Earning versions cost
           about 1–2% to switch in and back out, so they pay off when you hold for a few months. Yields change daily; each comes from the protocol&apos;s own API.
         </p>
@@ -315,12 +315,12 @@ function AmountStep({ mix, setMix }: { mix: Slice[]; setMix: (m: Slice[]) => voi
 
       <div className="mt-6 grid gap-3 rounded-2xl bg-[#f5f5f7] p-4 sm:grid-cols-[200px_1fr] sm:items-center">
         <div>
-          <div className="text-[13px] text-[#909090]">$1,000 in this mix a year ago</div>
+          <div className="text-[13px] text-[#6b6b6b]">$1,000 in this mix a year ago</div>
           <div className="mt-0.5 flex items-baseline gap-2">
             <span className="text-[26px] tracking-[-0.05em] tabular-nums">{series.length ? usd(series[series.length - 1], 0) : "–"}</span>
             <Change value={ret} className="text-[13px]" />
           </div>
-          <div className="mt-1 text-[12px] text-[#909090]">Worst fall along the way: {drawdown === null ? "–" : `${drawdown.toFixed(1)}%`}</div>
+          <div className="mt-1 text-[12px] text-[#6b6b6b]">Worst fall along the way: {drawdown === null ? "–" : `${drawdown.toFixed(1)}%`}</div>
         </div>
         <ValueChart data={series} dates={h?.dates} height={90} />
       </div>
@@ -355,7 +355,7 @@ function RulesStep({ rules, setRules }: { rules: Guardrails; setRules: (g: Guard
   return (
     <>
       <h2 className="text-[24px] tracking-[-0.04em]">How hands-on should Kite be?</h2>
-      <p className="mt-1 text-[15px] text-[#909090]">
+      <p className="mt-1 text-[15px] text-[#6b6b6b]">
         Prices move, so your shares drift. These rules decide when Kite swaps them back. They&apos;re written into your vault, and Kite can&apos;t change them.
       </p>
 
@@ -375,7 +375,7 @@ function RulesStep({ rules, setRules }: { rules: Guardrails; setRules: (g: Guard
               className={`cursor-pointer rounded-2xl p-4 text-left transition-[background-color,box-shadow] ${on ? "bg-white ring-2 ring-black" : "bg-[#f5f5f7] hover:bg-[#ececef]"}`}
             >
               <div className="text-[15px] tracking-[-0.02em]">{p.label}</div>
-              <p className="mt-1 text-[13px] leading-5 text-[#909090]">{p.text}</p>
+              <p className="mt-1 text-[13px] leading-5 text-[#6b6b6b]">{p.text}</p>
               <p className="mt-2 text-[12px] text-black/45">Steps in at {p.g.driftBand} pts</p>
             </button>
           );
@@ -400,7 +400,7 @@ function RulesStep({ rules, setRules }: { rules: Guardrails; setRules: (g: Guard
                 <div className="mt-2.5">
                   <Slider value={v} min={f.min} max={f.max} step={f.step} onChange={(n) => setRules({ ...rules, [f.key]: n })} label={f.label} color="#8cc6f6" />
                 </div>
-                <p className="mt-2 text-[13px] leading-5 text-[#909090]">{f.help(v)}</p>
+                <p className="mt-2 text-[13px] leading-5 text-[#6b6b6b]">{f.help(v)}</p>
               </li>
             );
           })}
@@ -419,7 +419,7 @@ function ReviewStep({ name, setName, mix, rules }: { name: string; setName: (v: 
     <>
       <h2 className="text-[24px] tracking-[-0.04em]">Name it and check it over</h2>
       <label className="mt-5 block">
-        <span className="text-[13px] text-[#909090]">Plan name</span>
+        <span className="text-[13px] text-[#6b6b6b]">Plan name</span>
         <div className="mt-1.5 rounded-2xl bg-[#f5f5f7] px-4 ring-[#5aa8f5] transition-shadow focus-within:ring-2">
           <input
             autoFocus
@@ -454,12 +454,12 @@ function ReviewStep({ name, setName, mix, rules }: { name: string; setName: (v: 
           ["Trades per day", `Up to ${rules.tradesPerDay}`],
         ].map(([l, v]) => (
           <div key={l} className="flex justify-between gap-4 py-3">
-            <dt className="text-[#909090]">{l}</dt>
+            <dt className="text-[#6b6b6b]">{l}</dt>
             <dd className="text-right">{v}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-4 text-[13px] leading-5 text-[#909090]">Next you&apos;ll see exactly what your wallet will sign to create the vault. You can change the rules later in Guardrails.</p>
+      <p className="mt-4 text-[13px] leading-5 text-[#6b6b6b]">Next you&apos;ll see exactly what your wallet will sign to create the vault. You can change the rules later in Guardrails.</p>
     </>
   );
 }

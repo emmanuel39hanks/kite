@@ -31,6 +31,30 @@ export async function readVault(vault: string) {
   return { plan, limits, status, balances: balances.map((b) => BigInt(b)) };
 }
 
+const YOCTO_PER_BYTE = 10n ** 19n;
+/** One whole rebalance (rebalance + settle) prepays 350 Tgas, about 0.035 NEAR; keep room for a few. */
+export const MIN_GAS_YOCTO = 5n * 10n ** 22n; // 0.05 NEAR
+
+/**
+ * What Kite's key can still spend on gas, in yoctoNEAR: the smaller of the key's allowance and the
+ * vault's NEAR not locked for storage. When it runs out the key stops working, so check it before trading.
+ */
+export function gasLeft(allowance: string | null | undefined, amount: bigint, storageUsage: number): bigint {
+  const free = amount - BigInt(storageUsage) * YOCTO_PER_BYTE;
+  const spare = free > 0n ? free : 0n;
+  return allowance == null ? spare : (BigInt(allowance) < spare ? BigInt(allowance) : spare);
+}
+
+export async function readGasLeft(vault: string, agentPk: string): Promise<bigint> {
+  const [key, acct] = await Promise.all([
+    provider.viewAccessKey({ accountId: vault, publicKey: agentPk }),
+    provider.viewAccount({ accountId: vault }),
+  ]);
+  const perm = key.permission as { FunctionCall?: { allowance?: string | null } } | string;
+  const allowance = typeof perm === "object" ? perm.FunctionCall?.allowance : undefined;
+  return gasLeft(allowance, BigInt(acct.amount), acct.storage_usage);
+}
+
 /** The agent signs as the vault account, with its function-call key (rebalance/settle only). */
 function agent(vault: string) {
   const key = process.env.KITE_AGENT_KEY as KeyPairString | undefined;

@@ -40,19 +40,19 @@ export default function ExplorePage() {
                   ) : (
                     <div className="text-right">
                       <Change value={ret} className="text-[18px] tracking-[-0.03em]" />
-                      <div className="text-[12px] text-[#909090]">past year</div>
+                      <div className="text-[12px] text-[#6b6b6b]">past year</div>
                     </div>
                   )}
                 </div>
                 <div className="px-5 pt-5">
                   <h3 className="text-[22px] tracking-[-0.04em]">{p.name}</h3>
-                  <p className="mt-1 text-[14px] text-[#909090]">{p.who}</p>
+                  <p className="mt-1 text-[14px] text-[#6b6b6b]">{p.who}</p>
                 </div>
                 <div className="mt-auto pt-4">
                   {p.comingSoon ? (
                     <div className="px-5 pb-5">
                       <MixBar slices={p.mix} className="h-1.5" />
-                      <p className="mt-3 text-[12px] text-[#909090]">Holds stocks, which NEAR Intents can&apos;t route yet.</p>
+                      <p className="mt-3 text-[12px] text-[#6b6b6b]">Holds stocks, which NEAR Intents can&apos;t route yet.</p>
                     </div>
                   ) : (
                     <ValueChart data={series} dates={h?.dates} height={90} />
@@ -76,9 +76,9 @@ export default function ExplorePage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[16px] tracking-[-0.02em]">{a.name}</span>
-                  <span className="text-[13px] text-[#909090]">{a.ticker}</span>
+                  <span className="text-[13px] text-[#6b6b6b]">{a.ticker}</span>
                 </div>
-                <p className="truncate text-[13px] text-[#909090]">{a.blurb}</p>
+                <p className="truncate text-[13px] text-[#6b6b6b]">{a.blurb}</p>
               </div>
               <div className="shrink-0 text-right">
                 {a.live ? (

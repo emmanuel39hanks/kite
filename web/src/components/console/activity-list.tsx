@@ -27,11 +27,11 @@ export function ActivityList({ events, compact = false, vault }: { events: Activ
             </span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[15px] tracking-[-0.02em]">{e.title}</div>
-              {e.detail && <p className={`text-[13px] leading-5 text-[#909090] ${compact ? "truncate" : ""}`}>{e.detail}</p>}
+              {e.detail && <p className={`text-[13px] leading-5 text-[#6b6b6b] ${compact ? "truncate" : ""}`}>{e.detail}</p>}
               {e.canExplain && e.tx && vault && !compact && <WhyRebalance vault={vault} hash={e.tx} />}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-0.5">
-              <span className="text-[12px] text-[#909090] tabular-nums">{when(e.at)}</span>
+              <span className="text-[12px] text-[#6b6b6b] tabular-nums">{when(e.at)}</span>
               {e.sim && !e.tx && <span className="rounded-full bg-black/[0.05] px-2 py-0.5 text-[11px] text-black/55">Preview</span>}
               {e.tx && (
                 <a href={txUrl(e.tx)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[12px] text-black/60 hover:text-black">

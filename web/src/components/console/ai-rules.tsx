@@ -90,7 +90,7 @@ export function AiRules({ current, onApply }: { current: Guardrails; onApply: (g
                 <li key={k} className="flex flex-wrap items-baseline justify-between gap-2">
                   <span>{LABEL[k]}</span>
                   <span className="tabular-nums">
-                    <span className="text-[#909090] line-through">{SHOW[k](current[k])}</span> → {SHOW[k](res.rules[k])}
+                    <span className="text-[#6b6b6b] line-through">{SHOW[k](current[k])}</span> → {SHOW[k](res.rules[k])}
                   </span>
                 </li>
               ))}
@@ -100,7 +100,7 @@ export function AiRules({ current, onApply }: { current: Guardrails; onApply: (g
           )}
           {res.explain && <p className="mt-2 text-[13px] leading-5 text-black/70">{res.explain}</p>}
           {loosened.length > 0 && <p className="mt-2 text-[13px] leading-5 text-[#8a5a00]">This loosens: {loosened.map((k) => LABEL[k].toLowerCase()).join(", ")}. Check it is what you want before saving.</p>}
-          <p className="mt-2 text-[12px] leading-5 text-[#909090]">
+          <p className="mt-2 text-[12px] leading-5 text-[#6b6b6b]">
             Kept inside the app&apos;s limits ({GUARD_BOUNDS.slippageBps.max / 100}% price limit at most, {GUARD_BOUNDS.tradesPerDay.max} trades a day at most){res.intent === "more_careful" ? "; a request to be more careful can never loosen a rule" : ""}. This only moves the sliders. Nothing is saved until you press Save.
             {res.receipt.signatureKind === "provider_tee" ? " Answered privately and signed by the model's hardware." : " Signed by NEAR AI's gateway."}
           </p>

@@ -148,7 +148,7 @@ function Message({ title, text, children }: { title: string; text: string; child
   return (
     <div className="mx-auto max-w-[520px] px-4 py-24 text-center">
       <h1 className="text-[30px] tracking-[-0.05em]">{title}</h1>
-      <p className="mt-2 text-[16px] text-[#909090]">{text}</p>
+      <p className="mt-2 text-[16px] text-[#6b6b6b]">{text}</p>
       <div className="mt-7 flex justify-center gap-2.5">{children}</div>
     </div>
   );
@@ -158,7 +158,7 @@ function Summary({ name, mix }: { name: string; mix: Slice[] }) {
   const k = useKite();
   return (
     <Card className="self-start p-6">
-      <div className="text-[14px] text-[#909090]">Your plan</div>
+      <div className="text-[14px] text-[#6b6b6b]">Your plan</div>
       <h1 className="mt-1 text-[40px] leading-[44px] tracking-[-0.05em]">{name}</h1>
       <div className="mt-6 flex items-center gap-6">
         <Donut slices={mix} size={112} thickness={8} />
@@ -167,7 +167,7 @@ function Summary({ name, mix }: { name: string; mix: Slice[] }) {
             <li key={s.id} className="flex items-center gap-3 text-[15px] tracking-[-0.02em]">
               <Logo id={s.id} size={26} />
               {assetById(s.id).name}
-              <span className="ml-auto text-[#909090] tabular-nums">{s.weight}%</span>
+              <span className="ml-auto text-[#6b6b6b] tabular-nums">{s.weight}%</span>
             </li>
           ))}
         </ul>
@@ -179,7 +179,7 @@ function Summary({ name, mix }: { name: string; mix: Slice[] }) {
           ["Withdraw", "Only you"],
         ].map(([l, v]) => (
           <div key={l} className="rounded-2xl bg-white p-3.5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
-            <div className="text-[12px] text-[#909090]">{l}</div>
+            <div className="text-[12px] text-[#6b6b6b]">{l}</div>
             <div className="mt-0.5 text-[15px] tracking-[-0.02em]">{v}</div>
           </div>
         ))}
@@ -237,7 +237,7 @@ function VaultStep({ name, mix, slug, onCreated, onDone }: { name: string; mix: 
           <Icon name="check" size={22} />
         </span>
         <h2 className="mt-4 text-[28px] tracking-[-0.05em]">Vault created</h2>
-        <p className="mt-2 text-[15px] leading-6 text-[#909090]">
+        <p className="mt-2 text-[15px] leading-6 text-[#6b6b6b]">
           {live.preview
             ? `${live.vault} is set up in this browser with your plan inside it and Kite's rebalance-only key attached. On a real account this is one signature.`
             : `${live.vault} is live on NEAR with your plan inside it and Kite's rebalance-only key attached.`}
@@ -259,7 +259,7 @@ function VaultStep({ name, mix, slug, onCreated, onDone }: { name: string; mix: 
   return (
     <Panel>
       <h2 className="text-[28px] tracking-[-0.05em]">Create your vault</h2>
-      <p className="mt-2 text-[15px] leading-6 text-[#909090]">One signature sets everything up. This is exactly what it does, before your wallet asks.</p>
+      <p className="mt-2 text-[15px] leading-6 text-[#6b6b6b]">One signature sets everything up. This is exactly what it does, before your wallet asks.</p>
 
       <ul className="mt-6 space-y-2">
         <Grant ok title={`Creates ${live.vault}`} text="A vault contract on your own account that holds your money. Only you can withdraw." />
@@ -274,11 +274,11 @@ function VaultStep({ name, mix, slug, onCreated, onDone }: { name: string; mix: 
 
       <div className="mt-6 rounded-2xl bg-[#f5f5f7] px-4 py-3.5 text-[14px]">
         <div className="flex justify-between gap-4">
-          <span className="text-[#909090]">Vault deposit, returned when you close it</span>
+          <span className="text-[#6b6b6b]">Vault deposit, returned when you close it</span>
           <span>{NEAR.vaultStorageNear} NEAR</span>
         </div>
         <div className="mt-1.5 flex justify-between gap-4">
-          <span className="text-[#909090]">Network fee</span>
+          <span className="text-[#6b6b6b]">Network fee</span>
           <span>about 0.01 NEAR</span>
         </div>
       </div>
@@ -286,7 +286,7 @@ function VaultStep({ name, mix, slug, onCreated, onDone }: { name: string; mix: 
       <Button variant="primary" size="lg" onClick={sign} disabled={!ready} loading={busy} className="mt-6 w-full">
         {busy ? (live.preview ? "Creating…" : "Waiting for your wallet…") : live.preview ? "Create vault (preview)" : "Create vault"}
       </Button>
-      {live.preview && <p className="mt-3 text-[13px] leading-5 text-[#909090]">Preview: nothing is signed. The simulated wallet pays the deposit and fee, and gets the deposit back if you close the vault.</p>}
+      {live.preview && <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">Preview: nothing is signed. The simulated wallet pays the deposit and fee, and gets the deposit back if you close the vault.</p>}
       {!ready && !live.preview && <p className="mt-3 text-[13px] text-[#8a5a00]">This deployment has no agent key configured (NEXT_PUBLIC_KITE_AGENT_PK), so vaults can&apos;t be created yet.</p>}
       <ErrorNote text={error} />
     </Panel>
@@ -301,7 +301,7 @@ function Grant({ ok = false, title, text }: { ok?: boolean; title: string; text:
       </span>
       <div>
         <div className="text-[15px] tracking-[-0.02em]">{title}</div>
-        <p className="text-[14px] leading-5 text-[#909090]">{text}</p>
+        <p className="text-[14px] leading-5 text-[#6b6b6b]">{text}</p>
       </div>
     </li>
   );
@@ -426,14 +426,14 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
           <Icon name="check" size={22} />
         </span>
         <h2 className="mt-4 text-[28px] tracking-[-0.05em]">Put it to work</h2>
-        <p className="mt-2 text-[15px] leading-6 text-[#909090]">Your money is in the vault as USDC. One signature splits it across your plan through NEAR Intents.</p>
+        <p className="mt-2 text-[15px] leading-6 text-[#6b6b6b]">Your money is in the vault as USDC. One signature splits it across your plan through NEAR Intents.</p>
         <Button variant="primary" size="lg" onClick={invest} loading={busy} className="mt-6 w-full">
           {busy ? (live.preview ? "Getting quotes…" : "Waiting for your wallet…") : live.preview ? "Invest at today's real quotes" : "Invest into my plan"}
         </Button>
         {live.preview && (
           <div className="mt-5 rounded-2xl bg-[#f5f5f7] p-4">
             <div className="text-[14px] tracking-[-0.02em]">Or see how it would have gone</div>
-            <p className="mt-0.5 text-[13px] leading-5 text-[#909090]">
+            <p className="mt-0.5 text-[13px] leading-5 text-[#6b6b6b]">
               Start as if you&apos;d invested earlier. Kite&apos;s daily check is replayed on real closing prices with your guardrails, so you see real rebalances and real profit and loss.
             </p>
             <div className="mt-3 grid grid-cols-3 gap-2">
@@ -451,7 +451,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
             </div>
           </div>
         )}
-        <button type="button" onClick={onDone} className="mt-3 w-full cursor-pointer text-[14px] text-[#909090] hover:text-black">
+        <button type="button" onClick={onDone} className="mt-3 w-full cursor-pointer text-[14px] text-[#6b6b6b] hover:text-black">
           Later
         </button>
         <ErrorNote text={error} />
@@ -464,9 +464,9 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-[28px] tracking-[-0.05em]">Add money</h2>
-          <p className="mt-2 text-[15px] leading-6 text-[#909090]">Send from the chain you already use. It lands in your vault as USDC, then one signature puts it into your plan.</p>
+          <p className="mt-2 text-[15px] leading-6 text-[#6b6b6b]">Send from the chain you already use. It lands in your vault as USDC, then one signature puts it into your plan.</p>
         </div>
-        <button type="button" onClick={onDone} className="shrink-0 cursor-pointer text-[14px] text-[#909090] hover:text-black">
+        <button type="button" onClick={onDone} className="shrink-0 cursor-pointer text-[14px] text-[#6b6b6b] hover:text-black">
           Skip
         </button>
       </div>
@@ -502,7 +502,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
       </div>
 
       <label className="mt-6 block">
-        <span className="flex justify-between text-[14px] text-[#909090]">
+        <span className="flex justify-between text-[14px] text-[#6b6b6b]">
           Amount in dollars
           {src.id === "near" && walletShown !== null && (
             <button type="button" className="cursor-pointer hover:text-black" onClick={() => setAmount(walletShown.toFixed(2))}>
@@ -524,7 +524,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
             aria-describedby="amount-hint"
           />
         </div>
-        <span id="amount-hint" className={`mt-1.5 block text-[13px] ${valid ? "text-[#909090]" : "text-rose-600"}`}>
+        <span id="amount-hint" className={`mt-1.5 block text-[13px] ${valid ? "text-[#6b6b6b]" : "text-rose-600"}`}>
           {valid ? (src.id === "near" ? "Goes straight into your vault. Network fee only." : "Swap cost about 0.3–0.7%, quoted before you send.") : `Enter at least $${MIN}.`}
         </span>
       </label>
@@ -532,7 +532,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
       {quote && (
         <div className="mt-5 rounded-2xl bg-[#f5f5f7] p-4 text-[14px]">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[13px] text-[#909090]">
+            <span className="text-[13px] text-[#6b6b6b]">
               Send exactly {quote.amountInFormatted} {src.label.replace(/ in my NEAR wallet| on .*/, "")} to
             </span>
             {swap && <Badge tone={swap === "SUCCESS" ? "green" : swap === "REFUNDED" || swap === "FAILED" ? "red" : "blue"}>{swap.replace(/_/g, " ").toLowerCase()}</Badge>}
@@ -551,7 +551,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
               {copied ? "Copied" : "Copy"}
             </Button>
           </div>
-          <p className="mt-2.5 text-[12px] leading-5 text-[#909090]">
+          <p className="mt-2.5 text-[12px] leading-5 text-[#6b6b6b]">
             A one-time address from NEAR Intents. About {quote.amountOutFormatted} USDC lands in your vault roughly {quote.timeEstimate}s after your transfer confirms. If the swap can&apos;t complete, it&apos;s refunded to your NEAR account.
           </p>
         </div>
@@ -560,7 +560,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
       {dry && (
         <div className="mt-5 rounded-2xl bg-[#f5f5f7] p-4 text-[14px]">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[13px] text-[#909090]">Real NEAR Intents quote (dry run, no address issued)</span>
+            <span className="text-[13px] text-[#6b6b6b]">Real NEAR Intents quote (dry run, no address issued)</span>
             <Badge>Preview</Badge>
           </div>
           <div className="mt-2 flex items-baseline justify-between gap-3">
@@ -569,7 +569,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
             </span>
             <span className="text-[18px] tracking-[-0.03em] tabular-nums">≈ {Number(dry.amountOutFormatted).toFixed(2)} USDC</span>
           </div>
-          <p className="mt-2 text-[12px] leading-5 text-[#909090]">
+          <p className="mt-2 text-[12px] leading-5 text-[#6b6b6b]">
             Swap cost {usd(dry.amountInUsd - dry.amountOutUsd)}, about {Math.max(1, Math.round(dry.timeEstimate / 60))} min once your transfer confirms. A real account gets a one-time deposit address here.
           </p>
           <Button variant="primary" size="lg" onClick={arrive} loading={busy} className="mt-4 w-full">
@@ -618,14 +618,14 @@ function LiveStep({ mix }: { mix: Slice[] }) {
           <span className="h-6 w-6 rounded-full bg-[#05a800]" />
         </span>
         <h2 className="mt-5 text-[44px] leading-none tracking-[-0.05em]">You&apos;re live</h2>
-        <p className="mx-auto mt-3 max-w-[40ch] text-[15px] leading-6 text-[#909090]">
+        <p className="mx-auto mt-3 max-w-[40ch] text-[15px] leading-6 text-[#6b6b6b]">
           {k.portfolio && k.portfolio.value >= 1
             ? `${usd(k.portfolio.value)} is in your vault. Kite checks it every day and only trades when something drifts too far.`
             : "Your vault is ready. Swaps settle in about a minute; Home updates as they land."}
           {live.preview && " In preview there's no daily job: press Check now on Home to run Kite's check against live prices."}
         </p>
         <div className="mx-auto mt-7 max-w-[300px] rounded-2xl bg-[#f5f5f7] px-5 py-4">
-          <div className="text-[13px] text-[#909090]">Next check in</div>
+          <div className="text-[13px] text-[#6b6b6b]">Next check in</div>
           <div className="mt-1 text-[30px] tracking-[-0.04em] tabular-nums">{hms}</div>
         </div>
         <MixBar slices={mix} className="mx-auto mt-6 h-1.5 max-w-[300px]" />

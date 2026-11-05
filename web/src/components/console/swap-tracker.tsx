@@ -65,7 +65,7 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
             <div className="text-[16px] tracking-[-0.02em]">
               Rebalance in flight{a && b ? `: ${a.ticker} to ${b.ticker}` : ""}
             </div>
-            <div className="text-[13px] text-[#909090]">{d?.amountInFormatted && d?.amountOutFormatted ? `${d.amountInFormatted} in, ${d.amountOutFormatted} expected out` : "Through NEAR Intents"}</div>
+            <div className="text-[13px] text-[#6b6b6b]">{d?.amountInFormatted && d?.amountOutFormatted ? `${d.amountInFormatted} in, ${d.amountOutFormatted} expected out` : "Through NEAR Intents"}</div>
           </div>
         </div>
         <Badge tone={s.tone}>{s.label}</Badge>
@@ -80,15 +80,15 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
           return (
             <li key={label} className="min-w-0">
               <div className={`h-1.5 rounded-full ${bad ? (status?.status === "FAILED" ? "bg-[#d33]" : "bg-[#e8a317]") : done ? "bg-[#05a800]" : here ? "animate-pulse bg-[#8cc6f6]" : "bg-black/10"}`} />
-              <div className={`mt-1.5 text-[12px] ${done || here || bad ? "text-black" : "text-[#909090]"}`}>{label}</div>
+              <div className={`mt-1.5 text-[12px] ${done || here || bad ? "text-black" : "text-[#6b6b6b]"}`}>{label}</div>
             </li>
           );
         })}
       </ol>
 
       <p className="mt-3 text-[14px] leading-5">{s.where}</p>
-      {reasonCode && <p className="mt-1 text-[13px] text-[#909090]">Reason given: {reasonCode.replace(/_/g, " ").toLowerCase()}</p>}
-      {d?.refundedAmountFormatted && <p className="mt-1 text-[13px] text-[#909090]">Returned: {d.refundedAmountFormatted}</p>}
+      {reasonCode && <p className="mt-1 text-[13px] text-[#6b6b6b]">Reason given: {reasonCode.replace(/_/g, " ").toLowerCase()}</p>}
+      {d?.refundedAmountFormatted && <p className="mt-1 text-[13px] text-[#6b6b6b]">Returned: {d.refundedAmountFormatted}</p>}
 
       {explainable && !why && (
         <button type="button" onClick={explain} disabled={asking} className="mt-3 cursor-pointer text-[13px] underline underline-offset-4 hover:text-black/70 disabled:cursor-default disabled:opacity-60">
@@ -99,7 +99,7 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
         <div className="mt-3 rounded-xl bg-[#f5f5f7] px-3 py-2.5 text-[13px] leading-5">
           <p>{why.text}</p>
           {why.next && <p className="mt-1 text-black/70">{why.next}</p>}
-          <p className="mt-1.5 text-[12px] text-[#909090]">
+          <p className="mt-1.5 text-[12px] text-[#6b6b6b]">
             {why.fromModel ? "Written by a private model on NEAR AI from the status above. The status line, not this text, is the source of truth." : "Standard explanation."}
           </p>
         </div>
@@ -111,8 +111,8 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
             {l.label} <Icon name="external" size={12} />
           </a>
         ))}
-        <span className="text-[#909090]">{stalled ? `Status unavailable right now${checkedAt ? `, last checked ${new Date(checkedAt).toLocaleTimeString()}` : ""}` : checkedAt ? `Checked ${new Date(checkedAt).toLocaleTimeString()}` : "Checking…"}</span>
-        {failed && status?.correlationId && <span className="text-[#909090]">Ref {status.correlationId.slice(0, 8)}</span>}
+        <span className="text-[#6b6b6b]">{stalled ? `Status unavailable right now${checkedAt ? `, last checked ${new Date(checkedAt).toLocaleTimeString()}` : ""}` : checkedAt ? `Checked ${new Date(checkedAt).toLocaleTimeString()}` : "Checking…"}</span>
+        {failed && status?.correlationId && <span className="text-[#6b6b6b]">Ref {status.correlationId.slice(0, 8)}</span>}
       </div>
     </Card>
   );

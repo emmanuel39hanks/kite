@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/console/icons";
 import { Badge, Button, Card, PageTitle, Slider, StatusNote, Switch } from "@/components/console/ui";
 import { GUARD_BOUNDS } from "@/lib/ai/guard-bounds";
 import { AiRules } from "@/components/console/ai-rules";
 import { accountUrl, NEAR } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";
+import { kiteGasLeft } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
 import { DEFAULT_GUARDRAILS, useKite, type Guardrails } from "@/lib/store";
 
@@ -92,7 +93,7 @@ function Form({ initial }: { initial: Guardrails }) {
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card className="p-2">
           <div className="px-4 pt-3 pb-4">
-            <p className="max-w-[60ch] text-[15px] leading-6 text-[#909090]">
+            <p className="max-w-[60ch] text-[15px] leading-6 text-[#6b6b6b]">
               The rules Kite has to follow. They live in your vault contract, so Kite can&apos;t change them. Changing them takes your signature.
             </p>
           </div>
@@ -109,7 +110,7 @@ function Form({ initial }: { initial: Guardrails }) {
                   <div className="mt-3">
                     <Slider value={v} min={f.min} max={f.max} step={f.step} onChange={(n) => setG({ ...g, [f.key]: n })} label={f.label} color="#8cc6f6" />
                   </div>
-                  <div className="mt-2 flex justify-between gap-4 text-[13px] text-[#909090]">
+                  <div className="mt-2 flex justify-between gap-4 text-[13px] text-[#6b6b6b]">
                     <span>{f.help(v)}</span>
                     {v !== DEFAULT_GUARDRAILS[f.key] && (
                       <button type="button" onClick={() => setG({ ...g, [f.key]: DEFAULT_GUARDRAILS[f.key] })} className="shrink-0 cursor-pointer hover:text-black">
@@ -128,7 +129,7 @@ function Form({ initial }: { initial: Guardrails }) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-[18px] tracking-[-0.03em]">Kite&apos;s key</h2>
-                <p className="mt-1 text-[13px] leading-5 text-[#909090]">
+                <p className="mt-1 text-[13px] leading-5 text-[#6b6b6b]">
                   A key on your vault that can only call rebalance and settle. Turn it off and Kite can&apos;t trade at all.
                 </p>
               </div>
@@ -151,6 +152,7 @@ function Form({ initial }: { initial: Guardrails }) {
               )}
               {busy === "key" && !w.preview && <Badge tone="blue">Waiting for your wallet…</Badge>}
             </div>
+            {hasVault && k.keyActive && !w.preview && k.portfolio && <KiteGas vault={k.portfolio.vault} />}
           </Card>
 
           <Card className="p-5">
@@ -174,7 +176,7 @@ function Form({ initial }: { initial: Guardrails }) {
 
           {hasVault && <CloseVault />}
 
-          {!w.accountId && <p className="px-2 text-[13px] text-[#909090]">Connect a wallet to save these to a vault.</p>}
+          {!w.accountId && <p className="px-2 text-[13px] text-[#6b6b6b]">Connect a wallet to save these to a vault.</p>}
         </div>
       </div>
     </>
@@ -205,14 +207,14 @@ function CloseVault() {
   return (
     <Card className="p-5">
       <h2 className="text-[18px] tracking-[-0.03em]">Withdraw and close</h2>
-      <p className="mt-1 text-[13px] leading-5 text-[#909090]">
+      <p className="mt-1 text-[13px] leading-5 text-[#6b6b6b]">
         Take everything out, then close the vault to get its {NEAR.vaultStorageNear} NEAR deposit back. The vault refuses to close while it still holds anything, so nothing can get stuck.
       </p>
       <ol className="mt-4 space-y-2">
         <li className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3.5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
           <div className="min-w-0">
             <div className="text-[14px]">1. Withdraw everything</div>
-            <p className="text-[12px] leading-4 text-[#909090]">To your own NEAR Intents account, in one signature.</p>
+            <p className="text-[12px] leading-4 text-[#6b6b6b]">To your own NEAR Intents account, in one signature.</p>
           </div>
           <Button size="sm" onClick={() => run("withdraw", live.withdrawAll, "Withdrawn. It shows in your NEAR Intents account in a few seconds.")} loading={busy === "withdraw"} disabled={empty || busy !== null}>
             Withdraw
@@ -221,7 +223,7 @@ function CloseVault() {
         <li className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3.5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
           <div className="min-w-0">
             <div className="text-[14px]">2. Close the vault</div>
-            <p className="text-[12px] leading-4 text-[#909090]">Deletes {k.portfolio?.vault} and returns its NEAR to you.</p>
+            <p className="text-[12px] leading-4 text-[#6b6b6b]">Deletes {k.portfolio?.vault} and returns its NEAR to you.</p>
           </div>
           <Button size="sm" variant="danger" onClick={() => run("close", live.closeVault, "Vault closed. Its NEAR is back in your wallet.")} loading={busy === "close"} disabled={!empty || busy !== null}>
             Close
@@ -234,5 +236,26 @@ function CloseVault() {
         </StatusNote>
       )}
     </Card>
+  );
+}
+
+/** Kite's key pays gas from the vault. Show what is left, and how to top it up before it runs out. */
+function KiteGas({ vault }: { vault: string }) {
+  const [left, setLeft] = useState<{ vault: string; near: number | null } | null>(null);
+  useEffect(() => {
+    let off = false;
+    kiteGasLeft(vault).then((near) => !off && setLeft({ vault, near }));
+    return () => {
+      off = true;
+    };
+  }, [vault]);
+  const near = left?.vault === vault ? left.near : null;
+  if (near == null) return null;
+  const low = near < 0.05;
+  return (
+    <p className={`mt-3 text-[13px] leading-5 ${low ? "text-rose-600" : "text-[#6b6b6b]"}`}>
+      Gas left for Kite: {near.toFixed(3)} NEAR.{" "}
+      {low ? "Kite stops trading below 0.05. Send your vault some NEAR, then turn the key off and on to renew it." : "Each rebalance uses about 0.01."}
+    </p>
   );
 }

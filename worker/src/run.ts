@@ -1,5 +1,5 @@
 import { holdings, nextTrade, toUsdE6, tradeSlippageBps } from "./drift.js";
-import { callRebalance, callSettle, readVault } from "./near.js";
+import { MIN_GAS_YOCTO, callRebalance, callSettle, readGasLeft, readVault } from "./near.js";
 import { prices as livePrices, quoteFull, signedPayload, status as swapStatus, submitDeposit, verifyPayload } from "./oneclick.js";
 
 export type RunOptions = { vault: string; dry: boolean; log?: (line: string) => void; /** How long to wait for a started swap before leaving it for the next run. */ settleWaitMs?: number };
@@ -53,6 +53,16 @@ export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 12
     return { action: "none" as const, navUsd };
   }
   log(`Trade: sell $${trade.valueUsd.toFixed(2)} of ${trade.sell.token} for ${trade.buy.token}`);
+
+  // Kite's key pays gas from the vault. If that runs dry the key stops working without a word, so say so first.
+  if (v.status.agent) {
+    const left = await readGasLeft(vault, v.status.agent);
+    if (left < MIN_GAS_YOCTO) {
+      const msg = `Kite's gas is low (${(Number(left) / 1e24).toFixed(3)} NEAR left). Send the vault some NEAR and restore Kite's key on Guardrails.`;
+      if (!dry) throw new Error(msg);
+      log(msg);
+    }
+  }
 
   const limitBps = tradeSlippageBps(v.limits, trade.sell, trade.buy);
   const res = await quoteFull({

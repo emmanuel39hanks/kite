@@ -79,7 +79,7 @@ export function AiPlanner({ onUse }: { onUse: (r: { name: string; mix: Slice[]; 
         </span>
         <div className="min-w-0">
           <h3 className="text-[17px] tracking-[-0.03em]">Describe your goal instead</h3>
-          <p className="mt-0.5 text-[13px] leading-5 text-[#909090]">
+          <p className="mt-0.5 text-[13px] leading-5 text-[#6b6b6b]">
             A model on NEAR AI drafts a plan for you, privately: your words are encrypted in this browser to the model&apos;s verified hardware. It only drafts. You review every number next.
           </p>
         </div>
@@ -114,7 +114,7 @@ export function AiPlanner({ onUse }: { onUse: (r: { name: string; mix: Slice[]; 
             <Button variant="primary" icon="lock" onClick={run} loading={busy} disabled={text.trim().length < 10 || busy}>
               Draft my plan privately
             </Button>
-            <span className="text-[12px] text-[#909090]">Usually 10 to 15 seconds.</span>
+            <span className="text-[12px] text-[#6b6b6b]">Usually 10 to 15 seconds.</span>
           </div>
           {busy && (
             <ol className="mt-4 space-y-1.5" aria-live="polite">
@@ -158,7 +158,7 @@ function DraftView({
 }) {
   return (
     <div className="mt-4 rounded-2xl bg-white p-4 shadow-[0_2px_2px_rgba(0,0,0,0.04)] sm:p-5">
-      <div className="text-[13px] text-[#909090]">Draft</div>
+      <div className="text-[13px] text-[#6b6b6b]">Draft</div>
       <h4 className="text-[22px] tracking-[-0.04em]">{draft.name}</h4>
       {draft.summary && <p className="mt-1 text-[14px] leading-5 text-black/70">{draft.summary}</p>}
       <ul className="mt-4 space-y-2.5">
@@ -176,19 +176,19 @@ function DraftView({
                   </span>
                   <span className="tabular-nums">{a.weight}%</span>
                 </div>
-                {a.why && <p className="text-[13px] leading-5 text-[#909090]">{a.why}</p>}
+                {a.why && <p className="text-[13px] leading-5 text-[#6b6b6b]">{a.why}</p>}
               </div>
             </li>
           );
         })}
       </ul>
-      <p className="mt-4 text-[13px] text-[#909090]">
+      <p className="mt-4 text-[13px] text-[#6b6b6b]">
         Rules: steps in at {draft.rules.driftBand} pts off, biggest trade {draft.rules.maxTradePct}%, swaps may cost up to {(draft.rules.slippageBps / 100).toFixed(2)}%,{" "}
         {draft.rules.tradesPerDay} trades a day.
       </p>
       {draft.basis.length > 0 && (
         <div className="mt-3 rounded-xl bg-[#f5f5f7] px-3 py-2.5">
-          <div className="text-[12px] text-[#909090]">Based on real prices from the last year</div>
+          <div className="text-[12px] text-[#6b6b6b]">Based on real prices from the last year</div>
           <ul className="mt-1 space-y-0.5 text-[13px] leading-5 text-black/70">
             {draft.basis.map((b) => (
               <li key={b}>{b}</li>
