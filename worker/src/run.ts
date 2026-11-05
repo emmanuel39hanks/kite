@@ -2,7 +2,21 @@ import { holdings, nextTrade, toUsdE6, tradeSlippageBps } from "./drift.js";
 import { callRebalance, callSettle, readVault } from "./near.js";
 import { prices as livePrices, quoteFull, signedPayload, status as swapStatus, submitDeposit, verifyPayload } from "./oneclick.js";
 
-export type RunOptions = { vault: string; dry: boolean; log?: (line: string) => void };
+export type RunOptions = { vault: string; dry: boolean; log?: (line: string) => void; /** How long to wait for a started swap before leaving it for the next run. */ settleWaitMs?: number };
+
+const FINAL = new Set(["SUCCESS", "REFUNDED", "FAILED"]);
+
+/** Poll 1Click until the swap reaches a final status, or the wait runs out (then null). */
+async function waitForSwap(depositAddress: string, waitMs: number, log: (line: string) => void): Promise<string | null> {
+  const until = Date.now() + waitMs;
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 5_000));
+    const s = await swapStatus(depositAddress).catch(() => null);
+    if (s && FINAL.has(String(s.status))) return String(s.status);
+  }
+  log(`Waited ${Math.round(waitMs / 1000)}s for the swap.`);
+  return null;
+}
 
 /**
  * One check of one vault:
@@ -10,7 +24,7 @@ export type RunOptions = { vault: string; dry: boolean; log?: (line: string) => 
  *   otherwise → read balances + live prices → if something is outside the band,
  *   get a 1Click quote and call vault.rebalance (unless dry).
  */
-export async function runOnce({ vault, dry, log = console.log }: RunOptions) {
+export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 120_000 }: RunOptions) {
   const v = await readVault(vault);
   if (v.status.paused) {
     log(`${vault} is paused. Nothing to do until the owner unpauses.`);
@@ -74,6 +88,16 @@ export async function runOnce({ vault, dry, log = console.log }: RunOptions) {
     prices: rows.map((r) => ({ token: r.token, usd_e6: toUsdE6(r.priceUsd) })),
   });
   if (hash) await submitDeposit(hash, q.depositAddress);
-  log(`Sent. tx ${hash}. 1Click deposit ${q.depositAddress}. Run again after ~${q.timeEstimate}s to settle.`);
+  log(`Sent. tx ${hash}. 1Click deposit ${q.depositAddress}.`);
+
+  // Wait for the swap to land, then settle in the same run, so one daily run is a whole rebalance.
+  // If it hasn't landed in time, the vault stays pending and the next run settles it.
+  const final = await waitForSwap(q.depositAddress, settleWaitMs, log);
+  if (final) {
+    await callSettle(vault);
+    log(`Swap ${final.toLowerCase()}. Settled.`);
+    return { action: "rebalanced" as const, tx: hash, depositAddress: q.depositAddress, swap: final };
+  }
+  log("The swap hasn't landed yet. The next run will settle it.");
   return { action: "rebalanced" as const, tx: hash, depositAddress: q.depositAddress };
 }

@@ -6,5 +6,5 @@
       "schedule": "0 0 * * *"
     }
   ],
-  "installCommand": "npm ci --prefix ../worker && npm ci"
+  "installCommand": "npm ci"
 }
