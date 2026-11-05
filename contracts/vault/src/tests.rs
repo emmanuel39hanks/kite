@@ -745,11 +745,25 @@ fn attack_a26_settle_before_the_transfer_lands() {
     // Transfer not yet sent: balances are exactly what they were.
     assert_eq!(v.settle_with(&drifted_balances(), (NOW + 40) * NS_PER_SEC), "waiting");
     assert!(v.get_status().pending.is_some(), "pending must survive an early settle");
-    // Even after the whole settle window, an unsent swap is not judged (it can't be, nothing has left).
-    assert_eq!(v.settle_with(&drifted_balances(), (NOW + 4_000) * NS_PER_SEC), "waiting");
     // Once the transfer is confirmed, the same balances do mean a refund.
     let _ = v.on_rebalance_sent(Ok(()));
     assert_eq!(v.settle_with(&drifted_balances(), (NOW + 60) * NS_PER_SEC), "refunded");
+}
+
+/// If the transfer's callback never records it, the swap is still judged once the settle window ends,
+/// so the vault can't be stuck: money that left and never came back trips the breaker.
+#[test]
+fn an_unconfirmed_swap_is_judged_after_the_window() {
+    let mut v = new_vault();
+    ctx(vault_id(), 0, NOW + 30);
+    let t = terms(&v, &good());
+    let _ = v.on_rebalance_balances(balances_ok(), t, prices());
+    let mut gone = drifted_balances();
+    let si = v.get_plan().iter().position(|x| x.token == v.get_status().pending.unwrap().sell).unwrap();
+    gone[si] = 0;
+    assert_eq!(v.settle_with(&gone, (NOW + 60) * NS_PER_SEC), "waiting");
+    assert_eq!(v.settle_with(&gone, (NOW + 4_000) * NS_PER_SEC), "breaker");
+    assert!(v.get_status().paused && v.get_status().pending.is_none());
 }
 
 #[test]

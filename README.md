@@ -17,13 +17,13 @@ Each row: do this, see that.
 | Do this | You should see |
 |---|---|
 | `sh scripts/setup.sh` | Installs the worker, then the web app (the web app links the worker package, so the order matters). Run this once from a fresh clone. |
-| `cd contracts/vault && cargo test` | **70 tests pass**, including **34 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
+| `cd contracts/vault && cargo test` | **71 tests pass**, including **34 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
 | `npm test --prefix worker` | **9 tests pass** (drift maths, the real 1Click signature, and reading the vault's answer to each call) |
 | `npm test --prefix web` | **33 tests pass**: the checks on model output (Unicode-safe number guard, clamped rules, template fallbacks), the pre-signing check on swap addresses (every field on its own), and the preview engine's rebalance rule |
 | `npm run dev --prefix web`, open http://localhost:3000/console?preview=1 | The full app with a simulated vault, live prices and **real 1Click quotes** (`dry: true`). No wallet, nothing signed. Walkthrough below. |
 | `cd worker && npm run attack -- --vault kite.<owner>.near` | Real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan are sent to the vault's free `check_quote` view. **Every one is refused.** (Needs a created vault.) |
 | `npm run typecheck --prefix web && npm run lint --prefix web && npm run build --prefix web` | Clean type check, no lint warnings, production build |
-| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `61439ce5ec041db8…`, the contract the app deploys (230,757 bytes) |
+| `shasum -a 256 web/public/vault/kite_vault.wasm` | Starts with `eb567036b96fbd61…`, the contract the app deploys (230,766 bytes) |
 
 **What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests (`cargo test` needs no wasm target); to rebuild the wasm also `rustup target add wasm32-unknown-unknown` and `cargo-near`. The preview and every command above need **no environment variables and no funds**. The public "check now" route is always a dry run; real rebalances come from the daily cron (needs `CRON_SECRET` and `KITE_AGENT_KEY`) or the worker CLI. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's worker key, so the preview is the judge path.
 
@@ -31,7 +31,7 @@ Each row: do this, see that.
 
 | | Status |
 |---|---|
-| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 70 tests pass. |
+| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 71 tests pass. |
 | Worker and web app | Built and deployed at usekite.xyz. |
 | Preview mode with real quotes | Works. Simulated vault, real prices and quotes. |
 | **First end-to-end run on NEAR mainnet with real funds** | **Not done yet.** Transaction links will go in this README once it is. |
@@ -137,12 +137,12 @@ We played an attacker who stole Kite's key and tried everything we could think o
 | Use some other key that sits on the vault account | Your vault (only the key recorded for Kite works) | `ERR_NOT_AGENT` |
 | Burn the daily trade count with dust trades | Your vault (nothing under $1) | `ERR_TOO_SMALL` |
 | Ask for a quote that needs a deposit memo, so the swap never starts | Your vault | `ERR_QUOTE_TERMS` |
-| Call `settle` before the money has left, so the vault forgets the swap | Your vault (a swap counts only once the transfer to 1Click has landed) | `settle` answers `waiting` |
+| Call `settle` before the money has left, so the vault forgets the swap | Your vault (a swap is judged only once the transfer to 1Click is confirmed, or the settle window has passed) | `settle` answers `waiting` |
 | Sell so much that a holding overshoots its target | Your vault (a trade may not pass the target by more than the band) | `ERR_TOO_BIG` |
 | Keep trading after a swap goes missing | `settle` trips a breaker after the settle window, pausing the vault | `ERR_PAUSED` |
 
 **Run the attacks yourself:**
-- **Contract tests:** `cd contracts/vault && cargo test attack_` runs the 34 attack tests (70 tests in total). Each new check was also confirmed by deleting it from the code and watching a named test fail..
+- **Contract tests:** `cd contracts/vault && cargo test attack_` runs the 34 attack tests (71 tests in total). Each new check was also confirmed by deleting it from the code and watching a named test fail.
 - **Against a live vault, free:** `cd worker && npm run attack -- --vault kite.<owner>.near`.
 - **As real transactions:** add `--send` with the agent key. Each refusal gets a transaction hash. Add `--out file.md` to save the transcript.
 
@@ -150,7 +150,7 @@ We played an attacker who stole Kite's key and tried everything we could think o
 
 **Defaults:** a holding must drift 5 points before Kite acts, one trade moves at most 10% of the portfolio, a swap may cost at most 1% fees included, at most 4 trades a day (the four-hour gap between trades allows at most 6), and a swap that hasn't landed after 30 minutes pauses the vault. You can change all of these.
 
-**Gaps we found and closed:** (1) the first version took the deposit address and reference prices from the worker. Writing the attack suite showed a stolen key could have pointed one trade at itself; verifying 1Click's signature on-chain closed it. (2) Review found the vault ignored referral and redirect fields in the signed quote; they are now refused. (3) A zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account; both are fixed. (4) Trades under $1 are refused, so dust can't burn the daily trade count. (5) `settle` called before the transfer out landed could clear a pending swap; the vault now waits for the transfer.
+**Gaps we found and closed:** (1) the first version took the deposit address and reference prices from the worker. Writing the attack suite showed a stolen key could have pointed one trade at itself; verifying 1Click's signature on-chain closed it. (2) Review found the vault ignored referral and redirect fields in the signed quote; they are now refused. (3) A zero gas allowance used to mean unlimited, and `rebalance` accepted any key on the vault account; both are fixed. (4) Trades under $1 are refused, so dust can't burn the daily trade count. (5) `settle` called before the transfer out landed could clear a pending swap; the vault now waits for the transfer, and judges the swap anyway once the settle window ends, so it can never be stuck.
 
 ---
 

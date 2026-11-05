@@ -722,8 +722,11 @@ impl Vault {
             Some(p) => p,
             None => return "none",
         };
-        // The transfer out hasn't happened yet, so the balances say nothing about the swap.
-        if !p.sent {
+        // Until the transfer out is confirmed, the balances say nothing about the swap. Past the settle
+        // window the transfer has landed or failed either way, so judge it normally: an unconfirmed
+        // swap must never block the vault forever.
+        let late = now_ns.saturating_sub(p.started_ns) > self.limits.settle_window_secs * NS_PER_SEC;
+        if !p.sent && !late {
             return "waiting";
         }
         let pos = |token: &str| self.plan.iter().position(|t| t.token == token);
@@ -741,7 +744,7 @@ impl Vault {
             self.pending = None;
             emit("rebalance_refunded", "{}");
             "refunded"
-        } else if now_ns.saturating_sub(p.started_ns) > self.limits.settle_window_secs * NS_PER_SEC {
+        } else if late {
             self.pending = None;
             self.paused = true;
             emit("breaker_tripped", &format!(r#"{{"received":"{}","min_out":"{}"}}"#, received, p.min_out.0));
