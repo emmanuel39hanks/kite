@@ -222,7 +222,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       onCheckedChange={onChange}
       disabled={disabled}
       aria-label={label}
-      className="relative h-[26px] w-[44px] cursor-pointer rounded-full bg-black/15 transition-colors outline-none focus-visible:ring-4 focus-visible:ring-[#8cc6f6]/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-[#05a800]"
+      className="relative h-[26px] w-[44px] shrink-0 cursor-pointer rounded-full bg-black/15 transition-colors outline-none focus-visible:ring-4 focus-visible:ring-[#8cc6f6]/60 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-[#05a800]"
     >
       <RSwitch.Thumb className="block h-[22px] w-[22px] translate-x-[2px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-transform duration-200 will-change-transform data-[state=checked]:translate-x-[20px]" />
     </RSwitch.Root>
