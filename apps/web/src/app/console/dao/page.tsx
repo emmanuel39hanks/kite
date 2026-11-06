@@ -78,7 +78,7 @@ function DaoView() {
     <>
       <VaultPicker key={vault ?? ""} current={vault} onPick={(v) => router.replace(`/console/dao?vault=${encodeURIComponent(v)}`)} />
       {vault ? (
-        <VaultDao key={vault} vault={vault} />
+        <VaultDao key={vault} vault={vault} own={!fromUrl} />
       ) : (
         <Card className="mt-3">
           <Empty title="Pick a vault" text="Enter a Kite vault to see who owns it and what its DAO is voting on. Connect a wallet to propose changes or vote." />
@@ -132,7 +132,7 @@ async function load(vault: string): Promise<Loaded> {
   return { state, owner, pending };
 }
 
-function VaultDao({ vault }: { vault: string }) {
+function VaultDao({ vault, own }: { vault: string; own: boolean }) {
   const w = useWallet();
   const [data, setData] = useState<Loaded | { error: string } | null>(null);
   const [rev, setRev] = useState(0);
@@ -143,7 +143,7 @@ function VaultDao({ vault }: { vault: string }) {
     let alive = true;
     load(vault)
       .then((d) => alive && setData(d))
-      .catch(() => alive && setData({ error: `There's no Kite vault at ${vault}, or NEAR's RPC didn't answer. Check the name and try again.` }));
+      .catch(() => alive && setData({ error: own ? "none" : `There's no Kite vault at ${vault}, or NEAR's RPC didn't answer. Check the name and try again.` }));
     return () => {
       alive = false;
     };
@@ -175,6 +175,20 @@ function VaultDao({ vault }: { vault: string }) {
     run(`approve-${ctx.dao}-${p.id}`, ctx.dao, approveAction(p.id, p.kind), `Vote recorded on proposal ${p.id}. If it reached the DAO's threshold, the DAO tried the calls; the list below shows whether they ran.`);
 
   if (!data) return <div className="mt-3 h-[260px] animate-pulse rounded-[20px] bg-[#f5f5f7]" />;
+  if ("error" in data && data.error === "none")
+    return (
+      <Card className="mt-3">
+        <Empty
+          title="You don't have a vault to hand over yet"
+          text={`A DAO doesn't take over your wallet. It takes over a vault. Create your vault (it will be ${vault}), then offer it to your DAO from your profile. Once the DAO votes to accept, it owns the vault and every change needs its vote. Your wallet stays yours. To look at a vault a DAO already owns, enter its name above.`}
+          action={
+            <Button variant="primary" icon="notepad" href="/console/explore">
+              Create a vault
+            </Button>
+          }
+        />
+      </Card>
+    );
   if ("error" in data) return <StatusNote tone="err" className="mt-3">{data.error}</StatusNote>;
 
   const { state, owner, pending } = data;
