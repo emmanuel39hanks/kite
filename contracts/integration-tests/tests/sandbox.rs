@@ -278,3 +278,92 @@ async fn a_signed_quote_that_pays_someone_else_is_refused() -> anyhow::Result<()
     assert_eq!(balance(&e, BTC).await?, 8_750_000);
     Ok(())
 }
+
+/* ───────────── a DAO takes over the vault (real SputnikDAO v3.2) ───────────── */
+
+/// sha256 of the SputnikDAO v3.2 wasm the mainnet factory `sputnik-dao.near` deploys by default
+/// (its code hash DtHZA1mUmGYeScEaUoUZYQGGFHSMpnjMCvkr5U9hJXuF in base58).
+const SPUTNIK_V3_2_SHA256: &str = "bf6f951ee5e45968e3367fa857bebf8bc80badec183998c2239c487237e0d7f6";
+
+fn b64(v: &Value) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.encode(serde_json::to_vec(v).unwrap())
+}
+
+/// A council member proposes calls on the vault, then approves; returns the approving transaction.
+async fn dao_does(e: &Env, dao: &Contract, council: &Account, calls: &[(&str, Value)]) -> anyhow::Result<near_workspaces::result::ExecutionFinalResult> {
+    let bond: Value = dao.view("get_policy").await?.json()?;
+    let bond: u128 = bond["proposal_bond"].as_str().unwrap().parse()?;
+    let actions: Vec<Value> = calls
+        .iter()
+        .map(|(m, a)| json!({ "method_name": m, "args": b64(a), "deposit": "1", "gas": "100000000000000" }))
+        .collect();
+    let kind = json!({ "FunctionCall": { "receiver_id": e.vault, "actions": actions } });
+    council
+        .call(dao.id(), "add_proposal")
+        .args_json(json!({ "proposal": { "description": "Kite vault change", "kind": kind } }))
+        .deposit(NearToken::from_yoctonear(bond))
+        .gas(Gas::from_tgas(150))
+        .transact()
+        .await?
+        .into_result()?;
+    let id: u64 = dao.view("get_last_proposal_id").await?.json::<u64>()? - 1;
+    let stored: Value = dao.view("get_proposal").args_json(json!({ "id": id })).await?.json()?;
+    // v3 refuses a vote that doesn't repeat the stored kind exactly.
+    Ok(council
+        .call(dao.id(), "act_proposal")
+        .args_json(json!({ "id": id, "action": "VoteApprove", "proposal": stored["kind"] }))
+        .gas(Gas::from_tgas(300))
+        .transact()
+        .await?)
+}
+
+#[tokio::test]
+async fn a_sputnik_dao_takes_over_the_vault_and_runs_it_by_vote() -> anyhow::Result<()> {
+    let e = setup().await?;
+    let code = wasm("res/sputnikdao2_v3_2.wasm");
+    let hash: String = Sha256::digest(&code).iter().map(|b| format!("{b:02x}")).collect();
+    assert_eq!(hash, SPUTNIK_V3_2_SHA256, "the DAO contract is the one mainnet's factory deploys");
+
+    let root = e.worker.root_account()?;
+    let council = root.create_subaccount("council").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+    let dao_acc = root.create_subaccount("treasury").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+    let dao = dao_acc.deploy(&code).await?.into_result()?;
+    dao.call("new")
+        .args_json(json!({ "config": { "name": "treasury", "purpose": "Kite test", "metadata": "" }, "policy": [council.id()] }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // 1. The owner offers the vault. Nothing changes yet.
+    e.owner.call(&e.vault, "propose_owner").args_json(json!({ "new_owner": dao.id() })).deposit(NearToken::from_yoctonear(1)).transact().await?.into_result()?;
+    let s = status(&e).await?;
+    assert_eq!(s["owner"], json!(e.owner.id()));
+    assert_eq!(s["pending_owner"], json!(dao.id()));
+
+    // 2. The DAO accepts by vote.
+    let r = dao_does(&e, &dao, &council, &[("accept_owner", json!({}))]).await?;
+    assert!(r.is_success(), "accept vote failed: {:?}", r.failures());
+    let s = status(&e).await?;
+    assert_eq!(s["owner"], json!(dao.id()), "the DAO owns the vault");
+    assert!(s["pending_owner"].is_null());
+
+    // 3. The person who created it no longer controls it.
+    let r = e.owner.call(&e.vault, "pause").deposit(NearToken::from_yoctonear(1)).transact().await;
+    assert!(failed_with(&r, "ERR_NOT_OWNER"), "{r:?}");
+
+    // 4. The DAO changes the guardrails by vote, and the vault logs which analysis justified it.
+    let policy_ref = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    let limits = json!({ "band_bps": 300, "max_trade_bps": 500, "max_slippage_bps": 50, "max_trades_per_day": 2, "min_interval_secs": 14400, "settle_window_secs": 1800 });
+    let r = dao_does(&e, &dao, &council, &[("set_limits", json!({ "limits": limits, "policy_ref": policy_ref }))]).await?;
+    assert!(r.is_success(), "limits vote failed: {:?}", r.failures());
+    assert!(r.logs().iter().any(|l| l.contains("limits_updated") && l.contains(policy_ref)), "{:?}", r.logs());
+    let now: Value = e.worker.view(&e.vault, "get_limits").await?.json()?;
+    assert_eq!(now["band_bps"], json!(300));
+
+    // 5. And pauses it by vote.
+    let r = dao_does(&e, &dao, &council, &[("pause", json!({}))]).await?;
+    assert!(r.is_success(), "pause vote failed: {:?}", r.failures());
+    assert_eq!(status(&e).await?["paused"], json!(true));
+    Ok(())
+}
