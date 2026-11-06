@@ -19,13 +19,13 @@ Each row: do this, see that.
 | Do this | You should see |
 |---|---|
 | `npm ci` | Installs the web app and the keeper in one go (npm workspaces). Run this once from a fresh clone. |
-| `npm run test:contracts` | **75 tests pass**, including **37 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
-| `npm run test:integration` | **4 sandbox tests pass** on a local NEAR node, using the shipped wasm above with real keys and receipts: Kite's key can't withdraw, call `intents` directly or change limits (NEAR refuses it); the vault has no full-access key, so its code can't change; its code hash equals the sha256 of the file; a full rebalance and settle run end to end; a failed transfer leaves nothing pending; a signed quote that pays someone else is refused. Prints the gas a rebalance really costs. |
+| `npm run test:contracts` | **87 tests pass**, including **40 attack tests** a thief with the robot's key might try, and one test that checks a **real** 1Click signature with the code that runs on chain |
+| `npm run test:integration` | **5 sandbox tests pass** on a local NEAR node, using the shipped wasm above with real keys and receipts: Kite's key can't withdraw, call `intents` directly or change limits (NEAR refuses it); the vault has no full-access key, so its code can't change; its code hash equals the sha256 of the file; a full rebalance and settle run end to end; a failed transfer leaves nothing pending; a signed quote that pays someone else is refused; and a **real SputnikDAO** (the exact v3.2 code mainnet's DAO factory deploys) takes over a vault by vote, locks out its creator, changes its guardrails and pauses it. Prints the gas a rebalance really costs. |
 | `npm test` | **43 tests pass**: 10 in the keeper (drift maths, the real 1Click signature, reading the vault's answer to each call, and the gas check), 33 in the web app (the checks on model output (Unicode-safe number guard, clamped rules, template fallbacks), the pre-signing check on swap addresses (every field on its own), and the preview engine's rebalance rule) |
 | `npm run dev`, open http://localhost:3000/console?preview=1 | The full app with a simulated vault, live prices and **real 1Click quotes** (`dry: true`). No wallet, nothing signed. Walkthrough below. |
 | `npm run attack -- --vault kite.<owner>.near` | Real 1Click quotes that pay the attacker, refund the attacker, are edited, dry or off-plan are sent to the vault's free `check_quote` view. **Every one is refused.** (Needs a created vault.) |
 | `npm run typecheck && npm run lint && npm run build` | Clean type check, no lint warnings, production build |
-| `shasum -a 256 apps/web/public/vault/kite_vault.wasm` | Starts with `edb084bc376fde0b…`, the contract the app deploys (233,500 bytes). A vault's on-chain code hash is this sha256 in base58, so you can check any deployed vault against this file. |
+| `shasum -a 256 apps/web/public/vault/kite_vault.wasm` | Starts with `03872036e0dbcfb0…`, the contract the app deploys (238,021 bytes). A vault's on-chain code hash is this sha256 in base58, so you can check any deployed vault against this file. |
 
 **What you need:** Node 20.9 or newer (we use 26) and npm. Rust stable for the contract tests (`cargo test` needs no wasm target); to rebuild the wasm also `rustup target add wasm32-unknown-unknown` and `cargo-near`. The preview and every command above need **no environment variables and no funds**. The public "check now" route is always a dry run; real rebalances come from the daily cron (needs `CRON_SECRET` and `KITE_AGENT_KEY`) or the keeper CLI. The private AI features need a `NEARAI_API_KEY` (see below). Creating a real vault needs mainnet NEAR and Kite's keeper key, so the preview is the judge path.
 
@@ -33,7 +33,7 @@ Each row: do this, see that.
 
 | | Status |
 |---|---|
-| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 75 unit tests and 4 sandbox tests pass. |
+| Contract: plan, guardrails, signed-quote checks, settle and breaker, close | Built. 87 unit tests and 5 sandbox tests pass. |
 | Keeper and web app | Built and deployed at usekite.xyz. |
 | Preview mode with real quotes | Works. Simulated vault, real prices and quotes. |
 | **First end-to-end run on NEAR mainnet with real funds** | **Not done yet.** Transaction links will go in this README once it is. |
@@ -145,7 +145,7 @@ We played an attacker who stole Kite's key and tried everything we could think o
 | Keep trading after a swap goes missing | `settle` trips a breaker after the settle window, pausing the vault | `ERR_PAUSED` |
 
 **Run the attacks yourself:**
-- **Contract tests:** `cargo test --manifest-path contracts/Cargo.toml -p kite-vault attack_` runs the 37 attack tests (75 tests in total). Each new check was also confirmed by deleting it from the code and watching a named test fail.
+- **Contract tests:** `cargo test --manifest-path contracts/Cargo.toml -p kite-vault attack_` runs the 40 attack tests (87 tests in total). Each new check was also confirmed by deleting it from the code and watching a named test fail.
 - **Against a live vault, free:** `npm run attack -- --vault kite.<owner>.near`.
 - **As real transactions:** add `--send` with the agent key. Each refusal gets a transaction hash. Add `--out file.md` to save the transcript.
 
@@ -188,6 +188,15 @@ The vault emits events for everything that matters, so an indexer or NearBlocks 
 
 
 ---
+
+## Kite for DAO treasuries
+
+A DAO's treasury drifts like anyone's portfolio, but every trade needs a vote, so it rarely gets rebalanced and idle stablecoins earn nothing. A DAO can own a Kite vault instead: it votes once on a plan and guardrails, Kite's keeper rebalances inside them through NEAR Intents, and every later change is another vote.
+
+- **How a DAO gets a vault.** A DAO can't deploy a contract itself, so a member creates the vault and hands it over in two steps: `propose_owner(dao)` from the creator, then the DAO passes a proposal that calls `accept_owner` with 1 yoctoNEAR. Until the DAO accepts, nothing changes; after, the creator has no control at all.
+- **Every owner action is a proposal.** SputnikDAO (the contract behind most NEAR DAOs, and behind Trezu) executes a `FunctionCall` proposal from the DAO's own account, which is exactly what the vault's owner check needs. Pause, guardrails, plan, Kite's key and withdrawals all work this way.
+- **Decisions point at their evidence.** `set_plan` and `set_limits` take an optional `policy_ref`, the sha256 of the analysis behind the change. The vault writes it to its event log, so the chain records which analysis each policy change was voted on.
+- **Proved against the real contract.** The sandbox test `a_sputnik_dao_takes_over_the_vault_and_runs_it_by_vote` deploys SputnikDAO v3.2, fetched from mainnet's `sputnik-dao.near` factory and checked against its code hash `DtHZA1mUmGYeScEaUoUZYQGGFHSMpnjMCvkr5U9hJXuF`, and runs the whole handover and three votes with real transactions.
 
 ## Earn while you hold
 
@@ -248,7 +257,8 @@ packages/keeper/             @kite/keeper, the rebalancing bot: drift maths, 1Cl
 contracts/                   Cargo workspace
   vault/                     the vault (near-sdk 5.30): plan, guardrails, signed-quote checks, settle and breaker, close
   mock-intents/              test double for intents.near (balances and transfers), sandbox tests only
-  integration-tests/         runs the shipped wasm on a local NEAR sandbox with real keys and receipts
+  integration-tests/         runs the shipped wasm on a local NEAR sandbox with real keys and receipts;
+                             res/ holds SputnikDAO v3.2, fetched from mainnet's DAO factory
 scripts/                     setup.sh, integration.sh
 ```
 
