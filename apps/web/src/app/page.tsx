@@ -270,9 +270,9 @@ function Bar({ pct, color, logo }: { pct: number; color: string; logo: LogoId })
 
 function Assets() {
   const groups: { title: string; ids: LogoId[] }[] = [
-    { title: "Crypto", ids: ["btc", "eth", "sol", "near"] },
+    { title: `Crypto: ${ASSETS.filter((a) => a.live && a.kind === "Crypto" && !a.earn).length} coins, including`, ids: ["btc", "eth", "sol", "near", "xrp", "doge", "link", "zec"] },
     { title: "Stocks (coming soon)", ids: ["nvidia", "apple", "tesla"] },
-    { title: "Gold and digital dollars", ids: ["xaut", "usdc"] },
+    { title: "Gold and digital dollars", ids: ["xaut", "usdc", "usdt"] },
   ];
   return (
     <section className="px-5 pb-20 sm:px-10 sm:pb-28">

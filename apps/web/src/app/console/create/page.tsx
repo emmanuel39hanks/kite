@@ -114,8 +114,11 @@ function Wizard({ initialName, initialMix, initialRules }: { initialName: string
   );
 }
 
+/** The vault funds a plan in one call of at most eight swaps, so a plan holds at most eight assets. */
+const MAX_ASSETS = 8;
+
 function hint(step: number, mix: Slice[], total: number) {
-  if (step === 0) return mix.length < 2 ? `Pick at least ${2 - mix.length} more` : `${mix.length} picked`;
+  if (step === 0) return mix.length < 2 ? `Pick at least ${2 - mix.length} more` : mix.length >= MAX_ASSETS ? `${mix.length} picked, the most a plan can hold` : `${mix.length} picked`;
   if (step === 1) return total === 100 ? (mix.some((s) => s.weight === 0) ? "Give each one at least 1%" : "Adds up to 100%") : `${total}% of 100%`;
   return "";
 }
@@ -127,12 +130,16 @@ function PickStep({ mix, setMix, onDraft }: { mix: Slice[]; setMix: (m: Slice[])
   const h = useHistory(365);
   // An earning version counts as its base here: you pick "NEAR", then choose to earn on it in the next step.
   const picked = (id: LogoId) => mix.some((s) => baseOf(s.id) === id);
-  const toggle = (id: LogoId) => setMix(evenly(picked(id) ? mix.filter((s) => baseOf(s.id) !== id) : [...mix, slice(id, 0)]));
+  const full = mix.length >= MAX_ASSETS;
+  const toggle = (id: LogoId) => {
+    if (picked(id)) setMix(evenly(mix.filter((s) => baseOf(s.id) !== id)));
+    else if (!full) setMix(evenly([...mix, slice(id, 0)]));
+  };
 
   return (
     <>
       <h2 className="text-[24px] tracking-[-0.04em]">What do you want to hold?</h2>
-      <p className="mt-1 text-[15px] text-[#6b6b6b]">Pick two or more. Mixing things that move differently, like Bitcoin and gold, smooths out the ride.</p>
+      <p className="mt-1 text-[15px] text-[#6b6b6b]">Pick two to {MAX_ASSETS}. Mixing things that move differently, like Bitcoin and gold, smooths out the ride.</p>
 
       <div className="mt-5">
         <AiPlanner onUse={onDraft} />
@@ -169,7 +176,7 @@ function PickStep({ mix, setMix, onDraft }: { mix: Slice[]; setMix: (m: Slice[])
               type="button"
               role="checkbox"
               aria-checked={on}
-              disabled={!a.live}
+              disabled={!a.live || (full && !on)}
               onClick={() => toggle(a.id)}
               className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-2xl p-3.5 text-left transition-[background-color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 ${
                 on ? "bg-white ring-2 ring-black" : "bg-[#f5f5f7] hover:bg-[#ececef]"

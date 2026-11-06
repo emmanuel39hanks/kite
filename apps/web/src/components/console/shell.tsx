@@ -19,7 +19,7 @@ import { usePreviewActions } from "@/lib/preview/actions";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/console", label: "Home", icon: "dashboard" },
-  { href: "/console/explore", label: "Explore", icon: "explore" },
+  { href: "/console/explore", label: "Explore", icon: "compass" },
   { href: "/console/earn", label: "Earn", icon: "up" },
   { href: "/console/create", label: "Create", icon: "create" },
   { href: "/console/activity", label: "Activity", icon: "list" },

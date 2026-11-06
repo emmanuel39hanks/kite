@@ -11,7 +11,22 @@ const GECKO: Record<string, string> = {
   near: "near",
   xaut: "tether-gold",
   usdc: "usd-coin",
+  xrp: "ripple",
+  doge: "dogecoin",
+  ada: "cardano",
+  trx: "tron",
+  link: "chainlink",
+  ltc: "litecoin",
+  sui: "sui",
+  zec: "zcash",
+  bch: "bitcoin-cash",
+  aave: "aave",
+  uni: "uniswap",
+  usdt: "tether",
 };
+
+/** Digital dollars, held at $1 in history. */
+const PEGGED = ["usdc", "usdt"];
 
 export type Quote = { price: number; change24h: number | null };
 export type Market = { quotes: Record<string, Quote>; updatedAt: string; source: string };
@@ -50,10 +65,10 @@ export async function getHistory(days: number): Promise<History> {
   cacheLife("hours");
   const prices: Record<string, number[]> = {};
   let dates: number[] = [];
-  // USDC is pegged, so it's held at $1. Everything else: Kraken daily closes, CoinGecko if Kraken fails.
+  // Digital dollars are pegged, so they're held at $1. Everything else: Kraken daily closes, CoinGecko if Kraken fails.
   const series = await Promise.all(
     Object.keys(GECKO)
-      .filter((id) => id !== "usdc")
+      .filter((id) => !PEGGED.includes(id))
       .map(async (id) => [id, (await krakenDaily(id, days)) ?? (await geckoDaily(id, days))] as const),
   );
   for (const [id, p] of series) {
@@ -64,7 +79,7 @@ export async function getHistory(days: number): Promise<History> {
   // Align every series to the same length (most recent points).
   const n = Math.min(...Object.values(prices).map((p) => p.length), dates.length);
   for (const k of Object.keys(prices)) prices[k] = prices[k].slice(-n);
-  prices.usdc = Array(n).fill(1);
+  for (const id of PEGGED) prices[id] = Array(n).fill(1);
 
   // Earning versions: the base asset's real history × today's exchange rate (from 1Click prices),
   // grown back at today's APY. An estimate: past yields weren't exactly today's.
@@ -79,7 +94,7 @@ export async function getHistory(days: number): Promise<History> {
   return { days, dates: dates.slice(-n), prices };
 }
 
-const KRAKEN: Record<string, string> = { btc: "XBTUSD", eth: "ETHUSD", sol: "SOLUSD", near: "NEARUSD", xaut: "XAUTUSD" };
+const KRAKEN: Record<string, string> = { btc: "XBTUSD", eth: "ETHUSD", sol: "SOLUSD", near: "NEARUSD", xaut: "XAUTUSD", xrp: "XRPUSD", doge: "XDGUSD", ada: "ADAUSD", trx: "TRXUSD", link: "LINKUSD", ltc: "LTCUSD", sui: "SUIUSD", zec: "ZECUSD", bch: "BCHUSD", aave: "AAVEUSD", uni: "UNIUSD" };
 
 /** [ms, close] per day from Kraken's public OHLC endpoint (no key). The last row is today so far. */
 async function krakenDaily(id: string, days: number): Promise<[number, number][] | null> {

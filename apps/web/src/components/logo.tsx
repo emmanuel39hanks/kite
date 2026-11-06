@@ -19,6 +19,18 @@ const NAMES: Record<LogoId, string> = {
   wsteth: "Staked ETH",
   gtusdc: "Earning USDC",
   ksol: "Earning SOL",
+  xrp: "XRP",
+  doge: "Dogecoin",
+  ada: "Cardano",
+  trx: "TRON",
+  link: "Chainlink",
+  ltc: "Litecoin",
+  sui: "Sui",
+  zec: "Zcash",
+  bch: "Bitcoin Cash",
+  aave: "Aave",
+  uni: "Uniswap",
+  usdt: "Tether USD",
 };
 
 /** Earning versions wear their base asset's mark with a small badge. */

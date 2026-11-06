@@ -16,6 +16,18 @@ const COLORS: Partial<Record<LogoId, string>> = {
   wsteth: "#627EEA",
   gtusdc: "#2775CA",
   ksol: "#9945FF",
+  xrp: "#23292F",
+  doge: "#C2A633",
+  ada: "#246DD3",
+  trx: "#C4342B",
+  link: "#2E61DE",
+  ltc: "#345D9D",
+  sui: "#4BA2FF",
+  zec: "#ECB244",
+  bch: "#58BE92",
+  aave: "#9391F7",
+  uni: "#FF0A6F",
+  usdt: "#009393",
 };
 
 export const slice = (id: LogoId, weight: number): Slice => ({ id, weight, color: COLORS[id] ?? "#999" });

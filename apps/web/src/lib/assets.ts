@@ -13,7 +13,19 @@ export type LogoId =
   | "stnear"
   | "wsteth"
   | "gtusdc"
-  | "ksol";
+  | "ksol"
+  | "xrp"
+  | "doge"
+  | "ada"
+  | "trx"
+  | "link"
+  | "ltc"
+  | "sui"
+  | "zec"
+  | "bch"
+  | "aave"
+  | "uni"
+  | "usdt";
 
 type AssetKind = "Crypto" | "Stock" | "Gold" | "Digital dollar";
 
@@ -53,6 +65,18 @@ export const ASSETS: Asset[] = [
   { id: "xaut", name: "Tether Gold", ticker: "XAUt", kind: "Gold", color: "#D4A537", intentsId: "nep141:eth-0x68749665ff8d2d112fa859aa293f07a622782f38.omft.near", decimals: 6, live: true, price: 3939.95, change: 0, vol: 0.008, blurb: "Each token is backed by one ounce of gold." },
   { id: "usdc", name: "USDC", ticker: "USDC", kind: "Digital dollar", color: "#2775CA", intentsId: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1", decimals: 6, live: true, price: 1, change: 0, vol: 0, blurb: "Always worth one dollar." },
   // Yield-earning versions. Same price exposure as the base asset, plus a yield; all routable through NEAR Intents 1Click.
+  { id: "xrp", name: "XRP", ticker: "XRP", kind: "Crypto", color: "#23292F", intentsId: "nep141:xrp.omft.near", decimals: 6, live: true, price: 1.19, change: 0, vol: 0.045, blurb: "Built for fast payments across borders." },
+  { id: "doge", name: "Dogecoin", ticker: "DOGE", kind: "Crypto", color: "#C2A633", intentsId: "nep141:doge.omft.near", decimals: 8, live: true, price: 0.0722, change: 0, vol: 0.05, blurb: "The original meme coin. Swings hard both ways." },
+  { id: "ada", name: "Cardano", ticker: "ADA", kind: "Crypto", color: "#246DD3", intentsId: "nep141:cardano.omft.near", decimals: 6, live: true, price: 0.1857, change: 0, vol: 0.045, blurb: "A network built step by step from academic research." },
+  { id: "trx", name: "TRON", ticker: "TRX", kind: "Crypto", color: "#C4342B", intentsId: "nep141:tron.omft.near", decimals: 6, live: true, price: 0.3179, change: 0, vol: 0.03, blurb: "Carries a large share of the world's digital-dollar payments." },
+  { id: "link", name: "Chainlink", ticker: "LINK", kind: "Crypto", color: "#2E61DE", intentsId: "nep141:eth-0x514910771af9ca656af840dff83e8264ecf986ca.omft.near", decimals: 18, live: true, price: 10.89, change: 0, vol: 0.045, blurb: "Feeds real-world prices and data into blockchains." },
+  { id: "ltc", name: "Litecoin", ticker: "LTC", kind: "Crypto", color: "#345D9D", intentsId: "nep141:ltc.omft.near", decimals: 8, live: true, price: 52.67, change: 0, vol: 0.04, blurb: "One of the oldest coins, a lighter cousin of Bitcoin." },
+  { id: "sui", name: "Sui", ticker: "SUI", kind: "Crypto", color: "#4BA2FF", intentsId: "nep141:sui.omft.near", decimals: 9, live: true, price: 0.8653, change: 0, vol: 0.055, blurb: "A newer, fast network for apps and games." },
+  { id: "zec", name: "Zcash", ticker: "ZEC", kind: "Crypto", color: "#ECB244", intentsId: "nep141:zec.omft.near", decimals: 8, live: true, price: 1310.1, change: 0, vol: 0.06, blurb: "A coin with optional private payments." },
+  { id: "bch", name: "Bitcoin Cash", ticker: "BCH", kind: "Crypto", color: "#58BE92", intentsId: "nep141:bch.omft.near", decimals: 8, live: true, price: 266.52, change: 0, vol: 0.04, blurb: "A Bitcoin offshoot built for cheaper payments." },
+  { id: "aave", name: "Aave", ticker: "AAVE", kind: "Crypto", color: "#9391F7", intentsId: "nep141:eth-0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9.omft.near", decimals: 18, live: true, price: 130.79, change: 0, vol: 0.05, blurb: "The token behind Aave, the largest crypto lending app." },
+  { id: "uni", name: "Uniswap", ticker: "UNI", kind: "Crypto", color: "#FF0A6F", intentsId: "nep141:eth-0x1f9840a85d5af5bf1d1762f925bdaddc4201f984.omft.near", decimals: 18, live: true, price: 6.94, change: 0, vol: 0.05, blurb: "The token behind Uniswap, the largest trading app on Ethereum." },
+  { id: "usdt", name: "Tether USD", ticker: "USDT", kind: "Digital dollar", color: "#009393", intentsId: "nep141:usdt.tether-token.near", decimals: 6, live: true, price: 1, change: 0, vol: 0, blurb: "The most widely used digital dollar." },
   { id: "stnear", name: "Staked NEAR", ticker: "stNEAR", kind: "Crypto", color: "#00C08B", intentsId: "nep141:meta-pool.near", decimals: 24, live: true, price: 5.81, change: 0, vol: 0.05, blurb: "NEAR staked with Meta Pool. Earns staking rewards, sells back any time.", earn: { base: "near", issuer: "Meta Pool", how: "staking rewards from NEAR validators", url: "https://metapool.app" }, slippageBps: 200 },
   { id: "wsteth", name: "Staked ETH", ticker: "wstETH", kind: "Crypto", color: "#627EEA", intentsId: "nep141:eth-0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0.omft.near", decimals: 18, live: true, price: 2804, change: 0, vol: 0.038, blurb: "ETH staked with Lido. Earns Ethereum staking rewards.", earn: { base: "eth", issuer: "Lido", how: "Ethereum staking rewards", url: "https://lido.fi" }, slippageBps: 200 },
   { id: "gtusdc", name: "Earning USDC", ticker: "gtUSDCp", kind: "Digital dollar", color: "#2775CA", intentsId: "nep141:base-0x0bb69b79bc829e1cfcc34a740110886d98d2bd14.omft.near", decimals: 18, live: true, price: 0.0000011162, change: 0, vol: 0, blurb: "USDC lent out through Gauntlet USDC Prime on Morpho. Earns interest from borrowers.", earn: { base: "usdc", issuer: "Gauntlet on Morpho", how: "interest from Morpho borrowers", url: "https://app.morpho.org/base/vault/0xee8f4ec5672f09119b96ab6fb59c27e1b7e44b61" }, slippageBps: 200 },

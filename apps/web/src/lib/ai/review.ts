@@ -5,8 +5,8 @@ import type { Guardrails } from "@/lib/store";
 import { earnVersionOf } from "@/lib/assets";
 import type { Yields } from "@/lib/market/yields";
 
-const CRYPTO = new Set(["btc", "eth", "sol", "near", "stnear", "wsteth", "ksol"]);
-const SAFE = new Set(["usdc", "xaut", "gtusdc"]);
+const CRYPTO = new Set(["btc", "eth", "sol", "near", "stnear", "wsteth", "ksol", "xrp", "doge", "ada", "trx", "link", "ltc", "sui", "zec", "bch", "aave", "uni"]);
+const SAFE = new Set(["usdc", "usdt", "xaut", "gtusdc"]);
 
 export type ReviewStats = {
   days: number;

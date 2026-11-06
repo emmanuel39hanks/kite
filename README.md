@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/emmanuel39hanks/kite/actions/workflows/ci.yml/badge.svg)](https://github.com/emmanuel39hanks/kite/actions/workflows/ci.yml)
 
-**A self-custodied autopilot for your savings, on NEAR.** You pick a mix: Bitcoin, Ethereum, Solana, NEAR, gold, digital dollars. Your money sits in **your own vault contract**. Kite keeps the mix on target by rebalancing through **NEAR Intents** when a holding drifts too far. Idle parts can earn a yield. A private model on **NEAR AI Cloud** can draft a plan, review it, and turn plain words into rules, and it never touches your money.
+**A self-custodied autopilot for your savings, on NEAR.** You pick a mix of up to eight from 22 assets: Bitcoin, Ethereum, Solana, NEAR, XRP, Dogecoin, Chainlink, Zcash and more, plus gold and digital dollars. Your money sits in **your own vault contract**. Kite keeps the mix on target by rebalancing through **NEAR Intents** when a holding drifts too far. Idle parts can earn a yield. A private model on **NEAR AI Cloud** can draft a plan, review it, and turn plain words into rules, and it never touches your money.
 
 **The one idea:** Kite's robot holds a key that can only ask your vault to rebalance, and the vault only accepts a trade that carries a **quote signed by NEAR Intents**, checked on-chain. So even a stolen key can't send your money anywhere else.
 
@@ -97,7 +97,7 @@ Code: `apps/web/src/components/console/swap-tracker.tsx`, `apps/web/src/lib/near
 
 ## What NEAR does here
 
-- **NEAR Intents:** holds every asset as NEP-245 balances owned by your vault account (nBTC, ETH, SOL, NEAR, USDC, Tether Gold, plus the earning versions stNEAR, wstETH, gtUSDCp, kV-gtSOLb). The 1Click API handles deposits from other chains and every swap. **Its signed quotes are verified on-chain by the vault** (`env::ed25519_verify`).
+- **NEAR Intents:** holds every asset as NEP-245 balances owned by your vault account (nBTC, ETH, SOL, NEAR, XRP, DOGE, ADA, TRX, LINK, LTC, SUI, ZEC, BCH, AAVE, UNI, USDC, USDT, Tether Gold, plus the earning versions stNEAR, wstETH, gtUSDCp, kV-gtSOLb). Each was checked with a $50 round-trip 1Click quote before it was listed (0.06% for USDT, 0.5 to 0.8% for the rest). A plan holds at most eight, because the vault funds a plan in one call of at most eight swaps. BNB, AVAX and XLM are routable too but travel over a different bridge (HOT Omni) that hasn't been tested with the vault, so they're left out. The 1Click API handles deposits from other chains and every swap. **Its signed quotes are verified on-chain by the vault** (`env::ed25519_verify`).
 - **NEAR AI Cloud:** the private AI features below, end-to-end encrypted to attested model hardware.
 - **Function-call access keys:** limit Kite's keeper to two methods at the protocol level.
 - **Auth by predecessor** (default in `intents.near`): the vault contract moves its own Intents balances with no keys registered there. Custody stays with a contract only you control.
