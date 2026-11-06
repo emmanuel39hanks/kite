@@ -23,7 +23,9 @@ export function SwapTracker({ sell, buy, depositAddress }: { sell: string; buy: 
   // 1Click's reason is free text from outside. Only a plain code like PARTIALLY_FILLED is used or shown.
   const reasonCode = typeof d?.refundReason === "string" && /^[A-Z][A-Z0-9_]{2,39}$/.test(d.refundReason) ? d.refundReason : null;
   const links = [
-    ...(d?.nearTxHashes ?? []).map((h) => ({ label: "Vault transfer", href: txUrl(h) })),
+    // Since 27 Oct 2026 1Click settles swaps confidentially: these NEAR hashes are the shield and unshield
+    // steps around the swap, not the swap itself. The Intents explorer link below shows the swap.
+    ...(d?.nearTxHashes ?? []).map((h, i, all) => ({ label: all.length > 1 ? `NEAR step ${i + 1}` : "NEAR step", href: txUrl(h) })),
     ...(d?.destinationChainTxHashes ?? []).flatMap((t) => {
       const href = safeHttps(t.explorerUrl);
       return href ? [{ label: "Delivery", href }] : [];

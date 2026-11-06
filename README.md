@@ -272,7 +272,7 @@ scripts/                     setup.sh, integration.sh
 | `NEXT_PUBLIC_KITE_AGENT_PK` | Public half of Kite's keeper key, added to each new vault |
 | `KITE_AGENT_KEY` | Server only. Lets `/api/vault/check` and `/api/cron` send real rebalances. Leave it out to run dry. |
 | `NEARAI_API_KEY` | Server only. Lets the relay reach NEAR AI Cloud for the private AI features. Hackathon credits come through NEAR Builders. Without it the AI features show "not configured" and everything else works. |
-| `ONECLICK_JWT` | Optional 1Click partner key. Without one, 1Click adds 0.25% to every quote; with one the fee is 0.20%, or 0.01% on stablecoin pairs ([fees](https://docs.near-intents.org/resources/fees.md)). |
+| `ONECLICK_JWT` | Optional 1Click partner key. On Kite's quotes (Intents balance to Intents balance) we measured the same fee with or without it: 0.20%, or 0.01% on stablecoin pairs, shown in each signed quote's `appFees`. The [docs](https://docs.near-intents.org/resources/fees.md) list 0.25% for calls without a key. |
 | `NEXT_PUBLIC_NEAR_RPC`, `NEAR_RPC`, `INTENTS_CONTRACT`, `ONECLICK_URL` | Optional overrides with working defaults (FastNEAR RPC, `intents.near`, the 1Click API) |
 | `KITE_VAULT`, `ATTACKER` | Keeper CLI only (`npm run keeper`, `npm run attack`) |
 | `CRON_SECRET`, `KITE_VAULTS` | `CRON_SECRET` is required for `/api/cron` (it refuses all calls without it). `KITE_VAULTS` lists the vaults the server may send real transactions for. |
