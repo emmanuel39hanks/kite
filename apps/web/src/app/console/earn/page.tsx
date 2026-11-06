@@ -13,7 +13,7 @@ const RISKS: Record<EarnId, string[]> = {
   wsteth: ["Lido's contracts could fail.", "Held on NEAR through a bridge from Ethereum, so the bridge has to work too."],
   gtusdc: [
     "Lent to borrowers on Morpho; a bad loan could cost lenders.",
-    "Bridged from Base, through a wrapper token whose deployer we couldn't verify.",
+    "Bridged from Base through a third-party wrapper token, which NEAR Intents lists as an official earn token.",
   ],
   ksol: ["Lent to borrowers on Kamino; a bad loan could cost lenders.", "Bridged from Solana."],
 };

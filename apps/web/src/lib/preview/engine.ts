@@ -21,8 +21,8 @@ export const PREVIEW_VAULT = `kite.${PREVIEW_ACCOUNT}`;
 const KEY = "kite-preview:v1";
 const EVENT = "kite-preview";
 
-/** Swap cost assumed when replaying the past: 1Click's 0.2% app fee plus ~0.1% spread, as seen in live quotes. */
-const REPLAY_COST = 0.003;
+/** Swap cost assumed when replaying the past: 1Click's 0.25% fee for calls without a partner key, plus ~0.1% spread. */
+const REPLAY_COST = 0.0035;
 
 export type PreviewVault = {
   createdAt: number;
