@@ -6,7 +6,7 @@
  * file stays pure and testable; `evidence-sdk.ts` supplies the real implementation in the browser.
  */
 import { decodeEvidenceLine, expectedSignedText, policyRefOf, requestModel, sameJson, splitDescription, type EvidenceBundle } from "@/lib/ai/evidence";
-import { callsMatch, descriptionBody, factsFromRequest, lossBound, policyRequest, rationaleFrom, type PolicyFacts } from "@/lib/ai/policy";
+import { callsMatch, cleanMandate, descriptionBody, factsFromRequest, lossBound, policyRequest, rationaleFrom, type PolicyFacts } from "@/lib/ai/policy";
 import { POLICY_MODEL } from "@/lib/ai/planner";
 import { assetByIntentsId } from "@/lib/assets";
 import { toContractLimits, type ContractLimits, type ContractTarget } from "@/lib/near/vault";
@@ -44,6 +44,9 @@ function proposalCalls(kind: unknown): { receiver: string; calls: { method: stri
 
 /** The rules in plain units, the targets and the stated worst case all agree with the call arguments. */
 export function numbersCheck(f: PolicyFacts): { ok: boolean; reason: string } {
+  // Kite always stores the DAO's words as one clean line; anything else could pose as Kite's own text.
+  if (f.mandate !== null && (typeof f.mandate !== "string" || f.mandate === "" || f.mandate !== cleanMandate(f.mandate)))
+    return { ok: false, reason: "The DAO's words in the analysis aren't the single clean line Kite writes: they could pose as Kite's own text." };
   const lim = f.calls.find((c) => c.method === "set_limits")?.args.limits as ContractLimits | undefined;
   if (!lim) return { ok: false, reason: "The signed calls have no set_limits." };
   const plan = f.calls.find((c) => c.method === "set_plan")?.args.plan as ContractTarget[] | undefined;

@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { PLANNER_MODEL, POLICY_MODEL } from "@/lib/ai/planner";
+import { policyPrompt } from "@/lib/ai/policy";
 
 /** The only models relayed, each with its own output cap: the quick planner, and the stronger model for DAO policies. */
 const MODEL_CAPS: Record<string, number> = { [PLANNER_MODEL]: 4000, [POLICY_MODEL]: 1500 };
@@ -88,6 +89,12 @@ async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> })
       const cap = Math.min(MAX_TOKENS, MODEL_CAPS[j.model]);
       if (!(typeof mt === "number" && Number.isInteger(mt) && mt > 0 && mt <= cap)) return Response.json({ error: `max_tokens required (up to ${cap})` }, { status: 400 });
       if ("max_completion_tokens" in j || "best_of" in j || "tools" in j || (j.n !== undefined && j.n !== 1)) return Response.json({ error: "Not allowed" }, { status: 400 });
+      // The stronger model is only for DAO policies: Kite's own system prompt and one message of facts, in the clear.
+      if (j.model === POLICY_MODEL) {
+        const m = j.messages as { role?: unknown; content?: unknown }[] | undefined;
+        if (!Array.isArray(m) || m.length !== 2 || m[0]?.role !== "system" || m[0]?.content !== policyPrompt || m[1]?.role !== "user" || typeof m[1]?.content !== "string")
+          return Response.json({ error: "This model only answers Kite's policy prompt" }, { status: 403 });
+      }
     } catch {
       return Response.json({ error: "Bad request" }, { status: 400 });
     }
