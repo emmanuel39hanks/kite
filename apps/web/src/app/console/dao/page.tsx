@@ -147,7 +147,7 @@ function VaultDao({ vault, own }: { vault: string; own: boolean }) {
     return () => {
       alive = false;
     };
-  }, [vault, rev]);
+  }, [vault, rev, own]);
 
   /** Sign one DAO transaction, then re-read the vault and proposals once the chain has it. */
   const run = useCallback(
