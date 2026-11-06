@@ -4,6 +4,7 @@ import type { Action } from "@near-js/transactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { GuardSliders } from "@/components/console/guard-sliders";
+import { TreasuryPolicy } from "@/components/console/treasury-policy";
 import { Badge, Button, Card, Empty, PageTitle, SectionTitle, StatusNote } from "@/components/console/ui";
 import { Logo } from "@/components/logo";
 import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
@@ -30,6 +31,7 @@ import {
 import { agentAllowanceYocto, fromContractLimits, readVault, toContractLimits, type VaultState } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
 import type { Guardrails } from "@/lib/store";
+import { slice } from "@/lib/mix";
 
 /**
  * A Kite vault owned by a SputnikDAO: who owns it, what it holds, and the DAO's proposals that call it.
@@ -409,8 +411,15 @@ function OwnerActions({
             {!state.status.agent && !restoreReady && <p className="mt-2 text-[13px] text-[#8a5a00]">This deployment has no Kite key configured, so it can&apos;t propose restoring it.</p>}
           </Card>
 
-          {/* Integration point: <TreasuryPolicy dao={ctx.dao} vault={vault} /> from components/console/treasury-policy.tsx
-              ("Propose a verified policy") mounts here, next to the other owner proposals. */}
+          <TreasuryPolicy
+            vault={vault}
+            dao={ctx.dao}
+            plan={state.plan.flatMap((t) => {
+              const a = assetByIntentsId(t.token);
+              return a ? [slice(a.id, t.target_bps / 100)] : [];
+            })}
+            limits={g}
+          />
 
           <Card className="p-4">
             <RightsHint policy={ctx.policy} account={account} need="propose" />
