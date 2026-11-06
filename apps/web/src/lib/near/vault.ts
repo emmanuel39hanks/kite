@@ -26,7 +26,7 @@ const yocto = (near: string) => {
 };
 const TGAS = 10n ** 12n;
 
-function toContractPlan(mix: Slice[]): ContractTarget[] {
+export function toContractPlan(mix: Slice[]): ContractTarget[] {
   return mix.map((s) => {
     const a = assetById(s.id);
     if (!a.live || !a.intentsId) throw new Error(`${a.name} can't be held yet`);
