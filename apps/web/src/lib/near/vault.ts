@@ -80,6 +80,16 @@ export async function createVaultActions(owner: string, vault: string, mix: Slic
   ];
 }
 
+/**
+ * `allocate` actions, one per swap. The vault joins the transfers of one call into a single promise and NEAR
+ * refuses to return a joint promise ("Returning joint promise is currently prohibited"), so a call with more than
+ * one transfer fails. One transfer per call, all in the same transaction (or DAO proposal), works: the sandbox
+ * test a_dao_invests_with_eight_swaps_in_one_vote runs eight.
+ */
+export const ALLOCATE_TGAS_EACH = 30n;
+export const allocateCalls = (transfers: { token: string; amount: string; to: string }[]) =>
+  transfers.map((t) => ({ method: "allocate", args: { transfers: [{ token: t.token, amount: t.amount, to: t.to }] } }));
+
 /** Owner calls on the vault carry 1 yoctoNEAR, which forces a full-access signature. */
 export const ownerCall = (method: string, args: object, tgas = 100n) => actionCreators.functionCall(method, args, tgas * TGAS, 1n);
 

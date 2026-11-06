@@ -6,12 +6,12 @@ import { Badge, Button, Card } from "@/components/console/ui";
 import { assetByIntentsId } from "@/lib/assets";
 import { NEAR } from "@/lib/near/config";
 import type { DaoProposal } from "@/lib/near/dao";
-import { moveIntoVaultProposal, investProposal, sendUsdcToDaoActions, usdcFromInput, usdcInIntents, usdcInWallet, usdcRegistered } from "@/lib/near/dao-fund";
+import { moveIntoVaultProposal, investProposal, quotesUntil, sendUsdcToDaoActions, usdcExact, usdcFromInput, usdcInIntents, usdcInWallet, usdcRegistered } from "@/lib/near/dao-fund";
 import { nearFromYocto, openProposalFor, rightsOf, usdcText, type DaoPolicy } from "@/lib/near/dao-view";
 import type { ContractTarget } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
 
-type Balances = { dao: bigint; registered: boolean; vault: bigint; mine: bigint | null };
+type Balances = { dao: bigint; registered: boolean; vault: bigint; mine: bigint | null } | { error: true };
 type Send = (name: string, receiver: string, actions: Action[], ok: string) => Promise<void>;
 
 const field =
@@ -30,6 +30,7 @@ export function DaoFundCard({
   policy,
   proposals,
   plan,
+  pending,
   rev,
   busy,
   send,
@@ -39,39 +40,55 @@ export function DaoFundCard({
   policy: DaoPolicy;
   proposals: DaoProposal[];
   plan: ContractTarget[];
+  /** A swap Kite's key started and hasn't settled: investing now would confuse its settlement. */
+  pending: boolean;
   rev: number;
   busy: string | null;
   send: Send;
 }) {
   const w = useWallet();
-  const [b, setB] = useState<Balances | null>(null);
+  const [bal, setB] = useState<Balances | null>(null);
   const [give, setGive] = useState("");
   const [move, setMove] = useState("");
+  const [moveTouched, setMoveTouched] = useState(false);
+  /** When the balances were last read; "now" for deciding whether an invest proposal's quotes have ended. */
+  const [readAt, setReadAt] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   const [quoting, setQuoting] = useState(false);
   const me = w.accountId && !w.preview ? w.accountId : null;
 
   useEffect(() => {
     let alive = true;
-    Promise.all([usdcInWallet(dao).catch(() => 0n), usdcRegistered(dao).catch(() => false), usdcInIntents(vault).catch(() => 0n), me ? usdcInWallet(me).catch(() => null) : Promise.resolve(null)]).then(
-      ([daoUsdc, registered, vaultUsdc, mine]) => {
+    // Balances that can't be read show as unknown, never as zero: "the DAO has no USDC" would be a guess.
+    Promise.all([usdcInWallet(dao), usdcRegistered(dao), usdcInIntents(vault), me ? usdcInWallet(me).catch(() => null) : Promise.resolve(null)])
+      .then(([daoUsdc, registered, vaultUsdc, mine]) => {
         if (!alive) return;
         setB({ dao: daoUsdc, registered, vault: vaultUsdc, mine });
-        setMove(daoUsdc > 0n ? usdcText(daoUsdc.toString()) : "");
-      },
-    );
+        setReadAt(Date.now());
+      })
+      .catch(() => alive && setB({ error: true }));
     return () => {
       alive = false;
     };
   }, [dao, vault, me, rev]);
+  const b = bal && !("error" in bal) ? bal : null;
+  // Offer the DAO's whole balance, exactly, until the person types their own amount.
+  const moveShown = moveTouched ? move : b && b.dao > 0n ? usdcExact(b.dao) : "";
 
   const bond = BigInt(policy.proposal_bond);
   const rights = rightsOf(policy, me);
   const hours = quoteHours(policy.proposal_period);
   const openMove = openProposalFor(proposals, "ft_transfer_call", policy.proposal_period);
-  const openInvest = openProposalFor(proposals, "allocate", policy.proposal_period);
+  // An invest proposal stops mattering when its quotes end, even if the DAO's voting window runs on.
+  const openInvestAny = openProposalFor(proposals, "allocate", policy.proposal_period);
+  const investEnds = openInvestAny ? quotesUntil(openInvestAny.description) : null;
+  const openInvest = openInvestAny && (investEnds === null || investEnds > readAt) ? openInvestAny : null;
   const giveAmt = usdcFromInput(give);
-  const moveAmt = usdcFromInput(move);
+  const moveAmt = usdcFromInput(moveShown);
+  const usdcToken = NEAR.usdc;
+  // At least one part of the plan must come to $0.25 or more, the smallest swap the quotes route makes.
+  const investable = !!b && plan.some((t) => t.token !== usdcToken && (b.vault * BigInt(t.target_bps)) / 10_000n >= 250_000n);
+  const periodHours = Number(BigInt(policy.proposal_period) / 1_000_000_000n) / 3600;
   const off = !me || busy !== null;
 
   const steps = [
@@ -142,7 +159,7 @@ export function DaoFundCard({
                 <OpenNote p={openMove} />
               ) : (
                 <div className="flex gap-2">
-                  <input value={move} onChange={(e) => setMove(e.target.value)} inputMode="decimal" placeholder="0.00" aria-label="USDC to move into the vault" className={field} disabled={off} />
+                  <input value={moveShown} onChange={(e) => (setMove(e.target.value), setMoveTouched(true))} inputMode="decimal" placeholder="0.00" aria-label="USDC to move into the vault" className={field} disabled={off} />
                   <Button
                     size="sm"
                     variant="primary"
@@ -164,22 +181,27 @@ export function DaoFundCard({
           <li className="flex flex-col rounded-2xl bg-white p-5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
             <StepHead n={3} title={steps[2].title} amount={null} where={steps[2].where} />
             <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">
-              Kite gets 1Click quotes for each part of the plan and checks every one with NEAR Intents: each swap pays back to this vault. They stay good for {hours} hours, the DAO&apos;s voting window.
+              Kite gets 1Click quotes for each part of the plan and checks every one with NEAR Intents: each swap pays back to this vault. {periodHours > hours ? `They stay good for ${hours} hours, so approve it within that, sooner than the DAO's ${Math.round(periodHours / 24)}-day voting window.` : `They stay good for ${hours} hours, the DAO's voting window.`}
             </p>
             <div className="mt-auto pt-4">
               {openInvest ? (
                 <OpenNote p={openInvest} />
               ) : (
-                <Button variant="primary" size="sm" className="w-full" disabled={off || !b || b.vault < 500_000n || !rights.propose} loading={quoting || busy === "invest"} onClick={invest}>
-                  {b && b.vault >= 500_000n ? `Propose investing ${usdcText(b.vault.toString())} USDC` : "Propose investing"}
+                <Button variant="primary" size="sm" className="w-full" disabled={off || !investable || pending || !rights.propose} loading={quoting || busy === "invest"} onClick={invest}>
+                  {investable && b ? `Propose investing ${usdcText(b.vault.toString())} USDC` : "Propose investing"}
                 </Button>
               )}
               <p className="mt-2 text-[12px] leading-[18px] text-[#6b6b6b]">
-                {b && b.vault < 500_000n ? "Less than $0.50 of USDC is waiting in the vault. Do step 2 first." : "If the vote runs late or a price moves past 1%, the USDC comes back to the vault. Nothing is lost; file again."}
+                {pending
+                  ? "Kite has a swap in progress. Wait until it settles (the next daily check) before investing more."
+                  : b && !investable
+                    ? "Not enough USDC is waiting in the vault: each part of the plan needs at least $0.25. Do step 2 first."
+                    : "If the vote runs late or a price moves past 1%, the USDC comes back to the vault. Nothing is lost; file again."}
               </p>
             </div>
           </li>
         </ol>
+        {bal && "error" in bal && <p className="px-4 pt-3 pb-2 text-[13px] leading-5 text-rose-600">Couldn&apos;t read the balances from NEAR. Refresh to try again.</p>}
         {err && <p className="px-4 pt-3 pb-2 text-[13px] leading-5 text-rose-600">{err}</p>}
       </Card>
     </div>

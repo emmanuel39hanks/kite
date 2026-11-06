@@ -49,8 +49,60 @@ describe("DAO funding", () => {
 
   it("tells voters in plain words, and flags both as moving money", () => {
     assert.equal(summarizeCall("ft_transfer_call", { receiver_id: NEAR.intents, amount: "3000000", msg: VAULT }), `Move 3.00 USDC from the DAO into vault ${VAULT}`);
-    assert.match(summarizeCall("allocate", { transfers: [{ amount: "1500000" }, { amount: "750000" }] }), /^Invest 2\.25 USDC in the plan: 2 swaps/);
+    assert.match(summarizeCall("allocate", { transfers: [{ amount: "1500000", to: "x", token: "y" }] }), /^Send an amount to a swap address\. Kite checks/);
     assert.equal(callRisk("ft_transfer_call"), "moves-money");
     assert.equal(callRisk("allocate"), "moves-money");
+  });
+});
+
+import { verifyAllocateProposal } from "./allocate-check";
+import { quotesUntil, usdcExact } from "./dao-fund";
+import { allocateCalls } from "./vault";
+
+const USDC = NEAR.usdc;
+const BTC = "nep141:nbtc.bridge.near";
+const NOW = Date.parse("2026-11-07T12:00:00Z");
+const swap = (o: Record<string, unknown> = {}) => ({
+  quoteResponse: {
+    quoteRequest: {
+      recipient: VAULT, refundTo: VAULT, recipientType: "INTENTS", refundType: "INTENTS", depositType: "INTENTS",
+      originAsset: USDC, destinationAsset: BTC, amount: "1000000", dry: false, swapType: "EXACT_INPUT", slippageTolerance: 100,
+      appFees: [{ recipient: "5880ad2b362620fadf759cbceb1cd5737ce8c6ed7fb8e9942881e6731f9247dd", fee: 20 }],
+      deadline: "2026-11-08T12:00:00Z", ...o,
+    },
+  },
+});
+const check = (o: Record<string, unknown> = {}, t: Record<string, unknown> = {}) =>
+  verifyAllocateProposal({ transfers: [{ token: USDC, amount: "1000000", to: "addr1", ...t }], vault: VAULT, planTokens: [BTC, USDC], nowMs: NOW, fetchStatus: async () => swap(o) });
+
+describe("checking a DAO's invest proposal before offering a vote", () => {
+  it("passes a swap that pays this vault, and says when its quote ends", async () => {
+    const [s] = await check();
+    assert.equal(s.buy, BTC);
+    assert.equal(s.deadlineMs, Date.parse("2026-11-08T12:00:00Z"));
+  });
+  it("refuses anything else", async () => {
+    for (const o of [{ recipient: "thief.near" }, { refundTo: "thief.near" }, { recipientType: "ORIGIN_CHAIN" }, { destinationAsset: "nep141:other" }, { amount: "999" }, { originAsset: BTC }, { dry: true }, { deadline: "2026-11-07T11:00:00Z" }, { referral: "x" }, { appFees: [{ recipient: "thief", fee: 20 }] }, { slippageTolerance: 900 }])
+      await assert.rejects(check(o), JSON.stringify(o));
+    await assert.rejects(check({}, { amount: "1e6" }));
+    await assert.rejects(verifyAllocateProposal({ transfers: [], vault: VAULT, planTokens: [BTC], nowMs: NOW, fetchStatus: async () => swap() }));
+    await assert.rejects(verifyAllocateProposal({ transfers: [{ token: USDC, amount: "1000000", to: "a" }], vault: VAULT, planTokens: [BTC], nowMs: NOW, fetchStatus: async () => { throw new Error("404"); } }));
+  });
+});
+
+describe("invest helpers", () => {
+  it("puts one transfer in each allocate call, because NEAR refuses a joint promise", () => {
+    const calls = allocateCalls([{ token: USDC, amount: "1", to: "a" }, { token: USDC, amount: "2", to: "b" }]);
+    assert.deepEqual(calls, [
+      { method: "allocate", args: { transfers: [{ token: USDC, amount: "1", to: "a" }] } },
+      { method: "allocate", args: { transfers: [{ token: USDC, amount: "2", to: "b" }] } },
+    ]);
+  });
+  it("reads the quote deadline it wrote, and shows USDC exactly", () => {
+    assert.equal(quotesUntil("…\nQuotes valid until 2026-11-09T16:47:47Z. If this passes later…"), Date.parse("2026-11-09T16:47:47Z"));
+    assert.equal(quotesUntil("no date here"), null);
+    assert.equal(usdcExact(3_456_789n), "3.456789");
+    assert.equal(usdcExact(3_000_000n), "3");
+    assert.equal(usdcExact(250_000n), "0.25");
   });
 });

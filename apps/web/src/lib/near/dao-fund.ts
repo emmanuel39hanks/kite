@@ -13,16 +13,29 @@ import { verifyAllocation, type Transfer } from "./allocate-check";
 import { NEAR } from "./config";
 import { addProposalAction } from "./dao";
 import { usdcText } from "./dao-view";
+import { ALLOCATE_TGAS_EACH, allocateCalls } from "./vault";
 
 const TGAS = 10n ** 12n;
 /** What the USDC contract charges to register an account (NEP-145 storage). */
 const USDC_STORAGE = 1_250_000_000_000_000_000_000n;
-/** Each allocate transfer gets 15 Tgas in the vault; eight of them plus the call itself. */
-const ALLOCATE_TGAS = 150;
 
 const provider = new JsonRpcProvider({ url: NEAR.rpc });
 const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
   provider.callFunction({ contractId, method, args }) as Promise<T>;
+
+/** When an invest proposal's quotes end, from its description (written by investProposal). Only for display and for
+ *  not blocking a new proposal; whether a vote is offered is decided by checking the swaps themselves. */
+export function quotesUntil(description: string): number | null {
+  const m = description.match(/Quotes valid until (\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)/);
+  return m ? Date.parse(m[1]) : null;
+}
+
+/** USDC base units as an exact decimal string, e.g. 3456789n → "3.456789", 3000000n → "3". */
+export function usdcExact(base: bigint): string {
+  const whole = base / 1_000_000n;
+  const frac = (base % 1_000_000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : whole.toString();
+}
 
 /** USDC an account holds on NEAR (not inside NEAR Intents), in base units. */
 export const usdcInWallet = async (account: string) => BigInt(await view<string>(NEAR.usdcContract, "ft_balance_of", { account_id: account }));
@@ -70,13 +83,14 @@ export async function investProposal(opts: { vault: string; plan: { token: strin
   await verifyAllocation({ transfers: quoted, plan, usdc, usdcToken: NEAR.usdc, vault });
   const transfers = quoted.map(({ token, amount, to }) => ({ token, amount, to }));
   const spent = transfers.reduce((n, t) => n + BigInt(t.amount), 0n);
-  const until = new Date(Date.now() + hours * 3600_000).toUTCString().replace(":00 GMT", " UTC");
+  const until = new Date(Date.now() + hours * 3600_000).toISOString().replace(/\.\d+Z$/, "Z");
   const lines = quoted.map((q) => `- ${usdcText(q.amount)} USDC → ${names(q.buy)}${q.amountOutUsd ? ` (about $${Number(q.amountOutUsd).toFixed(2)} after fees)` : ""}`);
   const description = [
     `Invest ${usdcText(spent.toString())} USDC from Kite vault ${vault} in its plan, through NEAR Intents (1Click):`,
     ...lines,
     ``,
-    `Every swap pays back to the vault itself. These quotes are good until ${until}. If this passes later, or a price moves more than 1%, 1Click refunds the USDC to the vault and nothing is lost; file again.${spent < usdc ? ` ${usdcText((usdc - spent).toString())} USDC stays in the vault as USDC (shares under $0.25 aren't worth a swap).` : ""}`,
+    `Every swap pays back to the vault itself. Quotes valid until ${until}. If this passes later, or a price moves more than 1%, 1Click refunds the USDC to the vault and nothing is lost; file again.${spent < usdc ? ` ${usdcText((usdc - spent).toString())} USDC stays in the vault as USDC (shares under $0.25 aren't worth a swap).` : ""}`,
   ].join("\n");
-  return { action: addProposalAction(vault, description, [{ method: "allocate", args: { transfers } }], bond, ALLOCATE_TGAS), spent, quoted };
+  // One allocate per swap (see allocateCalls): up to eight actions of 30 Tgas inside act_proposal's 300.
+  return { action: addProposalAction(vault, description, allocateCalls(transfers), bond, Number(ALLOCATE_TGAS_EACH)), spent, quoted };
 }

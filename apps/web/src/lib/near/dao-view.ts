@@ -157,9 +157,9 @@ export function summarizeCall(method: string, args: unknown): string {
     case "ft_transfer_call":
       return `Move ${usdcText(a.amount)} USDC from the DAO into vault ${String(a.msg ?? "?")}`;
     case "allocate": {
-      const ts = Array.isArray(a.transfers) ? (a.transfers as { amount?: string }[]) : [];
-      const total = ts.reduce((n, t) => n + (typeof t.amount === "string" && /^\d+$/.test(t.amount) ? BigInt(t.amount) : 0n), 0n);
-      return `Invest ${usdcText(total.toString())} USDC in the plan: ${ts.length} swap${ts.length === 1 ? "" : "s"} through NEAR Intents, paid back to the vault`;
+      // Never trust the amounts or addresses here: the proposal row checks each swap with NEAR Intents.
+      const ts = Array.isArray(a.transfers) ? a.transfers : [];
+      return `Send ${ts.length === 1 ? "an amount" : `${ts.length} amounts`} to a swap address. Kite checks each one with NEAR Intents below before offering a vote.`;
     }
     default:
       return `${method} ${JSON.stringify(args ?? {})}`;

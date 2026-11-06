@@ -587,3 +587,66 @@ async fn the_factory_refunds_a_failed_creation_and_keeps_its_callback_private() 
     assert!(factory.view("get_vault").args_json(json!({ "vault": format!("savings.{}", factory.id()) })).await?.json::<Option<Value>>()?.is_some());
     Ok(())
 }
+
+/// The DAO invests its vault's USDC by one vote with eight swaps. `allocate` joins its transfers into one promise
+/// and NEAR refuses to return a joint promise, so more than one transfer per call fails (checked first, below).
+/// Kite therefore sends one `allocate` per swap: eight actions in one proposal, 30 Tgas each, inside a 300 Tgas
+/// `act_proposal`. Every transfer must land.
+#[tokio::test]
+async fn a_dao_invests_with_eight_swaps_in_one_vote() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let root = worker.root_account()?;
+    let intents_acc = root.create_subaccount("intents").initial_balance(NearToken::from_near(5)).transact().await?.into_result()?;
+    let intents = intents_acc.deploy(&wasm("../target/near/mock_intents/mock_intents.wasm")).await?.into_result()?;
+    intents.call("new").transact().await?.into_result()?;
+    let (factory, _) = factory_setup(&worker, intents.id()).await?;
+    let council = root.create_subaccount("council").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+    let dao_acc = root.create_subaccount("treasury").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+    let dao = dao_acc.deploy(&wasm("res/sputnikdao2_v3_2.wasm")).await?.into_result()?;
+    dao.call("new")
+        .args_json(json!({ "config": { "name": "treasury", "purpose": "Kite test", "metadata": "" }, "policy": [council.id()] }))
+        .transact()
+        .await?
+        .into_result()?;
+    let agent = SecretKey::from_random(KeyType::ED25519).public_key();
+    let create = json!({ "method_name": "create_vault", "args": b64(&vault_args("treasury", &agent.to_string())), "deposit": NearToken::from_millinear(2_600).as_yoctonear().to_string(), "gas": "150000000000000" });
+    let (_, r) = dao_calls(&dao, &council, factory.id(), vec![create]).await?;
+    assert!(r.is_success(), "create vote failed: {:?}", r.failures());
+    let vault: AccountId = format!("treasury.{}", factory.id()).parse()?;
+
+    // The vault holds 8 USDC in Intents (step 2 of funding); the DAO votes to send $1 to each of eight swap addresses.
+    intents.call("set_balance").args_json(json!({ "account_id": vault, "token_id": USDC, "amount": "8000000" })).transact().await?.into_result()?;
+    let mut to = Vec::new();
+    for i in 0..8 {
+        to.push(format!("swap{i}.{}", root.id()));
+    }
+    let transfers: Vec<Value> = to.iter().map(|a| json!({ "token": USDC, "amount": "1000000", "to": a })).collect();
+    // Two transfers in one call: the joint promise is refused, nothing moves, the DAO's proposal ends Failed.
+    let joint = json!({ "method_name": "allocate", "args": b64(&json!({ "transfers": transfers[..2] })), "deposit": "1", "gas": "100000000000000" });
+    let (jid, _) = dao_calls(&dao, &council, &vault, vec![joint]).await?;
+    worker.fast_forward(3).await?;
+    let jp: Value = dao.view("get_proposal").args_json(json!({ "id": jid })).await?.json()?;
+    assert_eq!(jp["status"], json!("Failed"), "two transfers in one allocate can't run");
+    let actions: Vec<Value> = transfers
+        .iter()
+        .map(|t| json!({ "method_name": "allocate", "args": b64(&json!({ "transfers": [t] })), "deposit": "1", "gas": "30000000000000" }))
+        .collect();
+    let (id, r) = dao_calls(&dao, &council, &vault, actions).await?;
+    assert!(r.is_success(), "invest vote failed: {:?}", r.failures());
+    println!("\neight-swap invest vote burnt {:.1} Tgas", r.total_gas_burnt.as_gas() as f64 / 1e12);
+    for o in r.receipt_outcomes() {
+        if o.is_failure() {
+            println!("failed receipt on {}: {:?}", o.executor_id, o.clone().into_result().err());
+        }
+    }
+    worker.fast_forward(5).await?;
+    let p: Value = dao.view("get_proposal").args_json(json!({ "id": id })).await?.json()?;
+    assert_eq!(p["status"], json!("Approved"), "{p}");
+    for a in &to {
+        let b: Vec<String> = intents.view("mt_batch_balance_of").args_json(json!({ "account_id": a, "token_ids": [USDC] })).await?.json()?;
+        assert_eq!(b, vec!["1000000".to_string()], "{a} got its swap");
+    }
+    let left: Vec<String> = intents.view("mt_batch_balance_of").args_json(json!({ "account_id": vault, "token_ids": [USDC] })).await?.json()?;
+    assert_eq!(left, vec!["0".to_string()]);
+    Ok(())
+}

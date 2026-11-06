@@ -19,7 +19,7 @@ import { usePreviewActions } from "@/lib/preview/actions";
 import { verifyAllocation, type Transfer } from "./allocate-check";
 import { NEAR, vaultIdFor } from "./config";
 import { foreignOwner, notOwnerMessage } from "./dao-view";
-import { agentAllowanceYocto, createVaultActions, depositUsdcFromWallet, fromContractLimits, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
+import { ALLOCATE_TGAS_EACH, agentAllowanceYocto, allocateCalls, createVaultActions, depositUsdcFromWallet, fromContractLimits, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
 import { useWallet } from "./wallet";
 
 const provider = new JsonRpcProvider({ url: NEAR.rpc });
@@ -205,7 +205,7 @@ function useRealLive() {
     // The owner signs these, and they came from a server: check each swap address with NEAR Intents itself first.
     await verifyAllocation({ transfers: quoted, plan, usdc, usdcToken: NEAR.usdc, vault });
     const transfers = quoted.map(({ token, amount, to }) => ({ token, amount, to }));
-    const hash = await ownerSend([ownerCall("allocate", { transfers })]);
+    const hash = await ownerSend(allocateCalls(transfers).map((c) => ownerCall(c.method, c.args, ALLOCATE_TGAS_EACH)));
     k.addEvent({ kind: "trade", title: `Invested ${(Number(usdc) / 1e6).toFixed(2)} USDC`, detail: `${transfers.length} swaps into your plan through NEAR Intents.`, tx: hash });
     return hash;
   }, [k, ownerSend, vault]);

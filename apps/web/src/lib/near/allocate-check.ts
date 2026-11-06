@@ -109,3 +109,57 @@ export async function verifyDeposit(opts: {
   const fees = Array.isArray(q.appFees) ? (q.appFees as { recipient?: string; fee?: number }[]) : [];
   if (fees.some((f) => f.recipient !== ONECLICK_FEE_RECIPIENT || !(typeof f.fee === "number" && f.fee <= MAX_FEE_BPS))) return bad("unexpected fee");
 }
+
+export type CheckedSwap = { to: string; token: string; amount: string; buy: string; deadlineMs: number };
+
+/**
+ * The voter's side of the same check. A DAO's `allocate` proposal can be filed by anyone the DAO lets propose,
+ * so before Kite's page offers to approve one, it looks up every transfer with NEAR Intents itself: each must be
+ * a live 1Click swap of exactly that amount of that token, into an asset of this vault's plan, paying back to
+ * this vault. Throws with the reason if any isn't; otherwise returns what each swap buys and when its quote ends.
+ */
+export async function verifyAllocateProposal(opts: {
+  transfers: unknown;
+  vault: string;
+  planTokens: string[];
+  nowMs?: number;
+  fetchStatus?: (address: string) => Promise<Stored>;
+}): Promise<CheckedSwap[]> {
+  const { vault, planTokens } = opts;
+  const now = opts.nowMs ?? Date.now();
+  const get =
+    opts.fetchStatus ??
+    (async (address: string) => {
+      const r = await fetch(`${STATUS}?depositAddress=${encodeURIComponent(address)}`, { cache: "no-store" });
+      if (!r.ok) throw new Error("unknown");
+      return (await r.json()) as Stored;
+    });
+  const list = Array.isArray(opts.transfers) ? (opts.transfers as Record<string, unknown>[]) : null;
+  if (!list || list.length < 1 || list.length > 8) throw new Error("it doesn't list one to eight swaps");
+  return Promise.all(
+    list.map(async (t) => {
+      const { to, token, amount } = t as { to?: unknown; token?: unknown; amount?: unknown };
+      if (typeof to !== "string" || typeof token !== "string" || typeof amount !== "string" || !/^\d+$/.test(amount)) throw new Error("a swap is malformed");
+      let q: Record<string, unknown> | undefined;
+      try {
+        q = (await get(to)).quoteResponse?.quoteRequest;
+      } catch {
+        throw new Error(`${to.slice(0, 10)}… isn't a swap NEAR Intents knows`);
+      }
+      if (!q) throw new Error(`${to.slice(0, 10)}… isn't a swap NEAR Intents knows`);
+      const buy = String(q.destinationAsset ?? "");
+      const ours =
+        q.recipient === vault && q.refundTo === vault && q.recipientType === "INTENTS" && q.refundType === "INTENTS" && q.depositType === "INTENTS" &&
+        q.originAsset === token && q.amount === amount && q.dry === false && q.swapType === "EXACT_INPUT" &&
+        typeof q.slippageTolerance === "number" && q.slippageTolerance <= MAX_SLIPPAGE_BPS && planTokens.includes(buy) && buy !== token;
+      if (!ours) throw new Error(`the swap at ${to.slice(0, 10)}… doesn't pay this vault, or doesn't match the plan`);
+      for (const k of ["referral", "customRecipientMsg", "virtualChainRecipient", "virtualChainRefundRecipient"]) if (q[k]) throw new Error("a swap carries a redirect");
+      const fees = Array.isArray(q.appFees) ? (q.appFees as { recipient?: string; fee?: number }[]) : [];
+      if (fees.some((f) => f.recipient !== ONECLICK_FEE_RECIPIENT || !(typeof f.fee === "number" && f.fee <= MAX_FEE_BPS))) throw new Error("a swap pays someone a fee");
+      const deadlineMs = Date.parse(String(q.deadline ?? ""));
+      if (!Number.isFinite(deadlineMs)) throw new Error("a swap has no deadline");
+      if (deadlineMs <= now) throw new Error("its quotes have expired");
+      return { to, token, amount, buy, deadlineMs };
+    }),
+  );
+}

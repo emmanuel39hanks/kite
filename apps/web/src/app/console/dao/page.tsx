@@ -13,6 +13,7 @@ import { Donut } from "@/components/charts";
 import { Logo } from "@/components/logo";
 import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
 import { useMarket } from "@/lib/market/use-market";
+import { verifyAllocateProposal, type CheckedSwap } from "@/lib/near/allocate-check";
 import { accountUrl, NEAR, vaultIdFor } from "@/lib/near/config";
 import { addProposalAction, approveAction, describeCalls, vaultProposals, type DaoProposal } from "@/lib/near/dao";
 import {
@@ -253,7 +254,7 @@ function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCre
         </Card>
       )}
 
-      {owner && <DaoFundCard vault={vault} dao={owner.dao} policy={owner.policy} proposals={owner.proposals} plan={state.plan} rev={rev} busy={busy} send={run} />}
+      {owner && <DaoFundCard vault={vault} dao={owner.dao} policy={owner.policy} proposals={owner.proposals} plan={state.plan} pending={!!state.status.pending} rev={rev} busy={busy} send={run} />}
 
       {owner && <OwnerActions key={JSON.stringify(state.limits)} vault={vault} state={state} ctx={owner} account={w.accountId} busy={busy} onPropose={(name, a) => propose(owner, name, a)} />}
 
@@ -264,7 +265,7 @@ function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCre
             {ctx.proposals.length ? (
               <ul className="divide-y divide-black/[0.05] bg-white">
                 {ctx.proposals.map((p) => (
-                  <ProposalRow key={p.id} p={p} vault={vault} period={ctx.policy.proposal_period} connected={connected} busy={busy} onApprove={() => approve(ctx, p)} busyKey={`approve-${ctx.dao}-${p.id}`} />
+                  <ProposalRow key={p.id} p={p} vault={vault} planTokens={state.plan.map((t) => t.token)} period={ctx.policy.proposal_period} connected={connected} busy={busy} onApprove={() => approve(ctx, p)} busyKey={`approve-${ctx.dao}-${p.id}`} />
                 ))}
               </ul>
             ) : (
@@ -516,6 +517,7 @@ const STATUS_TONE: Record<string, "neutral" | "green" | "amber" | "red" | "blue"
 function ProposalRow({
   p,
   vault,
+  planTokens,
   period,
   connected,
   busy,
@@ -524,6 +526,7 @@ function ProposalRow({
 }: {
   p: DaoProposal;
   vault: string;
+  planTokens: string[];
   period: string;
   connected: boolean;
   busy: string | null;
@@ -532,7 +535,8 @@ function ProposalRow({
 }) {
   const calls = describeCalls(p.kind);
   const lapsed = isLapsed(p, period);
-  const approvable = canApprove(p, vault, period);
+  const swaps = useSwapCheck(p, vault, planTokens);
+  const approvable = canApprove(p, vault, period) && (swaps === null || swaps.ok === true);
   const when = new Date(Number(BigInt(p.submission_time) / 1_000_000n));
   return (
     <li className="px-5 py-4">
@@ -559,6 +563,7 @@ function ProposalRow({
               );
             })}
           </ul>
+          {swaps && <SwapList check={swaps} />}
         </div>
         {approvable && (
           <Button size="sm" variant="primary" icon="check" onClick={onApprove} loading={busy === busyKey} disabled={!connected || busy !== null}>
@@ -567,5 +572,65 @@ function ProposalRow({
         )}
       </div>
     </li>
+  );
+}
+
+type SwapCheck = { ok: null } | { ok: true; swaps: CheckedSwap[] } | { ok: false; why: string };
+
+/**
+ * For an open `allocate` proposal: check every swap with NEAR Intents before the page offers a vote, because anyone
+ * the DAO lets propose can file one. Null for any other proposal.
+ */
+function useSwapCheck(p: DaoProposal, vault: string, planTokens: string[]): SwapCheck | null {
+  // Kite files one allocate per swap; gather the transfers of every allocate in the proposal and check them all.
+  const calls = describeCalls(p.kind).filter((c) => c.method === "allocate");
+  const transfers = calls.flatMap((c) => {
+    const t = (c.args as { transfers?: unknown } | null)?.transfers;
+    return Array.isArray(t) ? t : [null];
+  });
+  const call = calls.length > 0;
+  const open = p.status === "InProgress";
+  const [check, setCheck] = useState<SwapCheck>({ ok: null });
+  const key = JSON.stringify(transfers);
+  useEffect(() => {
+    if (!call || !open) return;
+    let alive = true;
+    verifyAllocateProposal({ transfers: JSON.parse(key), vault, planTokens })
+      .then((swaps) => alive && setCheck({ ok: true, swaps }))
+      .catch((e) => alive && setCheck({ ok: false, why: e instanceof Error ? e.message : String(e) }));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-check only when the proposal's calls change
+  }, [key, open, vault]);
+  return call && open ? check : null;
+}
+
+function SwapList({ check }: { check: SwapCheck }) {
+  if (check.ok === null) return <p className="mt-2 text-[13px] text-[#6b6b6b]">Checking each swap with NEAR Intents…</p>;
+  if (check.ok === false)
+    return (
+      <p className="mt-2 max-w-[80ch] text-[13px] leading-5 text-rose-600">
+        Don&apos;t approve this from Kite: {check.why}. Kite won&apos;t offer a vote on it.
+      </p>
+    );
+  const until = Math.min(...check.swaps.map((s) => s.deadlineMs));
+  return (
+    <div className="mt-2 rounded-xl bg-[#05a800]/[0.06] px-3 py-2 text-[13px] leading-5">
+      <div className="text-[#05a800]">Checked with NEAR Intents: every swap pays back to this vault.</div>
+      <ul className="mt-1 space-y-0.5">
+        {check.swaps.map((s) => {
+          const from = assetByIntentsId(s.token);
+          const to = assetByIntentsId(s.buy);
+          const n = Number(BigInt(s.amount)) / 10 ** (from?.decimals ?? 6);
+          return (
+            <li key={s.to} className="tabular-nums">
+              {fmtUnits(n)} {from?.ticker ?? s.token} → {to?.name ?? s.buy}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-1 text-[#6b6b6b]">Quotes good until {new Date(until).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}. After that, approving does nothing useful: file a new one.</div>
+    </div>
   );
 }
