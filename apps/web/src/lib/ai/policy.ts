@@ -121,10 +121,10 @@ export const POLICY_SCHEMA = {
     additionalProperties: false,
     required: ["what", "why", "worst", "watch"],
     properties: {
-      what: { type: "string", description: "What the policy does, two or three plain sentences. No digits." },
-      why: { type: "string", description: "Why these limits suit this treasury, two or three plain sentences. No digits." },
-      worst: { type: "string", description: "What it can lose at worst and what stops it, one or two sentences. No digits." },
-      watch: { type: "string", description: "What the DAO should watch, one or two sentences. No digits." },
+      what: { type: "string", description: "Two or three sentences for voters on what the policy does. Figures only as {placeholders}." },
+      why: { type: "string", description: "Two or three sentences on why these limits suit this treasury and the DAO's goal. Figures only as {placeholders}." },
+      worst: { type: "string", description: "One or two sentences on the worst a misused key could cost and what stops it. Figures only as {placeholders}." },
+      watch: { type: "string", description: "One or two sentences on what the DAO should keep an eye on. Figures only as {placeholders}." },
     },
   },
 } as const;
@@ -135,7 +135,8 @@ export const policyPrompt = [
   "Rules: driftBand = points a holding may drift from target before the vault rebalances; maxTradePct = the biggest single trade as a share of the portfolio; slippageBps = the most a swap may cost, fees included, in hundredths of a percent; tradesPerDay = the most trades a day.",
   "Kite's robot key can only ask the vault to trade through a quote signed by NEAR Intents that pays the vault. A stolen key can still make needless trades inside these limits; the worst-case bound is what that could cost until the DAO revokes the key or pauses the vault.",
   "Write four short sections: what the policy does, why these limits, what it can lose at worst, what to watch.",
-  "Never write any digit or number word. The proposal prints every number itself, next to your words. Describe size in words (small, tight, wider).",
+  "Never write a digit, a number word or a fraction yourself (no 'five', 'half', 'two-fifths', 'tenth'). When a figure helps, write one of these placeholders exactly, braces included, and Kite's code prints the number: {band} (drift before a rebalance), {max_trade} (biggest single trade), {price_limit} (most a swap may cost), {trades_per_day} (most trades a day, e.g. '4 trades a day'), {worst_trade} (worst cost of one trade), {worst_day} (worst cost of a day), {mix} (the target mix). Each placeholder already includes its unit (for example {band} becomes '5 points' and {max_trade} becomes '10% of the portfolio'), so never add a unit after it. Use no other braces.",
+  "Write real sentences about this treasury, not the section titles. Each section is at most three sentences and under seventy words. Never write '...'.",
   "Plain sentences for a non-expert voter. No hype, no promises of returns, not financial advice.",
   "Answer only with JSON in the required schema.",
 ].join("\n");
@@ -164,7 +165,49 @@ export function policyTemplate(f: PolicyFacts): Omit<Rationale, "fromModel"> {
   };
 }
 
-/** The model's answer from the exact response bytes, checked: any section with a number of its own, or a missing one, means the whole template is used. */
+/** The figures the model may cite by name. Code prints each one from the facts, so the model never writes a number. */
+export function policyFigures(f: PolicyFacts): Record<string, string> {
+  const w = f.worstCase;
+  return {
+    band: `${f.rules.driftBand} points`,
+    max_trade: `${pct(w.maxTradePct)} of the portfolio`,
+    price_limit: pct(f.rules.slippageBps / 100),
+    trades_per_day: `${w.tradesPerDay} trades a day`,
+    worst_trade: `about ${pct(w.perTradePct)} of the portfolio`,
+    worst_day: `about ${pct(w.perDayPct)} of the portfolio`,
+    mix: planLine(f),
+  };
+}
+
+/**
+ * One section of the model's answer, checked and filled in: only known {placeholders}, no number of the model's own
+ * once they're removed, and a real sentence rather than an echo of the section title. Null if it fails.
+ */
+export function fillSection(t: string, figures: Record<string, string>, mandateWords: string[] = []): string | null {
+  if (t.length < 40 || t.length > 700) return null;
+  const names = [...t.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]);
+  if (names.some((n) => !Object.hasOwn(figures, n))) return null;
+  let bare = t.replace(/\{[a-z_]+\}/g, " ");
+  // Number words the DAO itself wrote ("at least half") may be quoted back; they are printed in the proposal too.
+  for (const w of mandateWords) bare = bare.replace(new RegExp(`(?<![\\p{L}\\p{N}])${w}(?![\\p{L}\\p{N}])`, "giu"), " ");
+  if (/[{}]/.test(bare) || hasNumber(bare) || /\.\.\.|…/.test(bare)) return null;
+  // Each figure already carries its unit; drop a unit the model repeats right after it ("5 points points").
+  return t
+    .replace(/\{([a-z_]+)\}/g, (_, n: string) => figures[n])
+    .replace(/(\d+(?:\.\d+)? points) points\b/g, "$1")
+    .replace(/(of the portfolio) of the portfolio\b/g, "$1")
+    .replace(/\babout about\b/g, "about")
+    .replace(/(trades a day) (?:trades )?(?:a|per) day\b/g, "$1")
+    .replace(/(\d+(?:\.\d+)?%) (?:percent|per cent)\b/g, "$1");
+}
+
+/** The DAO's own number words (letters only, so they're safe in a pattern), which the model may quote back. Digits never. */
+export function mandateNumberWords(mandate: string | null): string[] {
+  if (!mandate) return [];
+  return [...new Set(mandate.toLowerCase().split(/[^\p{L}-]+/u).filter((w) => w.length > 1 && /^[\p{L}-]+$/u.test(w) && hasNumber(w)))];
+}
+
+/** The model's answer from the exact response bytes, checked: any section that fails `fillSection` means the whole template is used. */
 export function rationaleFrom(response: string, f: PolicyFacts): Rationale {
   try {
     const content = String((JSON.parse(response) as { choices?: { message?: { content?: unknown } }[] }).choices?.[0]?.message?.content ?? "")
@@ -172,10 +215,13 @@ export function rationaleFrom(response: string, f: PolicyFacts): Rationale {
       .trim();
     const d = JSON.parse(content) as Record<string, unknown>;
     const out = {} as Omit<Rationale, "fromModel">;
+    const figures = policyFigures(f);
+    const mandateWords = mandateNumberWords(f.mandate);
     for (const k of SECTIONS) {
       const t = typeof d[k] === "string" ? (d[k] as string).replace(/\s+/g, " ").trim() : "";
-      if (!t || t.length > 700 || hasNumber(t)) throw new Error(k);
-      out[k] = t;
+      const filled = fillSection(t, figures, mandateWords);
+      if (filled === null) throw new Error(k);
+      out[k] = filled;
     }
     return { ...out, fromModel: true };
   } catch {
@@ -288,7 +334,7 @@ export function callsMatch(signed: VaultCall[], proposed: { method: string; args
 }
 
 /** The request body the model signs over. `canonicalJson` isn't needed: the exact string is kept as evidence. */
-export function policyRequest(model: string, f: PolicyFacts, maxTokens = 900): string {
+export function policyRequest(model: string, f: PolicyFacts, maxTokens = 1200): string {
   return JSON.stringify({
     model,
     messages: [
@@ -297,7 +343,8 @@ export function policyRequest(model: string, f: PolicyFacts, maxTokens = 900): s
     ],
     max_tokens: maxTokens,
     response_format: { type: "json_schema", json_schema: POLICY_SCHEMA },
-    reasoning_effort: "none",
+    // "low" measured best for the policy model: about four seconds and most answers pass Kite's checks.
+    reasoning_effort: "low",
   });
 }
 

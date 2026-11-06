@@ -5,7 +5,7 @@
  * Verify the model's attestation, encrypt the message to it, get a signed answer, check the signature.
  * The SDK throws if any step fails, so a returned receipt means every step passed.
  */
-import { PLANNER_MODEL } from "@/lib/ai/planner";
+import { PLANNER_MODEL, POLICY_MODEL } from "@/lib/ai/planner";
 import { expectedSignedText, requestModel, type EvidenceBundle } from "@/lib/ai/evidence";
 
 export type Stage = "verify" | "ask" | "sign";
@@ -107,10 +107,10 @@ type SignedResult = { signature: { kind: "provider_tee" | "gateway"; signedText:
  */
 export async function askPublicly(opts: { request: string; onStage?: (s: Stage) => void }): Promise<EvidenceBundle> {
   const model = requestModel(opts.request);
-  if (model !== PLANNER_MODEL) throw new Error("Only Kite's model is used for public analyses.");
+  if (model !== POLICY_MODEL) throw new Error("Only Kite's policy model is used for public analyses.");
   const c = await publicClient();
   opts.onStage?.("verify");
-  await c.verify(PLANNER_MODEL);
+  await c.verify(POLICY_MODEL);
   opts.onStage?.("ask");
   const res = await c.fetch(new URL("chat/completions", c.getBaseUrl()).toString(), { method: "POST", headers: { "content-type": "application/json" }, body: opts.request });
   const bytes = new Uint8Array(await res.arrayBuffer());

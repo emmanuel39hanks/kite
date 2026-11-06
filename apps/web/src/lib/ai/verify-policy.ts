@@ -7,7 +7,7 @@
  */
 import { decodeEvidenceLine, expectedSignedText, policyRefOf, requestModel, sameJson, splitDescription, type EvidenceBundle } from "@/lib/ai/evidence";
 import { callsMatch, descriptionBody, factsFromRequest, lossBound, policyRequest, rationaleFrom, type PolicyFacts } from "@/lib/ai/policy";
-import { PLANNER_MODEL } from "@/lib/ai/planner";
+import { POLICY_MODEL } from "@/lib/ai/planner";
 import { assetByIntentsId } from "@/lib/assets";
 import { toContractLimits, type ContractLimits, type ContractTarget } from "@/lib/near/vault";
 import { decodeArgs, type ProposalKind } from "@/lib/near/dao";
@@ -128,13 +128,13 @@ export async function verifyPolicy(
     facts = factsFromRequest(bundle.request);
     // The model must have been asked Kite's own question about these facts, byte for byte. Anyone can get NEAR AI to
     // sign an answer to a prompt they wrote; only this exact request makes the answer an analysis of the policy.
-    const asked = bundle.request === policyRequest(PLANNER_MODEL, facts);
+    const asked = bundle.request === policyRequest(POLICY_MODEL, facts);
     checks.push({
       key: "prompt",
       label: "The model was asked Kite's question",
       state: asked ? "pass" : "fail",
       reason: asked
-        ? `The signed request is exactly Kite's policy prompt to ${PLANNER_MODEL} for these facts, rebuilt here.`
+        ? `The signed request is exactly Kite's policy prompt to ${POLICY_MODEL} for these facts, rebuilt here.`
         : "The signed request isn't Kite's policy prompt for these facts: someone else wrote what the model was told.",
     });
     const rebuilt = descriptionBody(facts, rationaleFrom(bundle.response, facts), bundle, policyRef);

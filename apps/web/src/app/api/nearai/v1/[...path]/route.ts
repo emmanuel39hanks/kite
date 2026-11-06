@@ -1,5 +1,9 @@
 import { connection } from "next/server";
-import { PLANNER_MODEL } from "@/lib/ai/planner";
+import { PLANNER_MODEL, POLICY_MODEL } from "@/lib/ai/planner";
+
+/** The only models relayed, each with its own output cap: the quick planner, and the stronger model for DAO policies. */
+const MODEL_CAPS: Record<string, number> = { [PLANNER_MODEL]: 4000, [POLICY_MODEL]: 1500 };
+const allowedModel = (m: unknown): m is string => typeof m === "string" && Object.hasOwn(MODEL_CAPS, m);
 import { clientIp, crossSite, limited, refuseCrossSite } from "@/lib/server/guards";
 
 /**
@@ -78,10 +82,11 @@ async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> })
       const keys = topLevelKeys(text);
       if (!keys || new Set(keys).size !== keys.length || keys.some((k) => k.includes("\\"))) return Response.json({ error: "Bad request" }, { status: 400 });
       const j = JSON.parse(text) as Record<string, unknown>;
-      if (j.model !== PLANNER_MODEL) return Response.json({ error: "Model not allowed" }, { status: 403 });
+      if (!allowedModel(j.model)) return Response.json({ error: "Model not allowed" }, { status: 403 });
       // A cost cap that can't be skipped: a sane max_tokens is required, and the multipliers are refused.
       const mt = j.max_tokens;
-      if (!(typeof mt === "number" && Number.isInteger(mt) && mt > 0 && mt <= MAX_TOKENS)) return Response.json({ error: "max_tokens required (up to 4000)" }, { status: 400 });
+      const cap = Math.min(MAX_TOKENS, MODEL_CAPS[j.model]);
+      if (!(typeof mt === "number" && Number.isInteger(mt) && mt > 0 && mt <= cap)) return Response.json({ error: `max_tokens required (up to ${cap})` }, { status: 400 });
       if ("max_completion_tokens" in j || "best_of" in j || "tools" in j || (j.n !== undefined && j.n !== 1)) return Response.json({ error: "Not allowed" }, { status: 400 });
     } catch {
       return Response.json({ error: "Bad request" }, { status: 400 });
@@ -92,11 +97,11 @@ async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> })
     try {
       id = decodeURIComponent(raw.slice(6));
     } catch {}
-    if (id !== PLANNER_MODEL) return Response.json({ error: "Model not allowed" }, { status: 403 });
+    if (!allowedModel(id)) return Response.json({ error: "Model not allowed" }, { status: 403 });
   }
   // Model reports are fetched with Kite's key too, so only for Kite's model. The gateway's own report names no model.
   const reportModels = new URL(req.url).searchParams.getAll("model");
-  if (raw === "attestation/report" && (reportModels.length > 1 || (reportModels.length === 1 && reportModels[0] !== PLANNER_MODEL))) return Response.json({ error: "Model not allowed" }, { status: 403 });
+  if (raw === "attestation/report" && (reportModels.length > 1 || (reportModels.length === 1 && !allowedModel(reportModels[0])))) return Response.json({ error: "Model not allowed" }, { status: 403 });
 
   const headers = new Headers();
   req.headers.forEach((v, k) => {

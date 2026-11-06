@@ -6,8 +6,8 @@ import { Badge, Button, Card, StatusNote } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
 import { PolicyChecklist } from "@/components/console/policy-checklist";
 import { sdkChecks } from "@/lib/ai/evidence-sdk";
-import { PLANNER_MODEL } from "@/lib/ai/planner";
-import { buildProposal, fitRequest, policyFacts, type BuiltProposal } from "@/lib/ai/policy";
+import { POLICY_MODEL } from "@/lib/ai/planner";
+import { buildProposal, fitRequest, policyFacts, rationaleFrom, type BuiltProposal } from "@/lib/ai/policy";
 import { askPublicly } from "@/lib/ai/private-ai";
 import { reviewStats } from "@/lib/ai/review";
 import { verifyPolicy, type Check } from "@/lib/ai/verify-policy";
@@ -72,12 +72,18 @@ export function TreasuryPolicy({
       // The plan's own weights stand in for "current": a policy is about rules, not today's balances.
       const stats = h ? reviewStats(h, plan, Object.fromEntries(plan.map((s) => [s.id, s.weight])), limits, yields) : null;
       const facts = policyFacts({ vault, limits: toContractLimits(limits, timing), rules: limits, targets, setPlan, stats, mandate });
-      const { request } = await fitRequest(PLANNER_MODEL, facts);
-      const bundle = await askPublicly({
-        request,
-        onStage: (st) => setBusy(st === "verify" ? "Checking NEAR AI's attestation…" : st === "ask" ? "Writing the rationale…" : "Getting the signature…"),
-      });
-      const p = await buildProposal(bundle);
+      const { request, facts: sent } = await fitRequest(POLICY_MODEL, facts);
+      // The model sometimes slips in a number of its own; that answer is kept out. Up to three tries, each signed;
+      // the proposal carries the evidence for the answer it uses (or for the last one, with Kite's template).
+      let bundle = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        bundle = await askPublicly({
+          request,
+          onStage: (st) => setBusy(st === "verify" ? "Checking NEAR AI's attestation…" : st === "ask" ? (attempt === 1 ? "Writing the rationale…" : `Rewriting the rationale (try ${attempt} of 3)…`) : "Getting the signature…"),
+        });
+        if (rationaleFrom(bundle.response, sent).fromModel) break;
+      }
+      const p = await buildProposal(bundle!);
       setBusy("Checking it as a voter would…");
       const v = await verifyPolicy({ description: p.description, kind: vaultProposalKind(vault, p.calls) }, sdkChecks(`${window.location.origin}/api/nearai/v1`));
       setRes({ p, checks: v.checks });

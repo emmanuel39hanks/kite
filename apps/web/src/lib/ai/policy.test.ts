@@ -8,7 +8,7 @@ import { verdict, verifyPolicy, type SdkChecks } from "./verify-policy";
 import { encodeArgs, vaultProposalKind, type ProposalKind } from "../near/dao";
 import { toContractLimits, type ContractTarget } from "../near/vault";
 
-const MODEL = "z-ai/glm-5.3-flash";
+const MODEL = "z-ai/glm-5.3";
 const VAULT = "kite.treasury.sputnik-dao.near";
 const rules = { driftBand: 5, maxTradePct: 10, slippageBps: 100, tradesPerDay: 4 };
 const targets: ContractTarget[] = [
@@ -19,7 +19,12 @@ const facts = () => policyFacts({ vault: VAULT, limits: toContractLimits(rules),
 
 const answer = (content: unknown) =>
   JSON.stringify({ id: "chatcmpl-test1", object: "chat.completion", model: MODEL, choices: [{ index: 0, message: { role: "assistant", content: typeof content === "string" ? content : JSON.stringify(content) }, finish_reason: "stop" }] });
-const GOOD = { what: "Sets tight rules for the vault.", why: "Small trades keep costs low.", worst: "A misused key can only waste swap fees.", watch: "Watch for trades the plan didn't need." };
+const GOOD = {
+  what: "Sets tight rules for the vault: it rebalances when a holding drifts {band} from target.",
+  why: "Small trades keep costs low, and a trade can move at most {max_trade}, so nothing swings the book at once.",
+  worst: "A misused key can only waste swap fees: about {worst_day} points of trouble at most.",
+  watch: "Watch for trades the plan didn't need, and for swaps that cost close to {price_limit}.",
+};
 
 /** A bundle signed with a key made here, in NEAR AI's format: ed25519 over "<model>:sha256(req):sha256(res)". */
 async function signedBundle(f: PolicyFacts = facts(), content: unknown = GOOD): Promise<EvidenceBundle> {
@@ -94,7 +99,8 @@ test("edits are caught: the text, the args, the policy_ref, the evidence", async
   const kind = vaultProposalKind(VAULT, p.calls);
 
   // An edited sentence above the evidence line.
-  const edited = p.description.replace("Small trades keep costs low.", "Big trades are fine.");
+  const edited = p.description.replace("Small trades keep costs low", "Big trades are fine");
+  assert.notEqual(edited, p.description);
   assert.equal(states(await verifyPolicy({ description: edited, kind }, sdk)).text, "fail");
 
   // Looser limits in the proposal than in the analysis.
@@ -200,4 +206,26 @@ test("each call must attach exactly 1 yoctoNEAR", async () => {
   const kind = input.kind as ProposalKind;
   const rich = { FunctionCall: { ...kind.FunctionCall, actions: kind.FunctionCall.actions.map((x) => ({ ...x, deposit: "5000000000000000000000000" })) } };
   assert.equal(states(await verifyPolicy({ ...input, kind: rich }, sdk)).calls, "fail");
+});
+
+test("placeholders: known names are filled by code, anything else rejects the section", async () => {
+  const { fillSection, policyFigures } = await import("./policy");
+  const fig = policyFigures(facts());
+  assert.equal(fillSection("The vault rebalances once a holding drifts {band} points away from target.", fig), "The vault rebalances once a holding drifts 5 points away from target.");
+  assert.equal(fillSection("A single trade moves at most {max_trade} of the portfolio, which keeps it small.", fig), "A single trade moves at most 10% of the portfolio, which keeps it small.");
+  assert.equal(fillSection("The vault rebalances when drift passes {band} or {secret_number} in total.", fig), null, "unknown placeholder");
+  assert.equal(fillSection("The vault rebalances when drift passes five points from the target mix.", fig), null, "number word");
+  assert.equal(fillSection("Keeps roughly two-fifths in Bitcoin and the rest in stablecoins for safety.", fig), null, "fraction");
+  assert.equal(fillSection("what the policy does", fig), null, "echoed title");
+  assert.equal(fillSection("This policy keeps the treasury vault holding {mix} and trades only...", fig), null, "ellipsis");
+});
+
+test("the DAO's own number words may be quoted back; any other number still rejects", async () => {
+  const { fillSection, policyFigures, mandateNumberWords } = await import("./policy");
+  const fig = policyFigures(facts());
+  const words = mandateNumberWords("Keep at least half in stablecoins, take little risk, 50% max");
+  assert.deepEqual(words, ["half"]);
+  assert.ok(fillSection("The DAO asked to keep at least half in stablecoins, and {mix} does that.", fig, words));
+  assert.equal(fillSection("The DAO asked to keep at least three quarters in stablecoins, which this does.", fig, words), null);
+  assert.equal(fillSection("The DAO asked to keep at least half, so around 60% sits in stablecoins today.", fig, words), null);
 });
