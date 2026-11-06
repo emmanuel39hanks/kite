@@ -42,6 +42,10 @@ export type Portfolio = {
   /** The vault's own value history, when known. Otherwise charts revalue today's holdings at past prices. */
   series?: { t: number; v: number }[];
   createdAt?: number;
+  /** The vault's owner on chain. Usually the connected account; a DAO once it has accepted the vault. */
+  owner?: string;
+  /** An account the vault has been offered to (propose_owner) and that hasn't accepted yet. */
+  pendingOwner?: string | null;
 };
 
 export type ActivityEvent = {

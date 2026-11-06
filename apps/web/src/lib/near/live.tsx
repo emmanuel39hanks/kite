@@ -8,6 +8,7 @@
  *   guardrails, revoke/restore the key, unpause, check now.
  */
 import { useCallback, useEffect, useRef } from "react";
+import type { Action } from "@near-js/transactions";
 import { JsonRpcProvider } from "near-api-js";
 import { assetById, assetByIntentsId } from "@/lib/assets";
 import { slice, type Slice } from "@/lib/mix";
@@ -17,7 +18,8 @@ import { loadPreview, onPreviewChange, PREVIEW_VAULT, rowsOf, savePreview } from
 import { usePreviewActions } from "@/lib/preview/actions";
 import { verifyAllocation, type Transfer } from "./allocate-check";
 import { NEAR, vaultIdFor } from "./config";
-import { createVaultActions, depositUsdcFromWallet, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
+import { foreignOwner, notOwnerMessage } from "./dao-view";
+import { agentAllowanceYocto, createVaultActions, depositUsdcFromWallet, fromContractLimits, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
 import { useWallet } from "./wallet";
 
 const provider = new JsonRpcProvider({ url: NEAR.rpc });
@@ -114,12 +116,7 @@ export function LiveSync() {
       const cash = Number(usdcOutside) / 1e6;
       const nav = values.reduce((x, y) => x + y, 0);
       const current = Object.fromEntries(target.map((t, i) => [t.id, nav > 0 ? (values[i] / nav) * 100 : 0]));
-      const guardrails: Guardrails = {
-        driftBand: s.limits.band_bps / 100,
-        maxTradePct: s.limits.max_trade_bps / 100,
-        slippageBps: s.limits.max_slippage_bps,
-        tradesPerDay: s.limits.max_trades_per_day,
-      };
+      const guardrails = fromContractLimits(s.limits);
       const p = s.status.pending;
       setVault({
         found: true,
@@ -136,6 +133,8 @@ export function LiveSync() {
           cash,
           paused: s.status.paused,
           pending: p ? { sell: p.sell, buy: p.buy, depositAddress: p.deposit_address } : null,
+          owner: s.status.owner,
+          pendingOwner: s.status.pending_owner ?? null,
         },
       });
     };
@@ -162,6 +161,15 @@ function useRealLive() {
   const w = useWallet();
   const k = useKite();
   const vault = k.account ? vaultIdFor(k.account) : "";
+  // Once a DAO owns the vault, this wallet's owner calls would only fail on chain. Stop them here with the reason.
+  const ownedBy = foreignOwner(k.portfolio?.owner, k.account);
+  const ownerSend = useCallback(
+    (actions: Action[]) => {
+      if (ownedBy) throw new Error(notOwnerMessage(ownedBy));
+      return w.send(vault, actions);
+    },
+    [w, vault, ownedBy],
+  );
 
   const createVault = useCallback(
     async (name: string, planSlug: string, mix: Slice[], g: Guardrails) => {
@@ -195,38 +203,38 @@ function useRealLive() {
     // The owner signs these, and they came from a server: check each swap address with NEAR Intents itself first.
     await verifyAllocation({ transfers: quoted, plan, usdc, usdcToken: NEAR.usdc, vault });
     const transfers = quoted.map(({ token, amount, to }) => ({ token, amount, to }));
-    const hash = await w.send(vault, [ownerCall("allocate", { transfers })]);
+    const hash = await ownerSend([ownerCall("allocate", { transfers })]);
     k.addEvent({ kind: "trade", title: `Invested ${(Number(usdc) / 1e6).toFixed(2)} USDC`, detail: `${transfers.length} swaps into your plan through NEAR Intents.`, tx: hash });
     return hash;
-  }, [k, w, vault]);
+  }, [k, ownerSend, vault]);
 
   const saveGuardrails = useCallback(
     async (g: Guardrails) => {
-      const hash = await w.send(vault, [ownerCall("set_limits", { limits: toContractLimits(g) })]);
+      const hash = await ownerSend([ownerCall("set_limits", { limits: toContractLimits(g) })]);
       k.setGuardrails(g);
       k.addEvent({ kind: "guardrails", title: "Guardrails updated", detail: `Steps in at ${g.driftBand} pts, max trade ${g.maxTradePct}%, ${(g.slippageBps / 100).toFixed(2)}% price limit, ${g.tradesPerDay} trades a day.`, tx: hash });
       return hash;
     },
-    [k, w, vault],
+    [k, ownerSend],
   );
 
   const revoke = useCallback(async () => {
-    const hash = await w.send(vault, [ownerCall("revoke_agent", {})]);
+    const hash = await ownerSend([ownerCall("revoke_agent", {})]);
     k.addEvent({ kind: "key", title: "Kite's key revoked", detail: "Deleted from your vault. Kite can't trade.", tx: hash });
     return hash;
-  }, [k, w, vault]);
+  }, [k, ownerSend]);
 
   const restoreKey = useCallback(async () => {
-    const hash = await w.send(vault, [ownerCall("set_agent", { public_key: NEAR.agentPublicKey, allowance_yocto: "250000000000000000000000" })]);
+    const hash = await ownerSend([ownerCall("set_agent", { public_key: NEAR.agentPublicKey, allowance_yocto: agentAllowanceYocto() })]);
     k.addEvent({ kind: "key", title: "Kite's key restored", detail: "A new rebalance-only key was added.", tx: hash });
     return hash;
-  }, [k, w, vault]);
+  }, [k, ownerSend]);
 
   const unpause = useCallback(async () => {
-    const hash = await w.send(vault, [ownerCall("unpause", {})]);
+    const hash = await ownerSend([ownerCall("unpause", {})]);
     k.addEvent({ kind: "key", title: "Vault unpaused", tx: hash });
     return hash;
-  }, [k, w, vault]);
+  }, [k, ownerSend]);
 
   /** Every token the vault might hold: the plan plus USDC from deposits. */
   const heldTokens = useCallback(async () => {
@@ -245,22 +253,21 @@ function useRealLive() {
     if (!k.account) throw new Error("Connect a NEAR wallet first");
     const held = (await heldTokens()).filter((h) => h.amount > 0n);
     if (!held.length) throw new Error("The vault is already empty.");
-    const hash = await w.send(
-      vault,
+    const hash = await ownerSend(
       held.map((h) => ownerCall("withdraw", { token: h.token, amount: h.amount.toString(), receiver_id: k.account }, 40n)),
     );
     k.addEvent({ kind: "deposit", title: "Withdrew everything", detail: `${held.length} assets moved to your NEAR Intents account (${k.account}).`, tx: hash });
     return hash;
-  }, [k, w, vault, heldTokens]);
+  }, [k, ownerSend, heldTokens]);
 
   /** Delete the vault and return its NEAR deposit. The contract refuses unless every balance is zero. */
   const closeVault = useCallback(async () => {
     const left = (await heldTokens()).filter((h) => h.amount > 0n);
     if (left.length) throw new Error("Withdraw everything first. The vault refuses to close while it holds money.");
-    const hash = await w.send(vault, [ownerCall("close_vault", { also_check: [NEAR.usdc] }, 150n)]);
+    const hash = await ownerSend([ownerCall("close_vault", { also_check: [NEAR.usdc] }, 150n)]);
     k.addEvent({ kind: "key", title: "Vault closed", detail: `${vault} was deleted and its NEAR deposit returned to you.`, tx: hash });
     return hash;
-  }, [k, w, vault, heldTokens]);
+  }, [k, ownerSend, vault, heldTokens]);
 
   const checkNow = useCallback(async () => {
     const r = await fetch("/api/vault/check", { method: "POST", body: JSON.stringify({ vault }) });

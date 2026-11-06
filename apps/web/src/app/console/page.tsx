@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MixBar } from "@/components/charts";
 import { ActivityList } from "@/components/console/activity-list";
 import { ConnectGate } from "@/components/console/connect-gate";
+import { DaoOwnedNotice, daoViewHref, useForeignOwner } from "@/components/console/dao-owned";
 import { Icon, type IconName } from "@/components/console/icons";
 import { Badge, Button, Card, Change, Empty, Money, PageTitle, SectionTitle, Segmented, StatusNote } from "@/components/console/ui";
 import { ValueChart } from "@/components/console/value-chart";
@@ -113,6 +114,7 @@ function NoVault() {
 function Live({ p }: { p: Portfolio }) {
   const k = useKite();
   const live = useLive();
+  const ownedBy = useForeignOwner();
   const { quote } = useMarket();
   const yields = useYields();
   const [range, setRange] = useState<Range>("1M");
@@ -205,6 +207,8 @@ function Live({ p }: { p: Portfolio }) {
         </StatusNote>
       )}
 
+      {ownedBy && <DaoOwnedNotice owner={ownedBy} vault={p.vault} className="mb-3" />}
+
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
         <Card className="flex min-h-[342px] flex-col overflow-hidden pt-6">
           <div className="flex flex-wrap items-start justify-between gap-4 px-6">
@@ -266,6 +270,7 @@ function Live({ p }: { p: Portfolio }) {
         p={p}
         earn={earnSummary}
         busy={busy}
+        ownedBy={ownedBy}
         onInvest={() => act("invest", live.allocate, live.preview ? "Invested at real NEAR Intents quotes." : "Invest transaction sent. Swaps settle in about a minute.")}
         onUnpause={() => act("unpause", live.unpause, "Vault unpaused.")}
       />
@@ -401,7 +406,7 @@ function Countdown() {
 
 type EarnSummary = { earning: true; perYear: number; pct: number } | { earning: false; name: string; apy: number } | null;
 
-function Notices({ p, earn, busy, onInvest, onUnpause }: { p: Portfolio; earn: EarnSummary; busy: string | null; onInvest: () => void; onUnpause: () => void }) {
+function Notices({ p, earn, busy, ownedBy, onInvest, onUnpause }: { p: Portfolio; earn: EarnSummary; busy: string | null; ownedBy: string | null; onInvest: () => void; onUnpause: () => void }) {
   const items: React.ReactNode[] = [];
   if (earn?.earning && earn.perYear > 0.005)
     items.push(
@@ -421,19 +426,31 @@ function Notices({ p, earn, busy, onInvest, onUnpause }: { p: Portfolio; earn: E
     );
   if (p.cash >= 2)
     items.push(
-      <Notice key="cash" icon="deposit" title={`${usd(p.cash)} ready to invest`} text="New money is in your vault as USDC. One signature splits it across your plan.">
-        <Button size="sm" variant="primary" onClick={onInvest} loading={busy === "invest"}>
-          Invest now
-        </Button>
-      </Notice>,
+      ownedBy ? (
+        <Notice key="cash" icon="deposit" title={`${usd(p.cash)} not invested yet`} text={`New money is in the vault as USDC. Only its owner, ${ownedBy}, can split it across the plan.`} />
+      ) : (
+        <Notice key="cash" icon="deposit" title={`${usd(p.cash)} ready to invest`} text="New money is in your vault as USDC. One signature splits it across your plan.">
+          <Button size="sm" variant="primary" onClick={onInvest} loading={busy === "invest"}>
+            Invest now
+          </Button>
+        </Notice>
+      ),
     );
   if (p.paused)
     items.push(
-      <Notice key="paused" icon="lock" title="Your vault is paused" text="A swap didn't deliver in time, so the vault stopped Kite from trading. Check the activity, then unpause.">
-        <Button size="sm" onClick={onUnpause} loading={busy === "unpause"}>
-          Unpause
-        </Button>
-      </Notice>,
+      ownedBy ? (
+        <Notice key="paused" icon="lock" title="The vault is paused" text={`Kite can't trade. Unpausing is a proposal on ${ownedBy}.`}>
+          <Button size="sm" href={daoViewHref(p.vault)}>
+            Open the DAO view
+          </Button>
+        </Notice>
+      ) : (
+        <Notice key="paused" icon="lock" title="Your vault is paused" text="A swap didn't deliver in time, so the vault stopped Kite from trading. Check the activity, then unpause.">
+          <Button size="sm" onClick={onUnpause} loading={busy === "unpause"}>
+            Unpause
+          </Button>
+        </Notice>
+      ),
     );
   if (p.pending) items.push(<SwapTracker key={p.pending.depositAddress} sell={p.pending.sell} buy={p.pending.buy} depositAddress={p.pending.depositAddress} />);
   if (p.value < 2)

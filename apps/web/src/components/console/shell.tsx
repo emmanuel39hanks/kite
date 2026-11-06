@@ -26,6 +26,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
 ];
 const NAV_BOTTOM: { href: string; label: string; icon: IconName }[] = [
   { href: "/console/guardrails", label: "Guardrails", icon: "shield" },
+  { href: "/console/dao", label: "DAO", icon: "users" },
   { href: "/#faq", label: "Help", icon: "help" },
 ];
 
@@ -54,7 +55,7 @@ export function ConsoleShell({ children }: { children: ReactNode }) {
         </aside>
         <div className="min-w-0 flex-1">
           <nav className="flex gap-1 overflow-x-auto border-b border-black/[0.06] px-4 py-2 lg:hidden">
-            {[...NAV, NAV_BOTTOM[0]].map((n) => (
+            {[...NAV, ...NAV_BOTTOM.filter((n) => n.href.startsWith("/console"))].map((n) => (
               <Link key={n.href} href={n.href} className={`shrink-0 rounded-full px-3.5 py-2 text-[14px] ${active(n.href) ? "bg-black text-white" : "text-black/55"}`}>
                 {n.label}
               </Link>
