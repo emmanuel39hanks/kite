@@ -111,13 +111,22 @@ export function VaultReview({ p }: { p: Portfolio }) {
           </button>
         </>
       ) : (
-        <ul className="mt-4 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-          {(["plan_return", "volatility", "max_drawdown", "rebalances"] as const).map((key) => (
-            <li key={key} className="text-[14px] tabular-nums text-black/70">
-              {statValue(stats, key)}
-            </li>
+        <dl className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          {(
+            [
+              ["With rebalancing", `${stats.planReturnPct >= 0 ? "+" : ""}${stats.planReturnPct}%`, `past ${stats.days} days`],
+              ["Never rebalanced", `${stats.holdReturnPct >= 0 ? "+" : ""}${stats.holdReturnPct}%`, "same start, left alone"],
+              ["Worst fall", `-${stats.maxDrawdownPct}%`, "peak to bottom"],
+              ["Ups and downs", `${stats.volatilityPct}%`, `a year, about ${stats.rebalancesPerYear} rebalances`],
+            ] as const
+          ).map(([label, value, note]) => (
+            <div key={label} className="rounded-xl bg-white px-3.5 py-3 ring-1 ring-inset ring-black/[0.05]">
+              <dt className="text-[13px] text-[#6b6b6b]">{label}</dt>
+              <dd className="mt-0.5 text-[22px] leading-7 tracking-[-0.04em] tabular-nums">{value}</dd>
+              <dd className="text-[12px] text-[#6b6b6b]">{note}</dd>
+            </div>
           ))}
-        </ul>
+        </dl>
       )}
     </Card>
   );

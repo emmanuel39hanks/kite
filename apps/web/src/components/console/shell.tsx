@@ -27,7 +27,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
 const NAV_BOTTOM: { href: string; label: string; icon: IconName }[] = [
   { href: "/console/guardrails", label: "Guardrails", icon: "shield" },
   { href: "/console/dao", label: "DAO", icon: "users" },
-  { href: "/#faq", label: "Help", icon: "help" },
+  { href: "/#faq", label: "FAQs", icon: "help" },
 ];
 
 export function ConsoleShell({ children }: { children: ReactNode }) {

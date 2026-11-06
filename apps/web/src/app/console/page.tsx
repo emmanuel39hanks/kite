@@ -4,7 +4,7 @@ import { VaultReview } from "@/components/console/vault-review";
 import { SwapTracker } from "@/components/console/swap-tracker";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { MixBar } from "@/components/charts";
+import { Donut, MixBar } from "@/components/charts";
 import { ActivityList } from "@/components/console/activity-list";
 import { ConnectGate } from "@/components/console/connect-gate";
 import { DaoOwnedNotice, daoViewHref, useForeignOwner } from "@/components/console/dao-owned";
@@ -13,10 +13,11 @@ import { Badge, Button, Card, Change, Empty, Money, PageTitle, SectionTitle, Seg
 import { ValueChart } from "@/components/console/value-chart";
 import { Logo } from "@/components/logo";
 import { assetById, earnVersionOf, units as fmtUnits, usd, price as fmtPrice } from "@/lib/assets";
+import { accountUrl } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";
 import { useWallet } from "@/lib/near/wallet";
 import { PLAN_DATA } from "@/lib/plans";
-import { driftOf, useKite, type Portfolio } from "@/lib/store";
+import { driftOf, useKite, type Guardrails, type Portfolio } from "@/lib/store";
 import { backtest, holdingsValue, useHistory, useMarket, useYields } from "@/lib/market/use-market";
 
 const RANGES = ["1W", "1M", "1Y"] as const;
@@ -277,6 +278,12 @@ function Live({ p }: { p: Portfolio }) {
         onUnpause={() => act("unpause", live.unpause, "Vault unpaused.")}
       />
 
+      <div className="mt-3 grid gap-3 lg:grid-cols-3">
+        <MixCard p={p} invested={invested} />
+        <RulesCard g={k.guardrails} paused={p.paused} />
+        <VaultCard p={p} keyOn={k.keyActive} ownedBy={ownedBy} preview={live.preview} />
+      </div>
+
       <div className="mt-10">
         <SectionTitle actions={<Button size="sm" href="/console/guardrails" icon="shield">Guardrails</Button>}>Holdings</SectionTitle>
         <Card className="overflow-hidden">
@@ -464,19 +471,23 @@ function Notices({ p, earn, busy, ownedBy, onInvest, onUnpause }: { p: Portfolio
       </Notice>,
     );
   if (!items.length) return null;
-  return <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{items}</div>;
+  return <div className={`mt-3 grid gap-3 ${items.length > 1 ? "md:grid-cols-2" : ""} ${items.length > 2 ? "xl:grid-cols-3" : ""}`}>{items}</div>;
 }
 
 function Notice({ icon, title, text, children }: { icon: IconName; title: string; text: string; children?: React.ReactNode }) {
   return (
-    <Card className="flex items-start gap-4 p-4">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
-        <Icon name={icon} size={20} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h3 className="text-[15px] tracking-[-0.02em]">{title}</h3>
-        <p className="mt-0.5 text-[13px] leading-5 text-[#6b6b6b]">{text}</p>
-        {children && <div className="mt-3">{children}</div>}
+    <Card className="@container p-4">
+      <div className="flex flex-col gap-3 @2xl:flex-row @2xl:items-center">
+        <div className="flex min-w-0 flex-1 items-start gap-4 @2xl:items-center">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
+            <Icon name={icon} size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[15px] tracking-[-0.02em]">{title}</h3>
+            <p className="mt-0.5 text-[13px] leading-5 text-[#6b6b6b]">{text}</p>
+          </div>
+        </div>
+        {children && <div className="pl-14 @2xl:shrink-0 @2xl:pl-0">{children}</div>}
       </div>
     </Card>
   );
@@ -503,5 +514,104 @@ function DriftMeter({ drift, band }: { drift: number; band: number }) {
         {drift.toFixed(1)}
       </span>
     </div>
+  );
+}
+
+/* ───────────── At a glance ───────────── */
+
+/** Where the money sits now, against the plan. */
+function MixCard({ p, invested }: { p: Portfolio; invested: boolean }) {
+  const now = p.target.map((t) => ({ ...t, weight: invested ? Math.round(p.current[t.id] ?? 0) : t.weight }));
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[16px] tracking-[-0.02em]">Your mix</h3>
+        <span className="text-[13px] text-[#6b6b6b]">now / target</span>
+      </div>
+      <div className="mt-4 flex items-center gap-5">
+        <div className="relative shrink-0">
+          <Donut slices={now} size={112} thickness={5} />
+          <div className="absolute inset-0 grid place-items-center text-center leading-tight">
+            <div>
+              <div className="text-[22px] tracking-[-0.04em] tabular-nums">{p.target.length}</div>
+              <div className="text-[11px] text-[#6b6b6b]">{p.target.length === 1 ? "asset" : "assets"}</div>
+            </div>
+          </div>
+        </div>
+        <ul className="min-w-0 flex-1 space-y-2">
+          {p.target.map((t) => (
+            <li key={t.id} className="flex items-center gap-2 text-[14px] tracking-[-0.02em]">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
+              <span className="min-w-0 flex-1 truncate">{assetById(t.id).name}</span>
+              <span className="tabular-nums">{invested ? `${(p.current[t.id] ?? 0).toFixed(0)}%` : "–"}</span>
+              <span className="w-10 text-right text-[#6b6b6b] tabular-nums">{t.weight}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Card>
+  );
+}
+
+/** The guardrails, in plain words. The vault enforces them, not Kite. */
+function RulesCard({ g, paused }: { g: Guardrails; paused: boolean }) {
+  const rules: [IconName, string][] = [
+    ["refresh", `Rebalances when anything drifts ${g.driftBand} points`],
+    ["deposit", `Moves at most ${g.maxTradePct}% in one trade`],
+    ["shield", `Accepts at most ${(g.slippageBps / 100).toFixed(g.slippageBps % 100 ? 1 : 0)}% worse than the quote`],
+    ["clock", `Up to ${g.tradesPerDay} trades a day`],
+  ];
+  return (
+    <Card className="flex flex-col p-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[16px] tracking-[-0.02em]">Your rules</h3>
+        <Button size="sm" variant="ghost" href="/console/guardrails">
+          Edit
+        </Button>
+      </div>
+      <ul className="mt-3 space-y-2.5">
+        {rules.map(([icon, text]) => (
+          <li key={text} className="flex items-center gap-2.5 text-[14px] tracking-[-0.02em]">
+            <Icon name={icon} size={16} className="text-black/45" />
+            {text}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-auto pt-4 text-[12px] leading-4 text-[#6b6b6b]">{paused ? "Paused: Kite can't trade until it's unpaused." : "Checked by your vault on NEAR before every trade, not by Kite."}</p>
+    </Card>
+  );
+}
+
+/** Who can do what with the vault. */
+function VaultCard({ p, keyOn, ownedBy, preview }: { p: Portfolio; keyOn: boolean; ownedBy: string | null; preview: boolean }) {
+  const rows: [string, React.ReactNode][] = [
+    ["Owner", ownedBy ?? "You"],
+    ["Can withdraw", ownedBy ? "Only the DAO, by vote" : "Only you, any time"],
+    ["Kite's key", keyOn ? "Rebalance and settle only" : "Revoked"],
+  ];
+  return (
+    <Card className="flex flex-col p-5">
+      <h3 className="text-[16px] tracking-[-0.02em]">Your vault</h3>
+      <div className="mt-1 truncate font-mono text-[12px] text-[#6b6b6b]" title={p.vault}>
+        {p.vault}
+      </div>
+      <dl className="mt-3 space-y-2">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between gap-3 text-[14px] tracking-[-0.02em]">
+            <dt className="text-[#6b6b6b]">{k}</dt>
+            <dd className="truncate text-right">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="mt-auto pt-4">
+        {preview ? (
+          <p className="text-[12px] leading-4 text-[#6b6b6b]">In the preview this vault lives in your browser. A real one is a contract on NEAR you can inspect.</p>
+        ) : (
+          <a href={accountUrl(p.vault)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[13px] underline underline-offset-2 hover:text-black/70">
+            See it on NearBlocks <Icon name="external" size={13} />
+          </a>
+        )}
+      </div>
+    </Card>
   );
 }
