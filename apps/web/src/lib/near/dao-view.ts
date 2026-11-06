@@ -115,7 +115,7 @@ export function callRisk(method: string): "moves-money" | "changes-owner" | null
   return null;
 }
 
-type Limits = { band_bps?: number; max_trade_bps?: number; max_slippage_bps?: number; max_trades_per_day?: number };
+type Limits = { band_bps?: number; max_trade_bps?: number; max_slippage_bps?: number; max_trades_per_day?: number; min_interval_secs?: number; settle_window_secs?: number };
 
 export function limitsText(l: Limits): string {
   const parts: string[] = [];
@@ -123,6 +123,9 @@ export function limitsText(l: Limits): string {
   if (l.max_trade_bps != null) parts.push(`biggest trade ${l.max_trade_bps / 100}%`);
   if (l.max_slippage_bps != null) parts.push(`worst price ${(l.max_slippage_bps / 100).toFixed(2)}%`);
   if (l.max_trades_per_day != null) parts.push(`${l.max_trades_per_day} trade${l.max_trades_per_day === 1 ? "" : "s"} a day`);
+  // Shown so a voter sees every limit the call sets, including the two the sliders don't touch.
+  if (l.min_interval_secs != null) parts.push(`at least ${+(l.min_interval_secs / 3600).toFixed(2)} h between trades`);
+  if (l.settle_window_secs != null) parts.push(`pauses if a swap hasn't landed in ${+(l.settle_window_secs / 60).toFixed(1)} min`);
   return parts.join(", ");
 }
 
@@ -137,7 +140,7 @@ export function summarizeCall(method: string, args: unknown): string {
     case "revoke_agent":
       return "Remove Kite's key";
     case "set_agent":
-      return `Add Kite's key ${String(a.public_key ?? "")}`.trim();
+      return `Add Kite's key ${String(a.public_key ?? "")} with ${typeof a.allowance_yocto === "string" && /^\d+$/.test(a.allowance_yocto) ? nearFromYocto(BigInt(a.allowance_yocto)) : "?"} NEAR of gas allowance`;
     case "accept_owner":
       return "Take ownership of the vault";
     case "propose_owner":

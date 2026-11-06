@@ -34,14 +34,19 @@ export function toContractPlan(mix: Slice[]): ContractTarget[] {
   });
 }
 
-export function toContractLimits(g: Guardrails): ContractLimits {
+export type Timing = Pick<ContractLimits, "min_interval_secs" | "settle_window_secs">;
+/** Four hours between trades (at most 6 a day however many the owner allows); a swap that hasn't landed in 30 minutes pauses the vault. */
+export const DEFAULT_TIMING: Timing = { min_interval_secs: 14_400, settle_window_secs: 1_800 };
+
+/** The guardrails as contract limits. Pass the vault's current timing to keep it; the sliders don't set it. */
+export function toContractLimits(g: Guardrails, timing: Timing = DEFAULT_TIMING): ContractLimits {
   return {
     band_bps: g.driftBand * 100,
     max_trade_bps: g.maxTradePct * 100,
     max_slippage_bps: g.slippageBps,
     max_trades_per_day: g.tradesPerDay,
-    min_interval_secs: 14_400, // four hours: at most 6 trades a day however many the owner allows
-    settle_window_secs: 1_800,
+    min_interval_secs: timing.min_interval_secs,
+    settle_window_secs: timing.settle_window_secs,
   };
 }
 

@@ -379,6 +379,7 @@ impl Vault {
     pub fn withdraw(&mut self, token: String, amount: U128, receiver_id: AccountId) -> Promise {
         self.assert_owner();
         require!(self.pending.as_ref().is_none_or(|p| p.sell != token && p.buy != token), ERR_PENDING);
+        require!(valid_token(&token), ERR_TOKEN);
         emit("withdraw", &format!(r#"{{"token":"{}","amount":"{}","to":"{}"}}"#, token, amount.0, receiver_id));
         ext_intents::ext(self.intents.clone())
             .with_attached_deposit(ONE_YOCTO)
@@ -396,6 +397,7 @@ impl Vault {
         let mut p: Option<Promise> = None;
         for t in transfers {
             require!(t.amount.0 > 0, ERR_ZERO);
+            require!(valid_token(&t.token), ERR_TOKEN);
             emit("allocate", &format!(r#"{{"token":"{}","amount":"{}","to":"{}"}}"#, t.token, t.amount.0, t.to));
             let call = ext_intents::ext(self.intents.clone())
                 .with_attached_deposit(ONE_YOCTO)
@@ -413,6 +415,7 @@ impl Vault {
     #[payable]
     pub fn withdraw_external(&mut self, token: AccountId, amount: U128, receiver_id: AccountId, memo: Option<String>, msg: Option<String>) -> Promise {
         self.assert_owner();
+        require!(valid_token(token.as_str()), ERR_TOKEN);
         emit("withdraw_external", &format!(r#"{{"token":"{}","amount":"{}"}}"#, token, amount.0));
         ext_intents::ext(self.intents.clone())
             .with_attached_deposit(ONE_YOCTO)
@@ -890,6 +893,11 @@ pub fn parse_iso_ns(s: &str) -> Option<u64> {
 }
 
 /// NEP-297 event log.
+/// NEAR Intents token ids (nep141:…, nep245:…, nep171:…) use only these characters, so they are safe to log as-is.
+fn valid_token(t: &str) -> bool {
+    !t.is_empty() && t.len() <= 256 && t.bytes().all(|b| b.is_ascii_alphanumeric() || b":._-".contains(&b))
+}
+
 fn emit(event: &str, data: &str) {
     log!(r#"EVENT_JSON:{{"standard":"kite","version":"1.0.0","event":"{}","data":{}}}"#, event, data);
 }

@@ -192,9 +192,11 @@ function Live({ p }: { p: Portfolio }) {
             <Button icon="refresh" onClick={() => act("check", live.checkNow, "Checked.")} loading={busy === "check"}>
               Check now
             </Button>
-            <Button variant="primary" icon="deposit" href="/console/start/add-money">
-              Add money
-            </Button>
+            {!ownedBy && (
+              <Button variant="primary" icon="deposit" href="/console/start/add-money">
+                Add money
+              </Button>
+            )}
           </>
         }
       >
@@ -453,7 +455,7 @@ function Notices({ p, earn, busy, ownedBy, onInvest, onUnpause }: { p: Portfolio
       ),
     );
   if (p.pending) items.push(<SwapTracker key={p.pending.depositAddress} sell={p.pending.sell} buy={p.pending.buy} depositAddress={p.pending.depositAddress} />);
-  if (p.value < 2)
+  if (p.value < 2 && !ownedBy)
     items.push(
       <Notice key="empty" icon="deposit" title="Add your first deposit" text="Send USDC, ETH, BTC or SOL from any chain. It lands in your vault in about a minute.">
         <Button size="sm" variant="primary" href="/console/start/add-money">

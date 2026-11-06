@@ -184,11 +184,13 @@ function useRealLive() {
 
   const depositFromWallet = useCallback(
     async (usdcBase: bigint) => {
+      // Money sent to a vault someone else owns becomes theirs; this wallet couldn't take it back.
+      if (ownedBy) throw new Error(`${notOwnerMessage(ownedBy)} Money sent to it would belong to ${ownedBy}.`);
       const hash = await w.send(NEAR.usdcContract, [depositUsdcFromWallet(vault, usdcBase)]);
       k.addEvent({ kind: "deposit", title: `Deposited ${(Number(usdcBase) / 1e6).toFixed(2)} USDC`, detail: "From your NEAR wallet into your vault.", tx: hash });
       return hash;
     },
-    [k, w, vault],
+    [k, w, vault, ownedBy],
   );
 
   /** Split the vault's USDC across the plan: quotes from the server, one owner signature. */

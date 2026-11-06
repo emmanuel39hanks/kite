@@ -1081,3 +1081,18 @@ fn a_policy_reference_must_be_lowercase_hex() {
     ctx(owner(), 1, NOW);
     v.set_plan(plan(), Some(POLICY.to_uppercase()));
 }
+
+#[test]
+#[should_panic(expected = "ERR_TOKEN")]
+fn attack_a35_a_token_name_cannot_inject_fields_into_the_withdraw_log() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    let _ = v.withdraw(r#"x","to":"attacker.near"#.into(), U128(1), owner());
+}
+
+#[test]
+fn real_intents_token_ids_are_accepted() {
+    for t in [USDC, BTC, "nep245:v2_1.omni.hot.tg:56_11111111111111111111", "nep141:sol-0xa69aa1bcb03a369e338156a8718ad60271145803.omdep.near"] {
+        assert!(valid_token(t), "{t}");
+    }
+}

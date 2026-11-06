@@ -14,7 +14,7 @@ import { verifyPolicy, type Check } from "@/lib/ai/verify-policy";
 import { useHistory, useYields } from "@/lib/market/use-market";
 import type { Slice } from "@/lib/mix";
 import { addProposalAction, readDao, vaultProposalKind } from "@/lib/near/dao";
-import { toContractLimits, toContractPlan } from "@/lib/near/vault";
+import { toContractLimits, toContractPlan, type Timing } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
 import type { Guardrails } from "@/lib/store";
 
@@ -32,6 +32,8 @@ export function TreasuryPolicy({
   dao,
   plan,
   limits,
+  planLocked,
+  timing,
   onProposal,
 }: {
   vault: string;
@@ -39,6 +41,10 @@ export function TreasuryPolicy({
   dao?: string;
   plan: Slice[];
   limits: Guardrails;
+  /** Why the target mix can't be part of this proposal, if it can't (e.g. the plan holds a token Kite doesn't know). */
+  planLocked?: string;
+  /** The vault's current trade gap and settle window, kept as they are (the sliders don't set them). */
+  timing?: Timing;
   /** Called once a proposal is drafted (no txHash), and again after it is sent to the DAO (with txHash). */
   onProposal?: (p: PolicyProposal) => void;
 }) {
@@ -46,7 +52,9 @@ export function TreasuryPolicy({
   const h = useHistory(365);
   const yields = useYields();
   const [mandate, setMandate] = useState("");
-  const [setPlan, setSetPlan] = useState(true);
+  // Off by default: most policy votes only change guardrails, and a plan change fails if the vote lands mid-swap.
+  const [setPlanWanted, setSetPlan] = useState(false);
+  const setPlan = setPlanWanted && !planLocked;
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [res, setRes] = useState<{ p: BuiltProposal; checks: Check[] } | null>(null);
@@ -63,7 +71,7 @@ export function TreasuryPolicy({
       const targets = toContractPlan(plan);
       // The plan's own weights stand in for "current": a policy is about rules, not today's balances.
       const stats = h ? reviewStats(h, plan, Object.fromEntries(plan.map((s) => [s.id, s.weight])), limits, yields) : null;
-      const facts = policyFacts({ vault, limits: toContractLimits(limits), rules: limits, targets, setPlan, stats, mandate });
+      const facts = policyFacts({ vault, limits: toContractLimits(limits, timing), rules: limits, targets, setPlan, stats, mandate });
       const { request } = await fitRequest(PLANNER_MODEL, facts);
       const bundle = await askPublicly({
         request,
@@ -137,9 +145,12 @@ export function TreasuryPolicy({
             aria-label="The DAO's goal in plain words"
             className="w-full rounded-xl bg-white px-4 py-2.5 text-[15px] ring-1 ring-inset ring-black/[0.06] outline-none focus-visible:ring-2 focus-visible:ring-[#5aa8f5] disabled:opacity-60"
           />
-          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-black/70">
-            <input type="checkbox" checked={setPlan} onChange={(e) => setSetPlan(e.target.checked)} disabled={!!busy} />
-            Also set the target mix
+          <label className={`flex items-start gap-2 text-[13px] text-black/70 ${planLocked ? "opacity-60" : "cursor-pointer"}`}>
+            <input type="checkbox" className="mt-1" checked={setPlan} onChange={(e) => setSetPlan(e.target.checked)} disabled={!!busy || !!planLocked} />
+            <span>
+              Also set the target mix.{" "}
+              {planLocked ?? "If the vote passes while Kite has a swap in flight, the vault refuses a plan change and the whole proposal fails, so the DAO would vote again."}
+            </span>
           </label>
           <Button icon="shield" onClick={run} loading={!!busy}>
             {busy ?? "Draft the policy"}

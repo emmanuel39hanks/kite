@@ -3,6 +3,7 @@
 pub const ERR_NOT_OWNER: &str = "ERR_NOT_OWNER: only the vault owner can do this";
 pub const ERR_ONE_YOCTO: &str = "ERR_ONE_YOCTO: attach 1 yoctoNEAR (owner actions need a full-access signature)";
 pub const ERR_NOT_NEW_OWNER: &str = "ERR_NOT_NEW_OWNER: only the account the owner proposed can accept the vault";
+pub const ERR_TOKEN: &str = "ERR_TOKEN: not a NEAR Intents token id";
 pub const ERR_POLICY_REF: &str = "ERR_POLICY_REF: a policy reference is a sha256 hash, 64 lowercase hex characters";
 pub const ERR_SAME_OWNER: &str = "ERR_SAME_OWNER: that account already owns the vault";
 pub const ERR_NOT_AGENT: &str = "ERR_NOT_AGENT: only Kite's key on this vault can rebalance";

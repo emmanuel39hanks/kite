@@ -20,8 +20,8 @@ export default function VerifyPage() {
       </header>
       <h1 className="pt-4 pb-2 text-[30px] leading-9 tracking-[-0.05em]">Check a policy proposal</h1>
       <p className="max-w-[62ch] text-[14px] leading-5 text-[#6b6b6b]">
-        A Kite treasury policy proposal carries NEAR AI&apos;s signed answer in its last line. This page checks it here in your browser: the signature, the bytes it covers, the
-        hardware behind the key, and that the vault calls are the ones the analysis was about. Anything it can&apos;t check is marked as not checked.
+        A Kite treasury policy proposal carries NEAR AI&apos;s signed answer in its last line. This page checks it here in your browser: the signature, the bytes it covers, whether NEAR AI&apos;s
+        current TEE report includes the signing key, that the model was asked Kite&apos;s own question, and that the vault calls are the ones the analysis was about. Anything it can&apos;t check is marked as not checked.
       </p>
       <Suspense fallback={null}>
         <Verifier />

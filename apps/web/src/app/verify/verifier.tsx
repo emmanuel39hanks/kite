@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { Badge, Button, Card, Segmented, StatusNote } from "@/components/console/ui";
 import { PolicyChecklist } from "@/components/console/policy-checklist";
 import { sdkChecks } from "@/lib/ai/evidence-sdk";
-import { verifyPolicy, type VerifyResult } from "@/lib/ai/verify-policy";
+import { verdict, verifyPolicy, type VerifyResult } from "@/lib/ai/verify-policy";
+import { decodeEvidenceLine, splitDescription } from "@/lib/ai/evidence";
+import { factsFromRequest } from "@/lib/ai/policy";
 import { accountUrl } from "@/lib/near/config";
 import type { DaoProposal } from "@/lib/near/dao";
-import { readProposal } from "@/lib/near/proposal";
+import { readProposal, readVaultOwner } from "@/lib/near/proposal";
 
 const MODES = ["From a DAO", "Paste a description"] as const;
 type Mode = (typeof MODES)[number];
@@ -41,7 +43,14 @@ export function Verifier() {
         description = proposal.description;
       } else if (!text.trim()) throw new Error("Paste the proposal's description, including its last line.");
       setBusy("Checking…");
-      const r = await verifyPolicy({ description, kind: proposal ? proposal.kind : undefined }, sdkChecks(`${window.location.origin}/api/nearai/v1`));
+      // For a proposal read from a DAO, also read who owns the vault the analysis is about, right now.
+      let vaultOwner: string | null | undefined;
+      if (proposal) {
+        const line = splitDescription(description).line;
+        const vault = line ? await decodeEvidenceLine(line).then((b) => factsFromRequest(b.request).vault).catch(() => null) : null;
+        vaultOwner = vault ? await readVaultOwner(vault) : undefined;
+      }
+      const r = await verifyPolicy({ description, kind: proposal ? proposal.kind : undefined, dao: proposal ? d : undefined, vaultOwner }, sdkChecks(`${window.location.origin}/api/nearai/v1`));
       setRes({ ...r, proposal });
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
@@ -64,7 +73,7 @@ export function Verifier() {
   }, []);
 
   const fails = res?.checks.filter((c) => c.state === "fail").length ?? 0;
-  const unknowns = res?.checks.filter((c) => c.state === "unknown").length ?? 0;
+  const unknowns = res?.checks.filter((c) => c.state === "unknown" && c.key !== "stats").length ?? 0;
 
   return (
     <div className="mt-6 space-y-4">
@@ -111,8 +120,12 @@ export function Verifier() {
                 "Pasted description"
               )}
             </div>
-            <Badge tone={fails ? "red" : unknowns ? "amber" : "green"}>
-              {fails ? `${fails} check${fails === 1 ? "" : "s"} failed` : unknowns ? `${res.checks.length - unknowns} passed, ${unknowns} not checked` : "Every check passed"}
+            <Badge tone={verdict(res.checks) === "verified" ? "green" : verdict(res.checks) === "failed" ? "red" : "amber"}>
+              {verdict(res.checks) === "verified"
+                ? "Verified"
+                : fails
+                  ? `Not verified: ${fails} check${fails === 1 ? "" : "s"} failed`
+                  : `Not verified: ${unknowns} check${unknowns === 1 ? "" : "s"} couldn't be done`}
             </Badge>
           </div>
           {res.proposal && (
@@ -158,8 +171,8 @@ export function Verifier() {
       )}
 
       <p className="text-[12px] leading-5 text-[#6b6b6b]">
-        What this does not prove: that the analysis is right, or that the price statistics are correct. A signature proves who wrote the words and that they weren&apos;t changed; the worst case is
-        recomputed here from the call arguments. NEAR AI&apos;s current report is fetched through Kite&apos;s relay, which only adds the API key; the report is verified here, not on Kite&apos;s server.
+        What this does not prove: that the analysis is right, or that the price statistics are correct. A signature from a key in NEAR AI&apos;s current TEE report shows the words came from that
+        model and weren&apos;t changed; a signature from any other key shows nothing, so &ldquo;Verified&rdquo; needs that check too. The worst case is recomputed here from the call arguments. NEAR AI&apos;s current report is fetched through Kite&apos;s relay, which only adds the API key; the report is verified here, not on Kite&apos;s server.
       </p>
     </div>
   );

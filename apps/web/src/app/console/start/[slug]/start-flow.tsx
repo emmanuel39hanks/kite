@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Donut, MixBar } from "@/components/charts";
 import { ConnectGate } from "@/components/console/connect-gate";
+import { daoViewHref, useForeignOwner } from "@/components/console/dao-owned";
 import { Icon } from "@/components/console/icons";
 import { Badge, Button, Card, StatusNote } from "@/components/console/ui";
 import { Wordmark } from "@/components/kite-mark";
@@ -32,6 +33,7 @@ const STEPS: { id: Step; label: string }[] = [
 
 export function StartFlow({ slug }: { slug: string }) {
   const k = useKite();
+  const ownedBy = useForeignOwner();
   const w = useWallet();
   const topUp = slug === "add-money";
   const plan = planBySlug(slug);
@@ -61,6 +63,23 @@ export function StartFlow({ slug }: { slug: string }) {
 
   // Waiting for the first chain read.
   if (k.vaultFound === null) return <Frame step={step} topUp={topUp} />;
+
+  // Once someone else (usually a DAO) owns kite.<you>, money sent to it is theirs. Don't offer it.
+  if (ownedBy && k.vaultFound) {
+    return (
+      <Frame step={step} topUp={topUp}>
+        <Message
+          title={`This vault belongs to ${ownedBy}`}
+          text={`Money sent to ${k.portfolio?.vault ?? "it"} would belong to ${ownedBy}, and this wallet couldn't take it back, so Kite doesn't offer deposits here. A DAO funds its vault with a transfer proposal.`}
+        >
+          <Button href="/console">Home</Button>
+          <Button variant="primary" href={daoViewHref(k.portfolio?.vault ?? "")}>
+            Open the DAO view
+          </Button>
+        </Message>
+      </Frame>
+    );
+  }
 
   // One vault per account: kite.<you>. Setting up again would fail at CreateAccount.
   if (!topUp && k.vaultFound && step === "vault" && !created) {

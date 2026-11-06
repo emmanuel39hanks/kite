@@ -172,7 +172,7 @@ function VaultDao({ vault }: { vault: string }) {
     return run(name, ctx.dao, addProposalAction(vault, description, calls, BigInt(ctx.policy.proposal_bond)), `Proposal sent to ${ctx.dao}. It runs once the DAO approves it.`);
   };
   const approve = (ctx: DaoCtx, p: DaoProposal) =>
-    run(`approve-${ctx.dao}-${p.id}`, ctx.dao, approveAction(p.id, p.kind), `Vote recorded on proposal ${p.id}. If it reached the DAO's threshold, the calls ran.`);
+    run(`approve-${ctx.dao}-${p.id}`, ctx.dao, approveAction(p.id, p.kind), `Vote recorded on proposal ${p.id}. If it reached the DAO's threshold, the DAO tried the calls; the list below shows whether they ran.`);
 
   if (!data) return <div className="mt-3 h-[260px] animate-pulse rounded-[20px] bg-[#f5f5f7]" />;
   if ("error" in data) return <StatusNote tone="err" className="mt-3">{data.error}</StatusNote>;
@@ -362,7 +362,7 @@ function OwnerActions({
           </div>
           <GuardSliders value={g} onChange={setG} />
           <div className="flex flex-wrap items-center gap-2 px-3 pt-4 pb-3">
-            <Button variant="primary" size="sm" onClick={() => onPropose("limits", { kind: "limits", contractLimits: toContractLimits(g) })} loading={busy === "limits"} disabled={off || !changed}>
+            <Button variant="primary" size="sm" onClick={() => onPropose("limits", { kind: "limits", contractLimits: toContractLimits(g, state.limits) })} loading={busy === "limits"} disabled={off || !changed}>
               Propose these guardrails
             </Button>
             {changed && (
@@ -419,6 +419,8 @@ function OwnerActions({
               return a ? [slice(a.id, t.target_bps / 100)] : [];
             })}
             limits={g}
+            timing={state.limits}
+            planLocked={state.plan.every((t) => assetByIntentsId(t.token)) ? undefined : "This plan holds a token Kite doesn't recognise, so only the guardrails can be proposed here."}
           />
 
           <Card className="p-4">

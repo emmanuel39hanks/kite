@@ -215,7 +215,12 @@ async fn kites_key_is_limited_by_near_itself() -> anyhow::Result<()> {
 async fn a_rebalance_runs_end_to_end_and_its_gas_is_measured() -> anyhow::Result<()> {
     let e = setup().await?;
     let a0 = allowance(&e).await?;
-    let v0 = e.worker.view_account(&e.vault).await?.balance.as_yoctonear();
+    let acct = e.worker.view_account(&e.vault).await?;
+    let v0 = acct.balance.as_yoctonear();
+    // The 2.6 NEAR deposit must cover the code's storage and still leave the key real gas money.
+    let spare = v0 - acct.storage_usage as u128 * 10u128.pow(19);
+    println!("fresh vault: {} bytes stored, {:.3} NEAR spare for gas", acct.storage_usage, near(spare));
+    assert!(spare >= 10u128.pow(23), "a fresh vault must keep at least 0.1 NEAR for gas, has {:.3}", near(spare));
 
     let (body, sig) = quote(&e, e.vault.as_str()).await?;
     let r = rebalance(&e, body.clone(), sig.clone()).await?;
@@ -365,5 +370,20 @@ async fn a_sputnik_dao_takes_over_the_vault_and_runs_it_by_vote() -> anyhow::Res
     let r = dao_does(&e, &dao, &council, &[("pause", json!({}))]).await?;
     assert!(r.is_success(), "pause vote failed: {:?}", r.failures());
     assert_eq!(status(&e).await?["paused"], json!(true));
+
+    // 6. Two calls in one vote: rotate Kite's key (remove it, then add a new one with its allowance).
+    let new_key = SecretKey::from_random(KeyType::ED25519).public_key();
+    let r = dao_does(
+        &e,
+        &dao,
+        &council,
+        &[("revoke_agent", json!({})), ("set_agent", json!({ "public_key": new_key.to_string(), "allowance_yocto": "250000000000000000000000" }))],
+    )
+    .await?;
+    assert!(r.is_success(), "key rotation vote failed: {:?}", r.failures());
+    let keys = e.worker.view_access_keys(&e.vault).await?;
+    assert_eq!(keys.len(), 1, "exactly one key after the rotation");
+    assert_eq!(keys[0].public_key.to_string(), new_key.to_string(), "the new key replaced the old one");
+    assert_eq!(status(&e).await?["agent"], json!(new_key.to_string()));
     Ok(())
 }
