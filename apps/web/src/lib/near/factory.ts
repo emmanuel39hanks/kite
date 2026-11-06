@@ -169,12 +169,22 @@ function base58(bytes: Uint8Array): string {
   return s;
 }
 
-/** True only when the factory has no keys and deploys exactly the vault code this site serves. */
+const sha256b58 = async (url: string) => {
+  const r = await fetch(url).catch(() => null);
+  return r?.ok ? base58(new Uint8Array(await crypto.subtle.digest("SHA-256", await r.arrayBuffer()))) : null;
+};
+
+/**
+ * True only when the factory has no keys, runs exactly the factory code this site serves (checked against
+ * NEAR's own code hash for the account, not the factory's word), and so deploys this site's vault code.
+ */
 export async function factoryVerified(cfg: FactoryConfig): Promise<{ locked: boolean; sameCode: boolean }> {
-  const [keys, code] = await Promise.all([
+  const [keys, account, factoryHash, vaultHash] = await Promise.all([
     provider.viewAccessKeyList({ accountId: NEAR.factory }).catch(() => null),
-    fetch(NEAR.wasmUrl).then((r) => r.arrayBuffer()).catch(() => null),
+    provider.viewAccount({ accountId: NEAR.factory }).catch(() => null),
+    sha256b58(NEAR.factoryWasmUrl),
+    sha256b58(NEAR.wasmUrl),
   ]);
-  const sameCode = !!code && base58(new Uint8Array(await crypto.subtle.digest("SHA-256", code))) === cfg.vault_code_hash;
+  const sameCode = !!factoryHash && String(account?.code_hash) === factoryHash && !!vaultHash && vaultHash === cfg.vault_code_hash;
   return { locked: !!keys && keys.keys.length === 0, sameCode };
 }

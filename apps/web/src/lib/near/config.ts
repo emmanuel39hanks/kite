@@ -8,8 +8,10 @@ export const NEAR = {
   agentPublicKey: process.env.NEXT_PUBLIC_KITE_AGENT_PK ?? "",
   /** Vault contract code served by this site; its hash is published in the README. */
   wasmUrl: "/vault/kite_vault.wasm",
+  /** The factory's code, served so anyone can check the deployed factory against it. */
+  factoryWasmUrl: "/vault/kite_factory.wasm",
   /** NEAR sent to the new vault account: storage for its ~233 KB of code plus state (~2.35 NEAR),
-   *  and about 0.24 NEAR left over for Kite's rebalance gas. All of it comes back via close_vault. */
+   *  and about 0.24 NEAR left over for Kite's rebalance gas. What's left after gas comes back via close_vault. */
   vaultStorageNear: "2.6",
   /** Kite's vault factory: creates `<name>.<factory>` vaults owned by whoever calls it, such as a DAO. Locked: no keys. */
   factory: process.env.NEXT_PUBLIC_KITE_FACTORY ?? "kitevaults.near",

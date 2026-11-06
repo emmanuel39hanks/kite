@@ -11,6 +11,8 @@ const BUDGET_MS = 150_000;
 const SETTLE_WAIT_MS = 120_000;
 /** Leave this much of maxDuration unused, so a slow last vault can't get the function killed mid-log. */
 const SAFETY_MS = 20_000;
+/** Time a vault needs outside its swap wait: a 1Click quote, the rebalance, status polls, and settle. */
+const VAULT_OVERHEAD_MS = 70_000;
 
 /**
  * Daily check for every vault in KITE_VAULTS (comma-separated), then vaults Kite's factory made that carry
@@ -28,7 +30,7 @@ export async function GET(req: Request) {
   }
   const started = Date.now();
   const listed = allowedVaults();
-  const fromFactory = rotate((await factoryVaults()).filter((v) => !listed.includes(v)), Math.floor(started / 86_400_000));
+  const fromFactory = shuffle((await factoryVaults()).filter((v) => !listed.includes(v)), Math.floor(started / 86_400_000));
   // Without the agent key a run is a dry run. Say so loudly instead of looking like a working cron.
   const dry = !process.env.KITE_AGENT_KEY;
   if (dry) console.warn(JSON.stringify({ cron: "dry-run", reason: "KITE_AGENT_KEY is not set; nothing will be traded" }));
@@ -42,7 +44,8 @@ export async function GET(req: Request) {
     }
     const lines: string[] = [];
     try {
-      const settleWaitMs = Math.max(0, Math.min(SETTLE_WAIT_MS, maxDuration * 1000 - SAFETY_MS - elapsed - 30_000));
+      // At most 150 s in, 300 - 20 - 150 - 70 = 60 s of waiting is left, so the run ends inside maxDuration.
+      const settleWaitMs = Math.max(0, Math.min(SETTLE_WAIT_MS, maxDuration * 1000 - SAFETY_MS - elapsed - VAULT_OVERHEAD_MS));
       const r = await runOnce({ vault, dry, settleWaitMs, log: (l) => lines.push(l) });
       results.push({ vault, listed: isListed, action: r.action, lines });
       console.log(JSON.stringify({ cron: "vault", vault, action: r.action, dry }));
@@ -57,11 +60,16 @@ export async function GET(req: Request) {
   return Response.json({ dry, results }, { status: failed ? 500 : 200 });
 }
 
-/** The list starting at a different place each day. */
-function rotate<T>(xs: T[], day: number): T[] {
-  if (!xs.length) return xs;
-  const k = day % xs.length;
-  return [...xs.slice(k), ...xs.slice(0, k)];
+/** The list in a different order each day (a shuffle seeded by the day), so every vault gets a fair turn. */
+function shuffle<T>(xs: T[], day: number): T[] {
+  const out = [...xs];
+  let seed = (day * 2654435761) >>> 0;
+  const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 async function view<T>(account: string, method: string, args: object): Promise<T> {
@@ -83,7 +91,7 @@ async function factoryVaults(): Promise<string[]> {
   const deadline = Date.now() + 15_000;
   const list: string[] = [];
   try {
-    for (let from = 0; from < 500 && Date.now() < deadline; from += 100) {
+    for (let from = 0; from < 2_000 && Date.now() < deadline; from += 100) {
       const page = await view<{ vault: string }[]>(NEAR.factory, "get_vaults", { from_index: from, limit: 100 });
       list.push(...page.map((v) => v.vault));
       if (page.length < 100) break;

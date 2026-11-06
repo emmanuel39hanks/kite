@@ -20,7 +20,7 @@ mod tests;
 pub const VAULT_CODE: &[u8] = include_bytes!("../../../apps/web/public/vault/kite_vault.wasm");
 
 /// A vault stores its own code, about 2.39 NEAR at NEAR's storage price, plus its state, plus gas for Kite's
-/// daily check (about 0.002 NEAR a rebalance). The same as a vault created from a wallet. All of it goes back
+/// daily check (about 0.002 NEAR a rebalance). The same as a vault created from a wallet. What gas leaves goes back
 /// to the owner when the vault is closed.
 pub const MIN_DEPOSIT: NearToken = NearToken::from_millinear(2_600);
 /// The most one call may attach. More can be sent to the vault directly afterwards.

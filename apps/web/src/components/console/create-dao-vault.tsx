@@ -128,12 +128,18 @@ export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) 
           ? { ok: null, text: "Connect a real wallet that's on the DAO's council to file it" }
           : { ok: !!rights?.propose, text: rights?.propose ? `${w.accountId} can file proposals on ${daoId}` : `${w.accountId} can't file proposals on ${daoId}` },
       ];
-  const ready = checks.length > 0 && checks.every((c) => c.ok === true) && !w.preview && !current?.existing;
+  const openExisting = current?.existing?.status === "InProgress" ? current.existing : null;
+  const ready = checks.length > 0 && checks.every((c) => c.ok === true) && !w.preview && !openExisting;
 
+  const [owedNow, setOwedNow] = useState(0n);
+  const [note, setNote] = useState<string | null>(null);
+
+  /** Show a proposal, and check what's really at its name: whatever voted it through (Kite, Trezu, anyone). */
   const reread = async (id: number) => {
     if (!daoId) return;
     const p = (await provider.callFunction({ contractId: daoId, method: "get_proposal", args: { id } })) as DaoProposal;
     setProposal(p);
+    setOwedNow(p.status === "Failed" ? await refundOwed(daoId) : 0n);
     const n = proposalVaultName(p);
     if (n) {
       const made = !(await vaultNameFree(n));
@@ -156,8 +162,10 @@ export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) 
       const p = await findCreateProposal(daoId, w.accountId, name);
       if (p) {
         setErr(null);
-        setProposal(p);
+        await reread(p.id);
       }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
@@ -200,6 +208,7 @@ export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) 
     try {
       await w.send(daoId, [claimRefundProposalAction(BigInt(current.policy.proposal_bond))]);
       setErr(null);
+      setNote(`Claim filed on ${daoId}. Once the council approves it, ${NEAR.factory} sends the NEAR back to the DAO.`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -305,10 +314,16 @@ export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) 
             </StatusNote>
           )}
 
-          {current?.existing && (
+          {note && (
             <StatusNote tone="ok" className="mt-4">
-              You already filed proposal {current.existing.id} on {daoId} for this vault.{" "}
-              <button type="button" className="cursor-pointer underline underline-offset-2" onClick={() => setProposal(current.existing)}>
+              {note}
+            </StatusNote>
+          )}
+
+          {openExisting && (
+            <StatusNote tone="ok" className="mt-4">
+              You already filed proposal {openExisting.id} on {daoId} for this vault, and it&apos;s still open.{" "}
+              <button type="button" className="cursor-pointer underline underline-offset-2" onClick={() => void reread(openExisting.id).catch(() => setProposal(openExisting))}>
                 Open it
               </button>
             </StatusNote>
@@ -332,7 +347,13 @@ export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) 
         <div className="mt-4 space-y-3">
           <p className="text-[14px] leading-5">
             Proposal {proposal.id} on {daoId} asks the DAO to create <span className="font-mono text-[13px]">{proposed ? factoryVaultId(proposed) : "a vault"}</span>.{" "}
-            {proposal.status === "InProgress" ? "Once enough of the council approves it, the DAO pays the deposit and the vault appears." : proposal.status === "Approved" ? "It passed." : "It didn't run. Nothing was created, and the DAO kept its NEAR."}
+            {proposal.status === "InProgress"
+              ? "Once enough of the council approves it, the DAO pays the deposit and the vault appears."
+              : proposal.status === "Approved"
+                ? "It passed."
+                : owedNow > 0n
+                  ? `It didn't run, and nothing was created. ${NEAR.factory} holds ${nearFromYocto(owedNow, 2)} NEAR for the DAO, which it gets back with one claim proposal (on the form).`
+                  : "It didn't run. Nothing was created, and the DAO's NEAR came back."}
           </p>
           <div className="flex flex-wrap gap-2">
             {canVote && (
@@ -351,7 +372,8 @@ export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) 
           </div>
           {ours === false && proposed && (
             <StatusNote tone="err">
-              {factoryVaultId(proposed)} exists, but it isn&apos;t {daoId}&apos;s: someone else created it first. The DAO&apos;s proposal failed and kept its NEAR. Start again with another name, and don&apos;t send anything to that vault.
+              {factoryVaultId(proposed)} exists, but it isn&apos;t {daoId}&apos;s: someone else created it first.{" "}
+              {proposal.status === "InProgress" ? "This proposal will fail when it runs, and the DAO keeps its NEAR." : "The DAO's proposal failed and the DAO keeps its NEAR."} Start again with another name, and don&apos;t send anything to that vault.
             </StatusNote>
           )}
           {proposal.status === "InProgress" && !canVote && <p className="text-[12px] text-[#6b6b6b]">{voted ? "You've voted. It runs once enough of the council approves, here or in Trezu." : "The council can approve it here or in Trezu."}</p>}
