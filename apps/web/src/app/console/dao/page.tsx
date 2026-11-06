@@ -6,7 +6,9 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { CreateDaoVault } from "@/components/console/create-dao-vault";
 import { GuardSliders } from "@/components/console/guard-sliders";
 import { TreasuryPolicy } from "@/components/console/treasury-policy";
-import { Badge, Button, Card, Empty, PageTitle, SectionTitle, StatusNote } from "@/components/console/ui";
+import { Icon } from "@/components/console/icons";
+import { Badge, Button, Card, Empty, PageTitle, SectionTitle, Segmented, StatusNote } from "@/components/console/ui";
+import { Donut } from "@/components/charts";
 import { Logo } from "@/components/logo";
 import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
 import { useMarket } from "@/lib/market/use-market";
@@ -40,12 +42,9 @@ import { slice } from "@/lib/mix";
  */
 export default function DaoPage() {
   return (
-    <>
-      <PageTitle>DAO treasury</PageTitle>
-      <Suspense fallback={null}>
-        <DaoView />
-      </Suspense>
-    </>
+    <Suspense fallback={null}>
+      <DaoView />
+    </Suspense>
   );
 }
 
@@ -53,30 +52,72 @@ type Note = { tone: "ok" | "err"; text: string } | null;
 type DaoCtx = { dao: string; policy: DaoPolicy; proposals: DaoProposal[] };
 type Loaded = { state: VaultState; owner: DaoCtx | null; pending: DaoCtx | null };
 
+const MODES = ["Create a vault", "Open a vault"] as const;
+type Mode = (typeof MODES)[number];
+
+const HOW = [
+  { icon: "users", title: "One vote creates it", text: "A council member files one proposal. When it passes, the vault exists, owned by the DAO from the first block." },
+  { icon: "refresh", title: "Kite keeps the mix", text: "Kite's key on the vault can only rebalance and settle, inside the limits the DAO voted for." },
+  { icon: "shield", title: "The DAO stays in charge", text: "Every withdrawal, rule change, pause or key change is a proposal the DAO votes on. Kite can't move money out." },
+] as const;
+
 function DaoView() {
   const params = useSearchParams();
   const router = useRouter();
   const w = useWallet();
   const fromUrl = cleanAccount(params.get("vault") ?? "");
+  const [picked, setPicked] = useState<Mode | null>(null);
+  const mode: Mode = picked ?? (fromUrl ? "Open a vault" : "Create a vault");
   const vault = fromUrl ?? (w.accountId && !w.preview ? vaultIdFor(w.accountId) : null);
 
   // The preview shows all of this too: it only reads NEAR mainnet. Filing or voting needs a real wallet.
-  const open = (v: string) => router.replace(`/console/dao?vault=${encodeURIComponent(v)}`);
+  const open = (v: string) => {
+    setPicked("Open a vault");
+    router.replace(`/console/dao?vault=${encodeURIComponent(v)}`);
+  };
   return (
     <>
-      {!fromUrl && (
-        <div className="mb-8">
+      <PageTitle actions={<Segmented options={MODES} value={mode} onChange={setPicked} label="What to do" size="md" />}>DAO treasury</PageTitle>
+
+      {mode === "Create a vault" ? (
+        <>
+          <ul className="mb-4 grid gap-2 sm:grid-cols-3">
+            {HOW.map((h) => (
+              <li key={h.title} className="flex gap-3 rounded-[20px] bg-[#f5f5f7] p-4 ring-1 ring-inset ring-black/[0.06]">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
+                  <Icon name={h.icon} size={17} />
+                </span>
+                <div>
+                  <div className="text-[15px] tracking-[-0.02em]">{h.title}</div>
+                  <p className="mt-0.5 text-[13px] leading-5 text-[#6b6b6b]">{h.text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
           <CreateDaoVault onOpen={open} />
-        </div>
-      )}
-      <SectionTitle>Open a DAO&apos;s vault</SectionTitle>
-      <VaultPicker key={vault ?? ""} current={vault} onPick={open} />
-      {vault ? (
-        <VaultDao key={vault} vault={vault} own={!fromUrl} />
+          <p className="mt-4 text-[13px] text-[#6b6b6b]">
+            Already have one?{" "}
+            <button type="button" className="cursor-pointer text-black underline underline-offset-2" onClick={() => setPicked("Open a vault")}>
+              Open a DAO&apos;s vault
+            </button>{" "}
+            to see what it holds and vote on its proposals.
+          </p>
+        </>
       ) : (
-        <Card className="mt-3">
-          <Empty title="Pick a vault" text="Enter a Kite vault to see who owns it and what its DAO is voting on. Connect a wallet to propose changes or vote." />
-        </Card>
+        <>
+          <Card className="p-5">
+            <h2 className="text-[18px] tracking-[-0.03em]">Open a DAO&apos;s vault</h2>
+            <p className="mt-1 mb-4 max-w-[62ch] text-[14px] leading-5 text-[#6b6b6b]">See who owns it, what it holds, and what the DAO is voting on. Anyone can look; proposing and voting need a wallet on the council.</p>
+            <VaultPicker key={vault ?? ""} current={vault} onPick={open} />
+          </Card>
+          {vault ? (
+            <VaultDao key={vault} vault={vault} own={!fromUrl} onCreate={() => setPicked("Create a vault")} />
+          ) : (
+            <Card className="mt-3">
+              <Empty title="Pick a vault" text="Enter a Kite vault, like treasury.kitevaults.near, to see who owns it and what its DAO is voting on." />
+            </Card>
+          )}
+        </>
       )}
     </>
   );
@@ -102,7 +143,7 @@ function VaultPicker({ current, onPick }: { current: string | null; onPick: (v: 
         autoCapitalize="off"
         className="h-[42px] min-w-0 flex-1 rounded-full bg-white px-4 text-[15px] ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-black/30 focus:ring-[#8cc6f6] sm:max-w-[420px]"
       />
-      <Button type="submit" disabled={!typed || typed === current}>
+      <Button type="submit" variant="primary" disabled={!typed || typed === current}>
         Open vault
       </Button>
     </form>
@@ -126,7 +167,7 @@ async function load(vault: string): Promise<Loaded> {
   return { state, owner, pending };
 }
 
-function VaultDao({ vault, own }: { vault: string; own: boolean }) {
+function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCreate: () => void }) {
   const w = useWallet();
   const [data, setData] = useState<Loaded | { error: string } | null>(null);
   const [rev, setRev] = useState(0);
@@ -174,7 +215,12 @@ function VaultDao({ vault, own }: { vault: string; own: boolean }) {
       <Card className="mt-3">
         <Empty
           title="Your wallet has no vault yet"
-          text={`That's fine for a DAO: its vault doesn't come from your wallet. Use "Create a vault for your DAO" above, and the DAO gets its own vault, named after it, by one vote. To look at a vault a DAO already owns, enter its name above.`}
+          text="That's fine for a DAO: its vault doesn't come from your wallet. The DAO gets its own vault, named after it, by one vote. To look at a vault a DAO already owns, enter its name above."
+          action={
+            <Button variant="primary" icon="notepad" onClick={onCreate}>
+              Create a vault for your DAO
+            </Button>
+          }
         />
       </Card>
     );
@@ -244,6 +290,9 @@ function Overview({ vault, state, ownerIsDao, offer, onRefresh }: { vault: strin
     const n = Number(state.balances[i] ?? 0n) / 10 ** t.decimals;
     return { token: t.token, a, n, target: t.target_bps / 100, value: a ? n * quote(a.id).price : null };
   });
+  const priced = rows.every((r) => r.value !== null);
+  const total = rows.reduce((sum, r) => sum + (r.value ?? 0), 0);
+  const target = rows.flatMap((r) => (r.a ? [slice(r.a.id, r.target)] : []));
   return (
     <div className="mt-6">
       <SectionTitle
@@ -269,21 +318,44 @@ function Overview({ vault, state, ownerIsDao, offer, onRefresh }: { vault: strin
           <Fact label="Kite's key">{state.status.agent ? <Badge tone="green">On: rebalance and settle only</Badge> : <Badge>Off: nothing can trade</Badge>}</Fact>
           <Fact label="State">{state.status.paused ? <Badge tone="red">Paused</Badge> : <Badge tone="green">Running</Badge>}</Fact>
         </div>
-        <p className="px-3 pt-4 pb-2 text-[14px] text-[#6b6b6b]">Guardrails: {limitsText(state.limits)}.</p>
-        <ul className="mt-1 divide-y divide-black/[0.05] overflow-hidden rounded-2xl bg-white">
-          {rows.map((r) => (
-            <li key={r.token} className="flex items-center gap-3 px-4 py-3">
-              {r.a ? <Logo id={r.a.id} size={28} /> : <span className="h-7 w-7 rounded-full bg-black/[0.06]" />}
-              <div className="min-w-0 flex-1 leading-tight">
-                <div className="truncate text-[15px]">{r.a?.name ?? r.token}</div>
-                <div className="text-[13px] text-[#6b6b6b] tabular-nums">
-                  {fmtUnits(r.n)} {r.a?.ticker ?? ""} · target {r.target}%
-                </div>
-              </div>
-              <div className="text-right text-[15px] tabular-nums">{r.value === null ? "–" : usd(r.value)}</div>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-2 grid gap-2 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <div className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-[0_2px_2px_rgba(0,0,0,0.04)] lg:flex-col lg:items-start">
+            <Donut slices={target} size={96} thickness={6} />
+            <div>
+              <div className="text-[13px] text-[#6b6b6b]">Worth now</div>
+              <div className="text-[28px] leading-8 tracking-[-0.05em] tabular-nums">{priced ? usd(total) : "–"}</div>
+              <p className="mt-1 text-[12px] leading-[18px] text-[#6b6b6b]">At today&apos;s prices. The ring is the target mix the DAO voted for.</p>
+            </div>
+          </div>
+          <ul className="divide-y divide-black/[0.05] overflow-hidden rounded-2xl bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
+            {rows.map((r) => {
+              const now = priced && total > 0 && r.value !== null ? (r.value / total) * 100 : null;
+              return (
+                <li key={r.token} className="flex items-center gap-3 px-4 py-3">
+                  {r.a ? <Logo id={r.a.id} size={28} /> : <span className="h-7 w-7 rounded-full bg-black/[0.06]" />}
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <div className="truncate text-[15px]">{r.a?.name ?? r.token}</div>
+                    <div className="text-[13px] text-[#6b6b6b] tabular-nums">
+                      {fmtUnits(r.n)} {r.a?.ticker ?? ""}
+                    </div>
+                  </div>
+                  <div className="hidden w-[120px] sm:block">
+                    <div className="flex justify-between text-[12px] text-[#6b6b6b] tabular-nums">
+                      <span>{now === null ? "–" : `${now.toFixed(0)}%`} now</span>
+                      <span>{r.target}% target</span>
+                    </div>
+                    <div className="relative mt-1 h-1.5 rounded-full bg-black/[0.06]">
+                      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, now ?? 0)}%`, background: r.a ? slice(r.a.id, 0).color : "#999" }} />
+                      <div className="absolute -top-0.5 h-2.5 w-0.5 rounded-full bg-black" style={{ left: `${r.target}%` }} />
+                    </div>
+                  </div>
+                  <div className="w-[88px] text-right text-[15px] tabular-nums">{r.value === null ? "–" : usd(r.value)}</div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+        <p className="px-3 pt-3 pb-1.5 text-[13px] leading-5 text-[#6b6b6b]">Guardrails: {limitsText(state.limits)}.</p>
       </Card>
     </div>
   );

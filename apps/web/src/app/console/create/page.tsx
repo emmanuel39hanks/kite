@@ -11,9 +11,10 @@ import { ValueChart } from "@/components/console/value-chart";
 import { Logo } from "@/components/logo";
 import type { LogoId } from "@/lib/assets";
 import { ASSETS, assetById, baseOf, earnVersionOf, usd, price as fmtPrice } from "@/lib/assets";
-import { slice, type Slice } from "@/lib/mix";
+import { evenly, MAX_ASSETS, rebalance, slice, type Slice } from "@/lib/mix";
 import { PLAN_DATA } from "@/lib/plans";
-import { DEFAULT_GUARDRAILS, useKite, type Guardrails } from "@/lib/store";
+import { RULE_PRESETS as PRESETS, sameRules as same } from "@/lib/guard-presets";
+import { useKite, type Guardrails } from "@/lib/store";
 import { backtest, useHistory, useMarket, useYields } from "@/lib/market/use-market";
 
 const STEPS = ["Pick what to hold", "Choose how much", "Set the rules", "Name and review"] as const;
@@ -114,9 +115,6 @@ function Wizard({ initialName, initialMix, initialRules }: { initialName: string
   );
 }
 
-/** The vault funds a plan in one call of at most eight swaps, so a plan holds at most eight assets. */
-const MAX_ASSETS = 8;
-
 function hint(step: number, mix: Slice[], total: number) {
   if (step === 0) return mix.length < 2 ? `Pick at least ${2 - mix.length} more` : mix.length >= MAX_ASSETS ? `${mix.length} picked, the most a plan can hold` : `${mix.length} picked`;
   if (step === 1) return total === 100 ? (mix.some((s) => s.weight === 0) ? "Give each one at least 1%" : "Adds up to 100%") : `${total}% of 100%`;
@@ -212,38 +210,6 @@ function PickStep({ mix, setMix, onDraft }: { mix: Slice[]; setMix: (m: Slice[])
 }
 
 /* ───────────── Step 2: amounts ───────────── */
-
-/** Split 100 evenly, keeping order. */
-function evenly(m: Slice[]): Slice[] {
-  if (!m.length) return m;
-  const base = Math.floor(100 / m.length);
-  return m.map((s, i) => ({ ...s, weight: base + (i < 100 - base * m.length ? 1 : 0) }));
-}
-
-/** Set one share and move the others proportionally, so the total always stays 100. */
-function rebalance(m: Slice[], id: LogoId, v: number): Slice[] {
-  const target = Math.max(1, Math.min(100 - (m.length - 1), Math.round(v)));
-  const others = m.filter((s) => s.id !== id);
-  const rest = 100 - target;
-  const otherSum = others.reduce((a, s) => a + s.weight, 0);
-  // Proportional split with a 1% floor, then hand rounding leftovers to the largest.
-  const raw = others.map((s) => Math.max(1, otherSum > 0 ? (s.weight / otherSum) * rest : rest / others.length));
-  const floored = raw.map(Math.floor);
-  let left = rest - floored.reduce((a, b) => a + b, 0);
-  const order = raw.map((r, i) => [r - Math.floor(r), i] as const).sort((a, b) => b[0] - a[0]);
-  for (let j = 0; left !== 0 && j < order.length * 4; j++) {
-    const i = order[j % order.length][1];
-    if (left > 0) {
-      floored[i]++;
-      left--;
-    } else if (floored[i] > 1) {
-      floored[i]--;
-      left++;
-    }
-  }
-  let o = 0;
-  return m.map((s) => (s.id === id ? { ...s, weight: target } : { ...s, weight: floored[o++] }));
-}
 
 function AmountStep({ mix, setMix }: { mix: Slice[]; setMix: (m: Slice[]) => void }) {
   const h = useHistory(365);
@@ -341,11 +307,7 @@ function AmountStep({ mix, setMix }: { mix: Slice[]; setMix: (m: Slice[]) => voi
 
 /* ───────────── Step 3: rules ───────────── */
 
-const PRESETS: { id: string; label: string; text: string; g: Guardrails }[] = [
-  { id: "relaxed", label: "Relaxed", text: "Trades rarely. Lets things drift further before stepping in.", g: { driftBand: 10, maxTradePct: 15, slippageBps: 150, tradesPerDay: 2 } },
-  { id: "balanced", label: "Balanced", text: "The default. A good fit for most plans.", g: DEFAULT_GUARDRAILS },
-  { id: "tight", label: "Tight", text: "Stays close to your shares. Trades more often, in smaller steps.", g: { driftBand: 3, maxTradePct: 5, slippageBps: 75, tradesPerDay: 6 } },
-];
+
 
 type RuleDef = { key: keyof Guardrails; label: string; help: (v: number) => string; show: (v: number) => string };
 const RULE_DEFS: RuleDef[] = [
@@ -417,7 +379,6 @@ function RulesStep({ rules, setRules }: { rules: Guardrails; setRules: (g: Guard
   );
 }
 
-const same = (a: Guardrails, b: Guardrails) => (Object.keys(a) as (keyof Guardrails)[]).every((key) => a[key] === b[key]);
 
 /* ───────────── Step 4: name and review ───────────── */
 
