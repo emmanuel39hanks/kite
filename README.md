@@ -203,7 +203,7 @@ In **Create → Choose how much**, any NEAR, ETH, USDC or SOL slice can be switc
 - **Valuation:** at 1Click's price, which tracks each token's exchange rate (checked: stNEAR/NEAR ≈ 1.505, kV-gtSOLb/SOL ≈ 1.056). gtUSDCp's units are tiny (about $0.0000011 each), so the UI shows its price per million.
 - **Price limit:** each earning asset carries a 2% limit, stored per asset in the vault plan (`Target.max_slippage_bps`, at most 5%), because a round trip costs about 1–2%. A trade uses the widest of the global limit and its two assets' limits.
 - **Backtests:** for earning versions they use the base asset's real history × today's exchange rate, grown back at today's APY. The UI labels this an estimate.
-- **Worth knowing:** switching in and back out costs about 1–2%, so earning pays off over months. gtUSDCp is a wrapper token whose deployer we couldn't verify.
+- **Worth knowing:** switching in and back out costs about 1–2%, so earning pays off over months. gtUSDCp and kV-gtSOLb are on NEAR Intents' official [1Click earn list](https://docs.near-intents.org/integration/distribution-channels/1click-api/earn.md), with the same token IDs Kite uses.
 
 ---
 
@@ -272,7 +272,7 @@ scripts/                     setup.sh, integration.sh
 | `NEXT_PUBLIC_KITE_AGENT_PK` | Public half of Kite's keeper key, added to each new vault |
 | `KITE_AGENT_KEY` | Server only. Lets `/api/vault/check` and `/api/cron` send real rebalances. Leave it out to run dry. |
 | `NEARAI_API_KEY` | Server only. Lets the relay reach NEAR AI Cloud for the private AI features. Hackathon credits come through NEAR Builders. Without it the AI features show "not configured" and everything else works. |
-| `ONECLICK_JWT` | Optional 1Click partner key, which avoids the 0.2% no-key fee |
+| `ONECLICK_JWT` | Optional 1Click partner key. Without one, 1Click adds 0.25% to every quote; with one the fee is 0.20%, or 0.01% on stablecoin pairs ([fees](https://docs.near-intents.org/resources/fees.md)). |
 | `NEXT_PUBLIC_NEAR_RPC`, `NEAR_RPC`, `INTENTS_CONTRACT`, `ONECLICK_URL` | Optional overrides with working defaults (FastNEAR RPC, `intents.near`, the 1Click API) |
 | `KITE_VAULT`, `ATTACKER` | Keeper CLI only (`npm run keeper`, `npm run attack`) |
 | `CRON_SECRET`, `KITE_VAULTS` | `CRON_SECRET` is required for `/api/cron` (it refuses all calls without it). `KITE_VAULTS` lists the vaults the server may send real transactions for. |
