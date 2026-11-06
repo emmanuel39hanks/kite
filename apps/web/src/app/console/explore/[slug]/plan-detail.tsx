@@ -52,7 +52,7 @@ export function PlanDetail({ slug }: { slug: string }) {
           <p className="mt-2 text-[16px] text-[#6b6b6b]">{plan.who}</p>
         </div>
         <div className="flex flex-wrap gap-2.5">
-          <Button onClick={customise} icon="create">
+          <Button onClick={customise} icon="notepad">
             Change the mix
           </Button>
           {plan.comingSoon ? (

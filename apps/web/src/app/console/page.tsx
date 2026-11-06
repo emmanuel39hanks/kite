@@ -65,7 +65,7 @@ function NoVault() {
   const h = useHistory(365);
   return (
     <>
-      <PageTitle actions={<Button href="/console/create" icon="create">Create a plan</Button>}>Home</PageTitle>
+      <PageTitle actions={<Button href="/console/create" icon="notepad">Create a plan</Button>}>Home</PageTitle>
       <Card className="p-8 sm:p-12">
         <h2 className="text-[34px] leading-[1.05] tracking-[-0.05em]">You don&apos;t have a vault yet</h2>
         <p className="mt-3 max-w-[52ch] text-[16px] leading-6 text-[#6b6b6b]">

@@ -16,7 +16,7 @@ export default function ExplorePage() {
 
   return (
     <>
-      <PageTitle actions={<Button href="/console/create" icon="create">Create a plan</Button>}>Explore</PageTitle>
+      <PageTitle actions={<Button href="/console/create" icon="notepad">Create a plan</Button>}>Explore</PageTitle>
       <Ticker />
 
       <div className="mt-10">

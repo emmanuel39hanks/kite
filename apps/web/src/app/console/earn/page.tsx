@@ -41,7 +41,7 @@ export default function EarnPage() {
 
   return (
     <>
-      <PageTitle actions={<Button variant="primary" href="/console/create" icon="create">Create a plan that earns</Button>}>Earn</PageTitle>
+      <PageTitle actions={<Button variant="primary" href="/console/create" icon="notepad">Create a plan that earns</Button>}>Earn</PageTitle>
       <p className="-mt-4 mb-8 max-w-[64ch] text-[16px] leading-6 text-[#6b6b6b]">
         Hold the same thing and let it earn. Each of these is a staked or lent version of an asset you already know, with the same price moves plus a yield. They sit in
         your own vault in NEAR Intents, and Kite rebalances them like anything else.
@@ -82,7 +82,7 @@ export default function EarnPage() {
                     : "Your plan doesn't hold NEAR, ETH, USDC or SOL, the four assets that have an earning version today."}
                 </p>
               </div>
-              <Button href="/console/create" icon="create">
+              <Button href="/console/create" icon="notepad">
                 Create a plan
               </Button>
             </div>
