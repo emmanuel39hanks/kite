@@ -255,8 +255,11 @@ impl Vault {
         intents: Option<AccountId>,
         quote_signer: Option<PublicKey>,
     ) -> Self {
-        // The web flow runs `new` in the same transaction that creates the account, signed by the owner.
-        require!(env::predecessor_account_id() == owner, ERR_NOT_OWNER);
+        // `new` runs in the same transaction that creates the account. Either the owner signs it (the web flow
+        // creates `kite.<owner>`), or the account that created this one does: only a parent can create
+        // `<name>.<parent>`, so that's Kite's vault factory setting up a vault for the DAO that called it.
+        let by = env::predecessor_account_id();
+        require!(by == owner || is_direct_child(&env::current_account_id(), &by), ERR_NOT_OWNER);
         validate_plan(&plan);
         limits.validate();
         let vault = Self {
@@ -890,6 +893,15 @@ pub fn parse_iso_ns(s: &str) -> Option<u64> {
     let days = era * 146_097 + doe - 719_468;
     let secs = days * 86_400 + hh * 3_600 + mm * 60 + ss;
     u64::try_from(secs).ok()?.checked_mul(NS_PER_SEC)?.checked_add(ms as u64 * 1_000_000)
+}
+
+/// True when `child` is `<name>.<parent>` with no further dots in `<name>`: an account only `parent` could create.
+fn is_direct_child(child: &AccountId, parent: &AccountId) -> bool {
+    child
+        .as_str()
+        .strip_suffix(parent.as_str())
+        .and_then(|rest| rest.strip_suffix('.'))
+        .is_some_and(|name| !name.is_empty() && !name.contains('.'))
 }
 
 /// NEP-297 event log.

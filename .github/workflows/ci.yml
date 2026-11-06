@@ -37,7 +37,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: contracts
-      - run: cargo test --manifest-path contracts/Cargo.toml -p kite-vault
+      - run: cargo test --manifest-path contracts/Cargo.toml -p kite-vault -p kite-factory
       - run: cargo clippy --manifest-path contracts/Cargo.toml --workspace --all-targets -- -D warnings
 
   sandbox:

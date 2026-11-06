@@ -387,3 +387,203 @@ async fn a_sputnik_dao_takes_over_the_vault_and_runs_it_by_vote() -> anyhow::Res
     assert_eq!(status(&e).await?["agent"], json!(new_key.to_string()));
     Ok(())
 }
+
+/* ───────────── the vault factory: a DAO creates its own vault (real SputnikDAO v3.2) ───────────── */
+
+/// A council member proposes `actions` on `receiver` and approves at once (one-member council).
+async fn dao_calls(dao: &Contract, council: &Account, receiver: &AccountId, actions: Vec<Value>) -> anyhow::Result<(u64, near_workspaces::result::ExecutionFinalResult)> {
+    let policy: Value = dao.view("get_policy").await?.json()?;
+    let bond: u128 = policy["proposal_bond"].as_str().unwrap().parse()?;
+    let kind = json!({ "FunctionCall": { "receiver_id": receiver, "actions": actions } });
+    council
+        .call(dao.id(), "add_proposal")
+        .args_json(json!({ "proposal": { "description": "Create our Kite vault", "kind": kind } }))
+        .deposit(NearToken::from_yoctonear(bond))
+        .gas(Gas::from_tgas(150))
+        .transact()
+        .await?
+        .into_result()?;
+    let id: u64 = dao.view("get_last_proposal_id").await?.json::<u64>()? - 1;
+    let stored: Value = dao.view("get_proposal").args_json(json!({ "id": id })).await?.json()?;
+    let r = council
+        .call(dao.id(), "act_proposal")
+        .args_json(json!({ "id": id, "action": "VoteApprove", "proposal": stored["kind"] }))
+        .gas(Gas::from_tgas(300))
+        .transact()
+        .await?;
+    Ok((id, r))
+}
+
+fn vault_args(name: &str, agent: &str) -> Value {
+    json!({
+        "name": name,
+        "plan": [
+            { "token": BTC, "target_bps": 6000, "decimals": 8 },
+            { "token": XAUT, "target_bps": 2000, "decimals": 6 },
+            { "token": USDC, "target_bps": 2000, "decimals": 6 },
+        ],
+        "limits": { "band_bps": 500, "max_trade_bps": 1000, "max_slippage_bps": 100, "max_trades_per_day": 4, "min_interval_secs": 14400, "settle_window_secs": 1800 },
+        "agent": agent,
+    })
+}
+
+/// The factory, built with the shipped vault code inside it, and then locked.
+async fn factory_setup(worker: &Worker<Sandbox>, intents: &AccountId) -> anyhow::Result<(Contract, [u8; 32])> {
+    let root = worker.root_account()?;
+    let hash = <[u8; 32]>::from(Sha256::digest(wasm("../../apps/web/public/vault/kite_vault.wasm")));
+    let fac_acc = root.create_subaccount("kitevaults").initial_balance(NearToken::from_near(6)).transact().await?.into_result()?;
+    let factory = fac_acc.deploy(&wasm("../../apps/web/public/vault/kite_factory.wasm")).await?.into_result()?;
+    factory.call("new").args_json(json!({ "intents": intents })).transact().await?.into_result()?;
+    // Lock it: with no keys, nobody can change the factory or what it creates.
+    fac_acc.batch(fac_acc.id()).delete_key(fac_acc.secret_key().public_key()).transact().await?.into_result()?;
+    Ok((factory, hash))
+}
+
+#[tokio::test]
+async fn a_dao_creates_its_own_vault_through_the_locked_factory() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let root = worker.root_account()?;
+    let intents_acc = root.create_subaccount("intents").initial_balance(NearToken::from_near(5)).transact().await?.into_result()?;
+    let intents = intents_acc.deploy(&wasm("../target/near/mock_intents/mock_intents.wasm")).await?.into_result()?;
+    intents.call("new").transact().await?.into_result()?;
+
+    let (factory, hash) = factory_setup(&worker, intents.id()).await?;
+    assert!(worker.view_access_keys(factory.id()).await?.is_empty(), "the factory has no keys at all");
+    let fac_acct = worker.view_account(factory.id()).await?;
+    println!("\nfactory: {} bytes stored, {:.3} NEAR locked, {:.3} NEAR balance", fac_acct.storage_usage, fac_acct.storage_usage as f64 / 1e5, near(fac_acct.balance.as_yoctonear()));
+    let cfg: Value = factory.view("get_config").await?.json()?;
+    assert_eq!(cfg["vault_code_hash"], json!(bs58::encode(hash).into_string()));
+
+    // A real SputnikDAO v3.2 with one council member and its own NEAR.
+    let council = root.create_subaccount("council").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+    let dao_acc = root.create_subaccount("treasury").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+    let dao = dao_acc.deploy(&wasm("res/sputnikdao2_v3_2.wasm")).await?.into_result()?;
+    dao.call("new")
+        .args_json(json!({ "config": { "name": "treasury", "purpose": "Kite test", "metadata": "" }, "policy": [council.id()] }))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // 1. The DAO votes to create its vault. Kite's key goes on it, limited to rebalance and settle.
+    let agent_sk = SecretKey::from_random(KeyType::ED25519);
+    let agent_pk = agent_sk.public_key();
+    let deposit = NearToken::from_millinear(2_600);
+    let action = json!({ "method_name": "create_vault", "args": b64(&vault_args("treasury", &agent_pk.to_string())), "deposit": deposit.as_yoctonear().to_string(), "gas": "150000000000000" });
+    let dao_before = worker.view_account(dao.id()).await?.balance.as_yoctonear();
+    let (id, r) = dao_calls(&dao, &council, factory.id(), vec![action.clone()]).await?;
+    assert!(r.is_success(), "create vote failed: {:?}", r.failures());
+    worker.fast_forward(5).await?;
+    let p: Value = dao.view("get_proposal").args_json(json!({ "id": id })).await?.json()?;
+    assert_eq!(p["status"], json!("Approved"), "the proposal ran: {p}");
+
+    let vault: AccountId = format!("treasury.{}", factory.id()).parse()?;
+    // 2. It runs the shipped vault code: its code hash is the sha256 of kite_vault.wasm.
+    let acct = worker.view_account(&vault).await?;
+    assert_eq!(acct.contract_state, ContractState::LocalHash(near_workspaces::types::CryptoHash(hash)), "the vault runs kite_vault.wasm");
+    let spare = acct.balance.as_yoctonear() - acct.storage_usage as u128 * 10u128.pow(19);
+    assert!(spare >= 10u128.pow(23), "the DAO's vault keeps at least 0.1 NEAR for gas, has {:.3}", near(spare));
+    println!("DAO vault: {} bytes stored, {:.4} NEAR locked, {:.3} NEAR balance", acct.storage_usage, acct.storage_usage as f64 / 1e5, near(acct.balance.as_yoctonear()));
+    println!("the DAO spent {:.3} NEAR in all (vault deposit + gas)", near(dao_before - worker.view_account(dao.id()).await?.balance.as_yoctonear()));
+
+    // 3. The DAO owns it from the first block, and the only key is Kite's limited one.
+    let s: Value = worker.view(&vault, "get_status").await?.json()?;
+    assert_eq!(s["owner"], json!(dao.id()));
+    assert!(s["pending_owner"].is_null());
+    let keys = worker.view_access_keys(&vault).await?;
+    assert_eq!(keys.len(), 1, "exactly one key: Kite's");
+    match &keys[0].access_key.permission {
+        AccessKeyPermission::FunctionCall(f) => {
+            assert_eq!(f.receiver_id, vault.to_string());
+            let mut m = f.method_names.clone();
+            m.sort();
+            assert_eq!(m, vec!["rebalance".to_string(), "settle".to_string()]);
+            assert_eq!(f.allowance.map(|a| a.as_yoctonear()), Some(ALLOWANCE.as_yoctonear()));
+        }
+        AccessKeyPermission::FullAccess => anyhow::bail!("Kite's key must not be full access"),
+    }
+
+    // 4. The factory lists it, with the DAO as creator.
+    let list: Vec<Value> = factory.view("get_vaults").args_json(json!({})).await?.json()?;
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0]["vault"], json!(vault));
+    assert_eq!(list[0]["creator"], json!(dao.id()));
+
+    // 5. Kite trades it like any vault: a real rebalance and settle with its key.
+    for (token, amount) in [(BTC, "8750000"), (XAUT, "375000"), (USDC, "1500000000")] {
+        intents.call("set_balance").args_json(json!({ "account_id": vault, "token_id": token, "amount": amount })).transact().await?.into_result()?;
+    }
+    let e = Env { worker: worker.clone(), owner: dao.as_account().clone(), vault: vault.clone(), intents: intents.clone(), agent: Account::from_secret_key(vault.clone(), agent_sk, &worker), agent_pk, wasm: vec![] };
+    let (body, sig) = quote(&e, vault.as_str()).await?;
+    // The vault's own 1Click signer is the default one, so use a vault-owner vote to point it at the test signer first.
+    let r = dao_does(&e, &dao, &council, &[("set_quote_signer", json!({ "public_key": pk_string(&oneclick()) }))]).await?;
+    assert!(r.is_success(), "set_quote_signer vote failed: {:?}", r.failures());
+    let r = rebalance(&e, body, sig).await?;
+    assert!(r.is_success(), "rebalance on the DAO's vault failed: {:?}", r.failures());
+    intents.call("set_balance").args_json(json!({ "account_id": vault, "token_id": XAUT, "amount": (375_000u128 + 124_750).to_string() })).transact().await?.into_result()?;
+    let st = e.agent.call(&vault, "settle").gas(Gas::from_tgas(SETTLE_TGAS)).transact().await?;
+    assert_eq!(st.json::<String>()?, "settled");
+
+    // 6. The same name again: the factory refuses, the proposal fails, and the DAO keeps its NEAR.
+    let before = worker.view_account(dao.id()).await?.balance.as_yoctonear();
+    let (id, _) = dao_calls(&dao, &council, factory.id(), vec![action]).await?;
+    worker.fast_forward(5).await?;
+    let p: Value = dao.view("get_proposal").args_json(json!({ "id": id })).await?.json()?;
+    assert_eq!(p["status"], json!("Failed"), "a taken name fails the proposal: {p}");
+    let lost = before.saturating_sub(worker.view_account(dao.id()).await?.balance.as_yoctonear());
+    assert!(lost < deposit.as_yoctonear() / 20, "the 2.6 NEAR came back to the DAO (lost {:.4})", near(lost));
+
+    // 7. A creation that fails later, inside the vault's own `new` (weights that don't add up): the DAO is
+    // refunded and the proposal is marked Failed, not Approved.
+    let mut bad = vault_args("treasury2", &SecretKey::from_random(KeyType::ED25519).public_key().to_string());
+    bad["plan"][0]["target_bps"] = json!(5000);
+    let action = json!({ "method_name": "create_vault", "args": b64(&bad), "deposit": deposit.as_yoctonear().to_string(), "gas": "150000000000000" });
+    let before = worker.view_account(dao.id()).await?.balance.as_yoctonear();
+    let (id, _) = dao_calls(&dao, &council, factory.id(), vec![action]).await?;
+    worker.fast_forward(5).await?;
+    let p: Value = dao.view("get_proposal").args_json(json!({ "id": id })).await?.json()?;
+    assert_eq!(p["status"], json!("Failed"), "a vault that wasn't created must not read as Approved: {p}");
+    let lost = before.saturating_sub(worker.view_account(dao.id()).await?.balance.as_yoctonear());
+    assert!(lost < deposit.as_yoctonear() / 20, "the DAO got its 2.6 NEAR back (lost {:.4})", near(lost));
+    assert!(worker.view_account(&format!("treasury2.{}", factory.id()).parse()?).await.is_err(), "no account was left behind");
+    Ok(())
+}
+
+/// A person can make named vaults too; a creation that fails part-way leaves no account and refunds in full.
+#[tokio::test]
+async fn the_factory_refunds_a_failed_creation_and_keeps_its_callback_private() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let root = worker.root_account()?;
+    let (factory, _) = factory_setup(&worker, &"intents.near".parse()?).await?;
+    let alex = root.create_subaccount("alex").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+
+    // A plan whose weights don't add up passes the factory's checks but fails in the vault's own `new`.
+    let mut bad = vault_args("savings", &SecretKey::from_random(KeyType::ED25519).public_key().to_string());
+    bad["plan"][0]["target_bps"] = json!(5000);
+    let b0 = worker.view_account(alex.id()).await?.balance.as_yoctonear();
+    let r = alex.call(factory.id(), "create_vault").args_json(&bad).deposit(NearToken::from_millinear(2_600)).gas(Gas::from_tgas(150)).transact().await?;
+    worker.fast_forward(5).await?;
+    assert!(!r.is_success(), "a failed creation must fail, not return quietly");
+    assert!(format!("{:?}", r.failures()).contains("ERR_NOT_CREATED"), "{:?}", r.failures());
+    let lost = b0 - worker.view_account(alex.id()).await?.balance.as_yoctonear();
+    assert!(lost < NearToken::from_millinear(50).as_yoctonear(), "the 2.6 NEAR came back (lost {:.4})", near(lost));
+    assert!(worker.view_account(&format!("savings.{}", factory.id()).parse()?).await.is_err(), "no account was left behind");
+    assert!(factory.view("get_vault").args_json(json!({ "vault": format!("savings.{}", factory.id()) })).await?.json::<Option<Value>>()?.is_none());
+
+    // The name is free again, and a valid plan works. A person owns a vault made this way.
+    let good = vault_args("savings", &SecretKey::from_random(KeyType::ED25519).public_key().to_string());
+    let r = alex.call(factory.id(), "create_vault").args_json(&good).deposit(NearToken::from_millinear(2_600)).gas(Gas::from_tgas(150)).transact().await?;
+    let why = format!("{:?}", r.failures());
+    assert!(r.json::<bool>()?, "{why}");
+    let s: Value = worker.view(&format!("savings.{}", factory.id()).parse()?, "get_status").await?.json()?;
+    assert_eq!(s["owner"], json!(alex.id()));
+
+    // Nobody but the factory can run its callback, so nobody can erase a vault from the list or draw a refund.
+    let r = alex
+        .call(factory.id(), "on_vault_created")
+        .args_json(json!({ "vault": format!("savings.{}", factory.id()), "owner": alex.id(), "deposit": "2600000000000000000000000" }))
+        .transact()
+        .await?;
+    assert!(!r.is_success(), "a stranger ran the callback");
+    assert!(factory.view("get_vault").args_json(json!({ "vault": format!("savings.{}", factory.id()) })).await?.json::<Option<Value>>()?.is_some());
+    Ok(())
+}

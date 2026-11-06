@@ -1,9 +1,10 @@
 import "server-only";
 import { timingSafeEqual } from "node:crypto";
+import { isFactoryVault } from "@/lib/near/factory-names";
 
-/** A Kite vault id: kite.<owner>, where owner is a NEAR account (named or implicit). No empty or dotted-over labels. */
+/** A Kite vault id: kite.<owner> (made from a wallet), or <name>.<factory> (made by Kite's vault factory). */
 export const isKiteVault = (s: unknown): s is string =>
-  typeof s === "string" && s.length <= 64 && /^kite\.[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(s);
+  typeof s === "string" && s.length <= 64 && (/^kite\.[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(s) || isFactoryVault(s));
 
 /** Any NEAR account id (2-64 chars, labels separated by single dots/dashes/underscores). */
 export const isNearAccount = (s: unknown): s is string =>

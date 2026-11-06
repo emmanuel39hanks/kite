@@ -558,7 +558,7 @@ function RulesCard({ g, paused }: { g: Guardrails; paused: boolean }) {
   const rules: [IconName, string][] = [
     ["refresh", `Rebalances when anything drifts ${g.driftBand} points`],
     ["deposit", `Moves at most ${g.maxTradePct}% in one trade`],
-    ["shield", `Accepts at most ${(g.slippageBps / 100).toFixed(g.slippageBps % 100 ? 1 : 0)}% worse than the quote`],
+    ["shield", `Gives up at most ${(g.slippageBps / 100).toFixed(g.slippageBps % 100 ? 1 : 0)}% of value in a trade`],
     ["clock", `Up to ${g.tradesPerDay} trades a day`],
   ];
   return (

@@ -13,7 +13,7 @@
     "test": "npm test --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "lint": "npm run lint --workspaces --if-present",
-    "test:contracts": "cargo test --manifest-path contracts/Cargo.toml -p kite-vault",
+    "test:contracts": "cargo test --manifest-path contracts/Cargo.toml -p kite-vault -p kite-factory",
     "test:integration": "sh scripts/integration.sh",
     "attack": "npm run attack -w packages/keeper --",
     "keeper": "npm run keeper -w packages/keeper --"

@@ -715,6 +715,40 @@ fn new_refuses_a_stranger() {
     Vault::new(owner(), plan(), limits(), Some(agent_pk()), None, Some(pk_of(&oneclick())));
 }
 
+/// The account that created the vault (Kite's factory) can set it up for another owner, such as a DAO.
+#[test]
+fn new_by_the_parent_factory_for_a_dao() {
+    testing_env!(VMContextBuilder::new()
+        .current_account_id("treasury.kitevaults.near".parse().unwrap())
+        .predecessor_account_id("kitevaults.near".parse().unwrap())
+        .build());
+    let v = Vault::new("dao.sputnik-dao.near".parse().unwrap(), plan(), limits(), Some(agent_pk()), None, Some(pk_of(&oneclick())));
+    assert_eq!(v.get_status().owner.as_str(), "dao.sputnik-dao.near");
+}
+
+/// Only the direct parent: not a grandparent, a lookalike suffix, or the vault itself.
+#[test]
+fn only_the_direct_parent_counts() {
+    let c = |s: &str| -> AccountId { s.parse().unwrap() };
+    assert!(is_direct_child(&c("treasury.kitevaults.near"), &c("kitevaults.near")));
+    assert!(!is_direct_child(&c("a.treasury.kitevaults.near"), &c("kitevaults.near")));
+    assert!(!is_direct_child(&c("treasury.evilkitevaults.near"), &c("kitevaults.near")));
+    assert!(!is_direct_child(&c("treasurykitevaults.near"), &c("kitevaults.near")));
+    assert!(!is_direct_child(&c("kitevaults.near"), &c("kitevaults.near")));
+    assert!(!is_direct_child(&c("treasury.kitevaults.near"), &c("near")));
+}
+
+/// A grandparent isn't the creator: it can't set the vault up for someone else.
+#[test]
+#[should_panic(expected = "ERR_NOT_OWNER")]
+fn new_refuses_a_grandparent() {
+    testing_env!(VMContextBuilder::new()
+        .current_account_id("treasury.kitevaults.near".parse().unwrap())
+        .predecessor_account_id("near".parse().unwrap())
+        .build());
+    Vault::new("dao.sputnik-dao.near".parse().unwrap(), plan(), limits(), Some(agent_pk()), None, Some(pk_of(&oneclick())));
+}
+
 #[test]
 #[should_panic(expected = "ERR_LIMITS")]
 fn min_interval_is_bounded() {

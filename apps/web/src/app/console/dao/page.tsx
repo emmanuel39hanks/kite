@@ -3,6 +3,7 @@
 import type { Action } from "@near-js/transactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
+import { CreateDaoVault } from "@/components/console/create-dao-vault";
 import { GuardSliders } from "@/components/console/guard-sliders";
 import { TreasuryPolicy } from "@/components/console/treasury-policy";
 import { Badge, Button, Card, Empty, PageTitle, SectionTitle, StatusNote } from "@/components/console/ui";
@@ -59,24 +60,17 @@ function DaoView() {
   const fromUrl = cleanAccount(params.get("vault") ?? "");
   const vault = fromUrl ?? (w.accountId && !w.preview ? vaultIdFor(w.accountId) : null);
 
-  if (w.preview)
-    return (
-      <Card>
-        <Empty
-          title="Not available in the preview"
-          text="DAO vaults need a real wallet and a real DAO on NEAR. The preview doesn't simulate them."
-          action={
-            <Button variant="primary" icon="wallet" onClick={w.signIn}>
-              Use a real wallet
-            </Button>
-          }
-        />
-      </Card>
-    );
-
+  // The preview shows all of this too: it only reads NEAR mainnet. Filing or voting needs a real wallet.
+  const open = (v: string) => router.replace(`/console/dao?vault=${encodeURIComponent(v)}`);
   return (
     <>
-      <VaultPicker key={vault ?? ""} current={vault} onPick={(v) => router.replace(`/console/dao?vault=${encodeURIComponent(v)}`)} />
+      {!fromUrl && (
+        <div className="mb-8">
+          <CreateDaoVault onOpen={open} />
+        </div>
+      )}
+      <SectionTitle>Open a DAO&apos;s vault</SectionTitle>
+      <VaultPicker key={vault ?? ""} current={vault} onPick={open} />
       {vault ? (
         <VaultDao key={vault} vault={vault} own={!fromUrl} />
       ) : (
@@ -102,7 +96,7 @@ function VaultPicker({ current, onPick }: { current: string | null; onPick: (v: 
       <input
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="kite.example.near"
+        placeholder="treasury.kitevaults.near"
         aria-label="Vault account"
         spellCheck={false}
         autoCapitalize="off"
@@ -179,13 +173,8 @@ function VaultDao({ vault, own }: { vault: string; own: boolean }) {
     return (
       <Card className="mt-3">
         <Empty
-          title="You don't have a vault to hand over yet"
-          text={`A DAO doesn't take over your wallet. It takes over a vault. Create your vault (it will be ${vault}), then offer it to your DAO from your profile. Once the DAO votes to accept, it owns the vault and every change needs its vote. Your wallet stays yours. To look at a vault a DAO already owns, enter its name above.`}
-          action={
-            <Button variant="primary" icon="notepad" href="/console/explore">
-              Create a vault
-            </Button>
-          }
+          title="Your wallet has no vault yet"
+          text={`That's fine for a DAO: its vault doesn't come from your wallet. Use "Create a vault for your DAO" above, and the DAO gets its own vault, named after it, by one vote. To look at a vault a DAO already owns, enter its name above.`}
         />
       </Card>
     );

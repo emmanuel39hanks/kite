@@ -11,6 +11,10 @@ export const NEAR = {
   /** NEAR sent to the new vault account: storage for its ~233 KB of code plus state (~2.35 NEAR),
    *  and about 0.24 NEAR left over for Kite's rebalance gas. All of it comes back via close_vault. */
   vaultStorageNear: "2.6",
+  /** Kite's vault factory: creates `<name>.<factory>` vaults owned by whoever calls it, such as a DAO. Locked: no keys. */
+  factory: process.env.NEXT_PUBLIC_KITE_FACTORY ?? "kitevaults.near",
+  /** NEAR a factory vault starts with, from its creator: the same 2.6 NEAR as a vault made from a wallet. */
+  factoryDepositNear: "2.6",
   /** Gas the agent key may burn before it must be renewed (turn the key off and on). */
   agentAllowanceNear: "0.25",
   /** USDC on NEAR: the hub asset deposits land in. */
