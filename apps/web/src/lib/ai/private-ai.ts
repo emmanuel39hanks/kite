@@ -6,6 +6,7 @@
  * The SDK throws if any step fails, so a returned receipt means every step passed.
  */
 import { PLANNER_MODEL } from "@/lib/ai/planner";
+import { expectedSignedText, requestModel, type EvidenceBundle } from "@/lib/ai/evidence";
 
 export type Stage = "verify" | "ask" | "sign";
 export type Receipt = { model: string; completionId: string; signatureKind: "provider_tee" | "gateway"; modelReports: number; verifiedAt: number };
@@ -76,4 +77,63 @@ export async function askPrivately(opts: {
       verifiedAt: att.verifiedAt ?? Date.now(),
     },
   };
+}
+
+/* ───────────── public analyses, with evidence anyone can check ───────────── */
+
+let publicClientP: Promise<Client> | null = null;
+
+/**
+ * A second client with E2EE off, for analyses that are public anyway (a DAO's treasury policy). With E2EE the
+ * signed bytes are ciphertext only this browser can read; without it they are the plain request and answer,
+ * so a voter can re-hash them later. The SDK still verifies NEAR AI's attestation and routes to an attested key.
+ */
+function publicClient(): Promise<Client> {
+  publicClientP ??= import("@nearai/inference-sdk")
+    .then(({ InferenceClient }) => new InferenceClient({ baseUrl: `${window.location.origin}/api/nearai/v1`, e2ee: false }))
+    .catch((e) => {
+      publicClientP = null;
+      throw e;
+    });
+  return publicClientP;
+}
+
+type SignedResult = { signature: { kind: "provider_tee" | "gateway"; signedText: string; signature: string; signer: { signingAlgo: "ed25519" | "ecdsa"; signingAddress: string } } };
+
+/**
+ * Send an exact request body and keep the exact bytes of both sides with NEAR AI's signature for the completion.
+ * Checked here the way a voter will check it later: the signed text must be "<model>:sha256(request):sha256(response)"
+ * (or the gateway's two-hash form) for these strings.
+ */
+export async function askPublicly(opts: { request: string; onStage?: (s: Stage) => void }): Promise<EvidenceBundle> {
+  const model = requestModel(opts.request);
+  if (model !== PLANNER_MODEL) throw new Error("Only Kite's model is used for public analyses.");
+  const c = await publicClient();
+  opts.onStage?.("verify");
+  await c.verify(PLANNER_MODEL);
+  opts.onStage?.("ask");
+  const res = await c.fetch(new URL("chat/completions", c.getBaseUrl()).toString(), { method: "POST", headers: { "content-type": "application/json" }, body: opts.request });
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (!res.ok) throw new Error(res.status === 503 ? "NEAR AI isn't configured on this deployment." : res.status === 429 ? "Too many requests. Try again in a few minutes." : `NEAR AI answered with an error (${res.status}).`);
+  const response = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  const completionId = String((JSON.parse(response) as { id?: unknown }).id ?? "");
+  if (!completionId) throw new Error("NEAR AI's answer has no completion id.");
+  opts.onStage?.("sign");
+  // Checks the signature against the attestation the request was routed to, and returns the signature itself.
+  const s = ((await c.verifyResponse(completionId)) as unknown as SignedResult).signature;
+  const bundle: EvidenceBundle = {
+    v: 1,
+    kind: s.kind,
+    model,
+    completionId,
+    request: opts.request,
+    response,
+    signature: s.signature,
+    signingAddress: s.signer.signingAddress,
+    signingAlgo: s.signer.signingAlgo,
+    signedText: s.signedText,
+  };
+  // The SDK signed over the bytes it sent and received; make sure those are the strings kept here.
+  if ((await expectedSignedText(bundle)) !== bundle.signedText) throw new Error("The signed bytes don't match the request and answer kept here, so they can't be used as evidence.");
+  return bundle;
 }

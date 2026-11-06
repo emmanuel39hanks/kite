@@ -10,6 +10,11 @@ import { clientIp, crossSite, limited, refuseCrossSite } from "@/lib/server/guar
  * Kite's API key and forwards bytes unchanged, so it never sees the plaintext:
  * request and response bodies, and the encryption headers, pass through as-is,
  * which is also what lets the browser check the model's signature over them.
+ *
+ * One exception, on purpose: a DAO's treasury policy is public, so it is sent
+ * without E2EE (its signed bytes must be readable by every voter), and this
+ * route sees that request in plain text. The public /verify page uses only the
+ * GET routes: the attestation report and the signature for a completion id.
  */
 const UPSTREAM = "https://cloud-api.near.ai/v1";
 const ALLOWED: { method: string; path: RegExp }[] = [
@@ -89,6 +94,9 @@ async function relay(req: Request, ctx: { params: Promise<{ path: string[] }> })
     } catch {}
     if (id !== PLANNER_MODEL) return Response.json({ error: "Model not allowed" }, { status: 403 });
   }
+  // Model reports are fetched with Kite's key too, so only for Kite's model. The gateway's own report names no model.
+  const reportModels = new URL(req.url).searchParams.getAll("model");
+  if (raw === "attestation/report" && (reportModels.length > 1 || (reportModels.length === 1 && reportModels[0] !== PLANNER_MODEL))) return Response.json({ error: "Model not allowed" }, { status: 403 });
 
   const headers = new Headers();
   req.headers.forEach((v, k) => {
