@@ -37,7 +37,7 @@ Each row: do this, see that.
 | Keeper and web app | Built and deployed at usekite.xyz. |
 | Preview mode with real quotes | Works. Simulated vault, real prices and quotes. |
 | **First end-to-end run on NEAR mainnet with real funds** | **Not done yet.** Transaction links will go in this README once it is. |
-| Vault factory (DAO creates its own vault) | Built and tested against the real SputnikDAO v3.2 in the sandbox (17 unit tests, 2 sandbox tests), reviewed by two separate AI auditors (findings fixed). **Not deployed to mainnet yet**: `scripts/deploy-factory.sh` does it and deletes its keys. The DAO view says plainly whether it's live. |
+| Vault factory (DAO creates its own vault) | Built and tested against the real SputnikDAO v3.2 in the sandbox (17 unit tests, 2 sandbox tests), reviewed by two separate AI auditors (findings fixed). **Live and locked on mainnet** at [`kitevaults.near`](https://nearblocks.io/address/kitevaults.near): deployed in [`4WX2i7p…`](https://nearblocks.io/txns/4WX2i7p4oAx86AmkrEX5QNX8xJ89nY2y2MqWYgsFn4hJ), its only key deleted in [`JrAZuKD…`](https://nearblocks.io/txns/JrAZuKDyaTppVTjjG3eVBCUJw1yFmPDS6g9MfGASTAm), so it has no access keys. Its code hash on chain equals the sha256 of `kite_factory.wasm` (`cb670574…`), and `get_config` reports the vault hash of `kite_vault.wasm` (`484f929b…`). The DAO view re-checks both before anyone proposes. |
 | Private AI features (NEAR AI Cloud) | Work in a browser. The model, the number checks and the clamps were tested against the live API. The in-browser encrypted path is the part to try yourself. |
 | Chain Signatures | **Not used.** See [What NEAR does here](#what-near-does-here). |
 
