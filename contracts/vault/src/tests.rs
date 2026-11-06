@@ -225,7 +225,7 @@ fn plan_rejects_duplicates() {
 fn limits_are_bounded() {
     let mut v = new_vault();
     ctx(owner(), 1, NOW + 100);
-    v.set_limits(Limits { max_trade_bps: 9_000, ..limits() });
+    v.set_limits(Limits { max_trade_bps: 9_000, ..limits() }, None);
 }
 
 #[test]
@@ -494,7 +494,7 @@ fn attack_a7_overlapping_swaps() {
 fn attack_a8_agent_changes_limits() {
     let mut v = new_vault();
     ctx(vault_id(), 1, NOW + 100);
-    v.set_limits(Limits { max_trade_bps: 5_000, ..limits() });
+    v.set_limits(Limits { max_trade_bps: 5_000, ..limits() }, None);
 }
 
 /// A8b: the agent tries to unpause after the breaker.
@@ -950,4 +950,134 @@ fn attack_a30_oversized_quote_is_refused() {
     let v = new_vault();
     ctx(vault_id(), 0, NOW + 30);
     let _ = v.verify_quote(&"x".repeat(5000), "sig", NOW * NS_PER_SEC);
+}
+
+/* ───────────── handing a vault to a DAO ───────────── */
+
+fn dao() -> AccountId {
+    "treasury.sputnik-dao.near".parse().unwrap()
+}
+
+#[test]
+fn a_vault_can_be_handed_to_a_dao_in_two_steps() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.propose_owner(Some(dao()));
+    assert_eq!(v.get_status().pending_owner, Some(dao()));
+    assert_eq!(v.get_status().owner, owner(), "nothing changes until the DAO accepts");
+    ctx(dao(), 1, NOW + 1);
+    v.accept_owner();
+    let s = v.get_status();
+    assert_eq!(s.owner, dao());
+    assert_eq!(s.pending_owner, None);
+    // The DAO now runs the vault; its proposals arrive as calls from the DAO account.
+    ctx(dao(), 1, NOW + 2);
+    v.pause();
+    assert!(v.get_status().paused);
+}
+
+#[test]
+#[should_panic(expected = "ERR_NOT_OWNER")]
+fn the_old_owner_loses_control_after_the_handover() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.propose_owner(Some(dao()));
+    ctx(dao(), 1, NOW + 1);
+    v.accept_owner();
+    ctx(owner(), 1, NOW + 2);
+    v.pause();
+}
+
+#[test]
+#[should_panic(expected = "ERR_NOT_OWNER")]
+fn attack_a31_a_stranger_cannot_offer_the_vault() {
+    let mut v = new_vault();
+    ctx(attacker(), 1, NOW);
+    v.propose_owner(Some(attacker()));
+}
+
+#[test]
+#[should_panic(expected = "ERR_NOT_NEW_OWNER")]
+fn attack_a32_a_stranger_cannot_accept_an_offer_made_to_someone_else() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.propose_owner(Some(dao()));
+    ctx(attacker(), 1, NOW + 1);
+    v.accept_owner();
+}
+
+#[test]
+#[should_panic(expected = "ERR_NOT_NEW_OWNER")]
+fn attack_a33_nobody_can_accept_when_no_offer_is_open() {
+    let mut v = new_vault();
+    ctx(attacker(), 1, NOW);
+    v.accept_owner();
+}
+
+#[test]
+#[should_panic(expected = "ERR_ONE_YOCTO")]
+fn accepting_needs_a_full_access_signature() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.propose_owner(Some(dao()));
+    ctx(dao(), 0, NOW + 1);
+    v.accept_owner();
+}
+
+#[test]
+#[should_panic(expected = "ERR_NOT_NEW_OWNER")]
+fn a_withdrawn_offer_cannot_be_accepted() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.propose_owner(Some(dao()));
+    ctx(owner(), 1, NOW + 1);
+    v.propose_owner(None);
+    assert_eq!(v.get_status().pending_owner, None);
+    ctx(dao(), 1, NOW + 2);
+    v.accept_owner();
+}
+
+#[test]
+#[should_panic(expected = "ERR_SAME_OWNER")]
+fn offering_the_vault_to_its_owner_is_refused() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.propose_owner(Some(owner()));
+}
+
+#[test]
+#[should_panic(expected = "ERR_ONE_YOCTO")]
+fn offering_needs_a_full_access_signature() {
+    let mut v = new_vault();
+    ctx(owner(), 0, NOW);
+    v.propose_owner(Some(dao()));
+}
+
+const POLICY: &str = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+#[test]
+fn a_policy_reference_is_written_to_the_vaults_log() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.set_limits(limits(), Some(POLICY.into()));
+    v.set_plan(plan(), Some(POLICY.into()));
+    let logs = near_sdk::test_utils::get_logs();
+    assert!(logs.iter().any(|l| l.contains("limits_updated") && l.contains(POLICY)), "{logs:?}");
+    assert!(logs.iter().any(|l| l.contains("plan_updated") && l.contains(POLICY)), "{logs:?}");
+}
+
+#[test]
+#[should_panic(expected = "ERR_POLICY_REF")]
+fn attack_a34_a_policy_reference_cannot_smuggle_text_into_the_log() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.set_limits(limits(), Some(r#"x","admin":"attacker"#.into()));
+}
+
+#[test]
+#[should_panic(expected = "ERR_POLICY_REF")]
+fn a_policy_reference_must_be_lowercase_hex() {
+    let mut v = new_vault();
+    ctx(owner(), 1, NOW);
+    v.set_plan(plan(), Some(POLICY.to_uppercase()));
 }

@@ -136,6 +136,7 @@ pub struct Status {
     pub pending: Option<Pending>,
     pub trades_today: u8,
     pub last_trade_ns: u64,
+    pub pending_owner: Option<AccountId>,
 }
 
 #[ext_contract(ext_intents)]
@@ -238,6 +239,8 @@ pub struct Vault {
     quote_signer: PublicKey,
     /// Timestamp of the last quote used. Each trade needs a newer one, so a quote can't be replayed.
     last_quote_ns: u64,
+    /// An account the owner offered the vault to (e.g. a DAO). It becomes the owner only when it accepts.
+    pending_owner: Option<AccountId>,
 }
 
 #[near]
@@ -269,6 +272,7 @@ impl Vault {
             last_trade_ns: 0,
             quote_signer: quote_signer.unwrap_or_else(|| ONE_CLICK_SIGNER.parse().unwrap()),
             last_quote_ns: 0,
+            pending_owner: None,
         };
         emit("vault_created", &format!(r#"{{"owner":"{}"}}"#, vault.owner));
         vault
@@ -286,20 +290,22 @@ impl Vault {
     }
 
     #[payable]
-    pub fn set_plan(&mut self, plan: Vec<Target>) {
+    /// `policy_ref` optionally records the sha256 of the analysis that justified the change (for example a
+    /// DAO's verifiable treasury policy), so the vault's own log points at the evidence. Never interpreted.
+    pub fn set_plan(&mut self, plan: Vec<Target>, policy_ref: Option<String>) {
         self.assert_owner();
         require!(self.pending.is_none(), ERR_PENDING);
         validate_plan(&plan);
         self.plan = plan;
-        emit("plan_updated", "{}");
+        emit("plan_updated", &policy_json(policy_ref.as_deref()));
     }
 
     #[payable]
-    pub fn set_limits(&mut self, limits: Limits) {
+    pub fn set_limits(&mut self, limits: Limits, policy_ref: Option<String>) {
         self.assert_owner();
         limits.validate();
         self.limits = limits;
-        emit("limits_updated", "{}");
+        emit("limits_updated", &policy_json(policy_ref.as_deref()));
     }
 
     #[payable]
@@ -316,6 +322,33 @@ impl Vault {
         self.paused = false;
         self.pending = None;
         emit("unpaused", "{}");
+    }
+
+    /// Offer the vault to another account, such as a DAO; `None` withdraws the offer. Two steps, so a
+    /// typo can't hand the vault away: nothing changes until that account accepts with its own call.
+    #[payable]
+    pub fn propose_owner(&mut self, new_owner: Option<AccountId>) {
+        self.assert_owner();
+        require!(new_owner.as_ref() != Some(&self.owner), ERR_SAME_OWNER);
+        emit(
+            "owner_proposed",
+            &match &new_owner {
+                Some(a) => format!(r#"{{"to":"{a}"}}"#),
+                None => r#"{"to":null}"#.to_string(),
+            },
+        );
+        self.pending_owner = new_owner;
+    }
+
+    /// The proposed account takes the vault. A DAO does this through a proposal that attaches 1 yoctoNEAR.
+    #[payable]
+    pub fn accept_owner(&mut self) {
+        let me = env::predecessor_account_id();
+        require!(self.pending_owner.as_ref() == Some(&me), ERR_NOT_NEW_OWNER);
+        require!(env::attached_deposit() >= ONE_YOCTO, ERR_ONE_YOCTO);
+        emit("owner_changed", &format!(r#"{{"from":"{}","to":"{}"}}"#, self.owner, me));
+        self.owner = me;
+        self.pending_owner = None;
     }
 
     /// Give Kite's worker a key that can only call `rebalance` and `settle` on this vault.
@@ -549,6 +582,7 @@ impl Vault {
             pending: self.pending.clone(),
             trades_today: if env::block_timestamp() / NS_PER_SEC / DAY_SECS == self.day { self.trades_today } else { 0 },
             last_trade_ns: self.last_trade_ns,
+            pending_owner: self.pending_owner.clone(),
         }
     }
 }
@@ -781,6 +815,17 @@ impl Vault {
             "breaker"
         } else {
             "waiting"
+        }
+    }
+}
+
+/// `{"policy_ref":"<sha256 hex>"}` or `{}`. Checked so the event log can't carry arbitrary text.
+fn policy_json(policy_ref: Option<&str>) -> String {
+    match policy_ref {
+        None => "{}".to_string(),
+        Some(r) => {
+            require!(r.len() == 64 && r.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)), ERR_POLICY_REF);
+            format!(r#"{{"policy_ref":"{r}"}}"#)
         }
     }
 }
