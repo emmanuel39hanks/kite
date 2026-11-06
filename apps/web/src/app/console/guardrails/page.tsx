@@ -2,33 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/console/icons";
-import { Badge, Button, Card, PageTitle, Slider, StatusNote, Switch } from "@/components/console/ui";
-import { GUARD_BOUNDS } from "@/lib/ai/guard-bounds";
+import { Badge, Button, Card, PageTitle, StatusNote, Switch } from "@/components/console/ui";
 import { AiRules } from "@/components/console/ai-rules";
+import { DaoOwnedNotice, useForeignOwner } from "@/components/console/dao-owned";
+import { GuardSliders } from "@/components/console/guard-sliders";
 import { accountUrl, NEAR } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";
 import { kiteGasLeft } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
-import { DEFAULT_GUARDRAILS, useKite, type Guardrails } from "@/lib/store";
-
-type Field = {
-  key: keyof Guardrails;
-  label: string;
-  help: (v: number) => string;
-  min: number;
-  max: number;
-  step: number;
-  show: (v: number) => string;
-};
-
-type FieldDef = Omit<Field, "min" | "max" | "step">;
-const DEFS: FieldDef[] = [
-  { key: "driftBand", label: "When Kite steps in", help: (v) => `Kite only trades when a holding is ${v} points or more away from its share.`, show: (v) => `${v} pts` },
-  { key: "maxTradePct", label: "Biggest single trade", help: (v) => `No one swap can move more than ${v}% of your money.`, show: (v) => `${v}%` },
-  { key: "slippageBps", label: "Worst price accepted", help: (v) => `If a swap would hand back less than ${(100 - v / 100).toFixed(2)}% of what goes in, fees included, the vault refuses it.`, show: (v) => `${(v / 100).toFixed(2)}%` },
-  { key: "tradesPerDay", label: "Trades per day", help: (v) => `Kite can make at most ${v} trade${v === 1 ? "" : "s"} a day, however much prices move.`, show: (v) => `${v}` },
-];
-const FIELDS: Field[] = DEFS.map((f) => ({ ...f, ...GUARD_BOUNDS[f.key] }));
+import { useKite, type Guardrails } from "@/lib/store";
 
 export default function GuardrailsPage() {
   const k = useKite();
@@ -42,6 +24,8 @@ function Form({ initial }: { initial: Guardrails }) {
   const w = useWallet();
   const live = useLive();
   const hasVault = !!k.vaultFound;
+  // A DAO owns the vault: this wallet can't sign owner calls any more, so the controls here stay read-only.
+  const ownedBy = useForeignOwner();
   const [g, setG] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
@@ -75,7 +59,7 @@ function Form({ initial }: { initial: Guardrails }) {
                 Discard
               </Button>
             )}
-            <Button variant="primary" onClick={save} disabled={!dirty} loading={busy === "save"}>
+            <Button variant="primary" onClick={save} disabled={!dirty || !!ownedBy} loading={busy === "save"}>
               {hasVault ? "Save to vault" : "Save"}
             </Button>
           </>
@@ -83,6 +67,8 @@ function Form({ initial }: { initial: Guardrails }) {
       >
         Guardrails
       </PageTitle>
+
+      {ownedBy && k.portfolio && <DaoOwnedNotice owner={ownedBy} vault={k.portfolio.vault} className="mb-4" />}
 
       {note && (
         <StatusNote tone={note.tone} className="mb-4">
@@ -98,30 +84,7 @@ function Form({ initial }: { initial: Guardrails }) {
             </p>
           </div>
           <AiRules current={g} onApply={setG} />
-          <ul className="space-y-2">
-            {FIELDS.map((f) => {
-              const v = g[f.key];
-              return (
-                <li key={f.key} className="rounded-2xl bg-white px-5 py-5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <span className="text-[16px] tracking-[-0.02em]">{f.label}</span>
-                    <span className="text-[22px] tracking-[-0.04em] tabular-nums">{f.show(v)}</span>
-                  </div>
-                  <div className="mt-3">
-                    <Slider value={v} min={f.min} max={f.max} step={f.step} onChange={(n) => setG({ ...g, [f.key]: n })} label={f.label} color="#8cc6f6" />
-                  </div>
-                  <div className="mt-2 flex justify-between gap-4 text-[13px] text-[#6b6b6b]">
-                    <span>{f.help(v)}</span>
-                    {v !== DEFAULT_GUARDRAILS[f.key] && (
-                      <button type="button" onClick={() => setG({ ...g, [f.key]: DEFAULT_GUARDRAILS[f.key] })} className="shrink-0 cursor-pointer hover:text-black">
-                        Reset
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <GuardSliders value={g} onChange={setG} />
         </Card>
 
         <div className="space-y-3 xl:sticky xl:top-[100px] xl:self-start">
@@ -135,7 +98,7 @@ function Form({ initial }: { initial: Guardrails }) {
               </div>
               <Switch
                 checked={hasVault ? k.keyActive : true}
-                disabled={!hasVault || busy !== null}
+                disabled={!hasVault || busy !== null || !!ownedBy}
                 label="Kite's key"
                 onChange={(on) =>
                   on
@@ -174,7 +137,7 @@ function Form({ initial }: { initial: Guardrails }) {
             )}
           </Card>
 
-          {hasVault && <CloseVault />}
+          {hasVault && !ownedBy && <CloseVault />}
 
           {!w.accountId && <p className="px-2 text-[13px] text-[#6b6b6b]">Connect a wallet to save these to a vault.</p>}
         </div>

@@ -45,6 +45,14 @@ export function toContractLimits(g: Guardrails): ContractLimits {
   };
 }
 
+/** The contract's limits as the console's guardrails. */
+export function fromContractLimits(l: ContractLimits): Guardrails {
+  return { driftBand: l.band_bps / 100, maxTradePct: l.max_trade_bps / 100, slippageBps: l.max_slippage_bps, tradesPerDay: l.max_trades_per_day };
+}
+
+/** Gas allowance put on Kite's key when it is restored: NEAR.agentAllowanceNear in yoctoNEAR. */
+export const agentAllowanceYocto = () => yocto(NEAR.agentAllowanceNear).toString();
+
 /**
  * One transaction, signed by the owner, sent to `kite.<owner>`:
  * create the account, fund its storage, deploy the vault, initialise it, and
@@ -85,8 +93,10 @@ const provider = new JsonRpcProvider({ url: NEAR.rpc });
 const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
   provider.callFunction({ contractId, method, args }) as Promise<T>;
 
-type VaultStatus = {
+export type VaultStatus = {
   owner: string;
+  /** An account the owner offered the vault to (e.g. a DAO), until it accepts. Absent on older vaults. */
+  pending_owner?: string | null;
   agent: string | null;
   paused: boolean;
   pending: null | { sell: string; buy: string; amount_in: string; min_out: string; deposit_address: string; started_ns: number };

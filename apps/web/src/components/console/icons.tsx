@@ -27,7 +27,8 @@ export type IconName =
   | "chevron-down"
   | "user"
   | "share"
-  | "play";
+  | "play"
+  | "users";
 
 const PATHS: Record<IconName, string> = {
   dashboard:
@@ -61,6 +62,7 @@ const PATHS: Record<IconName, string> = {
   user: "M12 12a4 4 0 100-8 4 4 0 000 8zM4.5 20a7.5 7.5 0 0115 0",
   share: "M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h4",
   play: "M8 5.5v13a.5.5 0 00.76.43l10.5-6.5a.5.5 0 000-.86L8.76 5.07A.5.5 0 008 5.5z",
+  users: "M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2.5 20a6.5 6.5 0 0113 0M16 4.3a3.5 3.5 0 010 6.4M18 14.2a6.5 6.5 0 013.5 5.8",
 };
 
 export function Icon({ name, size = 20, className = "", stroke = 1.6 }: { name: IconName; size?: number; className?: string; stroke?: number }) {

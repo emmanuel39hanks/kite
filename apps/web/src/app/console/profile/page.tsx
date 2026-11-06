@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { MixBar } from "@/components/charts";
 import { ConnectGate } from "@/components/console/connect-gate";
+import { DaoHandoff } from "@/components/console/dao-handoff";
+import { daoViewHref } from "@/components/console/dao-owned";
 import { Icon } from "@/components/console/icons";
 import { Avatar, Badge, Button, Card, Change, Empty, Money, PageTitle, SectionTitle, Segmented } from "@/components/console/ui";
 import { ValueChart } from "@/components/console/value-chart";
@@ -224,6 +226,15 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
           </Card>
         </div>
       </div>
+
+      {p && (
+        <div className="mt-10">
+          <SectionTitle actions={!preview && <Button size="sm" href={daoViewHref(p.vault)} icon="users">DAO view</Button>}>
+            {!preview && p.owner && p.owner !== account ? "Owned by a DAO" : "Give this vault to a DAO"}
+          </SectionTitle>
+          <DaoHandoff account={account} vault={p.vault} owner={p.owner} pendingOwner={p.pendingOwner} />
+        </div>
+      )}
     </div>
   );
 }
