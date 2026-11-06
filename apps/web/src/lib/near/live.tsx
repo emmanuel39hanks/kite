@@ -196,7 +196,7 @@ function useRealLive() {
   /** Split the vault's USDC across the plan: quotes from the server, one owner signature. */
   const allocate = useCallback(async () => {
     const usdc = await intentsBalance(vault, NEAR.usdc);
-    if (usdc < 2_000_000n) throw new Error("There's less than $2 of USDC in your vault to invest.");
+    if (usdc < 500_000n) throw new Error("There's less than $0.50 of USDC in your vault to invest.");
     const plan = (k.portfolio?.target ?? []).map((t) => ({ token: assetById(t.id).intentsId ?? "", target_bps: Math.round(t.weight * 100) }));
     const r = await fetch("/api/allocate/quotes", { method: "POST", body: JSON.stringify({ vault, usdc: usdc.toString(), plan }) });
     const d = await r.json();

@@ -56,23 +56,37 @@ export function decodeArgs(b64: string): unknown {
 }
 
 /** The proposal kind for a set of calls on one vault. Each call attaches 1 yoctoNEAR, which owner methods need. */
-export function vaultProposalKind(vault: string, calls: VaultCall[]): ProposalKind {
+export function vaultProposalKind(vault: string, calls: VaultCall[], gasTgas = 100): ProposalKind {
   return {
     FunctionCall: {
       receiver_id: vault,
-      actions: calls.map((c) => ({ method_name: c.method, args: encodeArgs(c.args), deposit: "1", gas: CALL_GAS })),
+      actions: calls.map((c) => ({ method_name: c.method, args: encodeArgs(c.args), deposit: "1", gas: gasTgas === 100 ? CALL_GAS : (BigInt(gasTgas) * TGAS).toString() })),
     },
   };
 }
 
-/** A council member (or anyone the DAO's policy allows) asks the DAO to make these calls on the vault. */
-export function addProposalAction(vault: string, description: string, calls: VaultCall[], bond: bigint) {
+/** A council member (or anyone the DAO's policy allows) asks the DAO to make these calls on `receiver` (usually the vault). */
+export function addProposalAction(receiver: string, description: string, calls: VaultCall[], bond: bigint, gasTgas = 100) {
   return actionCreators.functionCall(
     "add_proposal",
-    { proposal: { description, kind: vaultProposalKind(vault, calls) } },
+    { proposal: { description, kind: vaultProposalKind(receiver, calls, gasTgas) } },
     150n * TGAS,
     bond,
   );
+}
+
+/**
+ * Whether a proposal acts on this vault: it calls the vault itself, or it moves the DAO's USDC into the vault
+ * (a call on the USDC contract whose `ft_transfer_call` names the vault).
+ */
+export function touchesVault(kind: DaoProposal["kind"], vault: string): boolean {
+  const fc = (kind as ProposalKind).FunctionCall;
+  if (!fc) return false;
+  if (fc.receiver_id === vault) return true;
+  return fc.receiver_id === NEAR.usdcContract && fc.actions.length > 0 && fc.actions.every((a) => {
+    const args = decodeArgs(a.args) as { receiver_id?: string; msg?: string } | null;
+    return a.method_name === "ft_transfer_call" && args?.receiver_id === NEAR.intents && args?.msg === vault;
+  });
 }
 
 /** Approve a proposal. The vote that reaches the threshold runs the calls, so it carries enough gas for them. */
@@ -104,8 +118,7 @@ export async function vaultProposals(dao: string, vault: string, scan = 100): Pr
   const list = await view<DaoProposal[]>(dao, "get_proposals", { from_index: from, limit: scan });
   return list
     .filter((p) => {
-      const fc = (p.kind as ProposalKind).FunctionCall;
-      return fc && fc.receiver_id === vault;
+      return touchesVault(p.kind, vault);
     })
     .reverse();
 }

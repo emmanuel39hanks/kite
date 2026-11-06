@@ -5,7 +5,7 @@
  */
 import { JsonRpcProvider } from "near-api-js";
 import { NEAR } from "./config";
-import type { DaoProposal, ProposalKind, VaultCall } from "./dao";
+import { touchesVault, type DaoProposal, type ProposalKind, type VaultCall } from "./dao";
 
 /* ───────────── accounts and ownership ───────────── */
 
@@ -104,13 +104,12 @@ export const isLapsed = (p: Pick<DaoProposal, "status" | "submission_time">, per
 
 /** A proposal the console offers an Approve button for: open, and a FunctionCall on this vault only. */
 export function canApprove(p: Pick<DaoProposal, "status" | "submission_time" | "kind">, vault: string, periodNs?: string, nowMs = Date.now()): boolean {
-  const fc = (p.kind as ProposalKind).FunctionCall;
-  return isOpen(p, periodNs, nowMs) && !!fc && fc.receiver_id === vault;
+  return isOpen(p, periodNs, nowMs) && touchesVault(p.kind, vault);
 }
 
 /** Methods that move money out or change who controls the vault. Voters should read these twice. */
 export function callRisk(method: string): "moves-money" | "changes-owner" | null {
-  if (["withdraw", "withdraw_external", "allocate", "close_vault"].includes(method)) return "moves-money";
+  if (["withdraw", "withdraw_external", "allocate", "close_vault", "ft_transfer_call"].includes(method)) return "moves-money";
   if (["propose_owner", "accept_owner", "set_quote_signer"].includes(method)) return "changes-owner";
   return null;
 }
@@ -155,9 +154,21 @@ export function summarizeCall(method: string, args: unknown): string {
       return `Withdraw ${String(a.amount)} of ${String(a.token)} to ${String(a.receiver_id)}`;
     case "close_vault":
       return "Close the vault and return its NEAR to the owner";
+    case "ft_transfer_call":
+      return `Move ${usdcText(a.amount)} USDC from the DAO into vault ${String(a.msg ?? "?")}`;
+    case "allocate": {
+      const ts = Array.isArray(a.transfers) ? (a.transfers as { amount?: string }[]) : [];
+      const total = ts.reduce((n, t) => n + (typeof t.amount === "string" && /^\d+$/.test(t.amount) ? BigInt(t.amount) : 0n), 0n);
+      return `Invest ${usdcText(total.toString())} USDC in the plan: ${ts.length} swap${ts.length === 1 ? "" : "s"} through NEAR Intents, paid back to the vault`;
+    }
     default:
       return `${method} ${JSON.stringify(args ?? {})}`;
   }
+}
+
+/** USDC base units (6 decimals) as dollars, e.g. "3.00". */
+export function usdcText(base: unknown): string {
+  return typeof base === "string" && /^\d+$/.test(base) ? (Number(BigInt(base)) / 1e6).toFixed(2) : "?";
 }
 
 /* ───────────── the proposals behind each owner button ───────────── */

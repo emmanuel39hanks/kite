@@ -4,6 +4,7 @@ import type { Action } from "@near-js/transactions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { CreateDaoVault } from "@/components/console/create-dao-vault";
+import { DaoFundCard } from "@/components/console/dao-fund-card";
 import { GuardSliders } from "@/components/console/guard-sliders";
 import { TreasuryPolicy } from "@/components/console/treasury-policy";
 import { Icon } from "@/components/console/icons";
@@ -186,11 +187,11 @@ function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCre
 
   /** Sign one DAO transaction, then re-read the vault and proposals once the chain has it. */
   const run = useCallback(
-    async (name: string, dao: string, action: Action, ok: string) => {
+    async (name: string, receiver: string, actions: Action | Action[], ok: string) => {
       setBusy(name);
       setNote(null);
       try {
-        await w.send(dao, [action]);
+        await w.send(receiver, Array.isArray(actions) ? actions : [actions]);
         setNote({ tone: "ok", text: ok });
         setTimeout(() => setRev((r) => r + 1), 2500);
       } catch (e) {
@@ -251,6 +252,8 @@ function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCre
           </p>
         </Card>
       )}
+
+      {owner && <DaoFundCard vault={vault} dao={owner.dao} policy={owner.policy} proposals={owner.proposals} plan={state.plan} rev={rev} busy={busy} send={run} />}
 
       {owner && <OwnerActions key={JSON.stringify(state.limits)} vault={vault} state={state} ctx={owner} account={w.accountId} busy={busy} onPropose={(name, a) => propose(owner, name, a)} />}
 
