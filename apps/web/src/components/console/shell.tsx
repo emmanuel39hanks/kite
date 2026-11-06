@@ -18,16 +18,16 @@ import { Avatar, Badge, Button } from "./ui";
 import { usePreviewActions } from "@/lib/preview/actions";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
-  { href: "/console", label: "Home", icon: "kite" },
-  { href: "/console/explore", label: "Explore", icon: "compass" },
-  { href: "/console/earn", label: "Earn", icon: "sprout" },
-  { href: "/console/create", label: "Create", icon: "pie" },
-  { href: "/console/activity", label: "Activity", icon: "history" },
+  { href: "/console", label: "Home", icon: "dashboard" },
+  { href: "/console/explore", label: "Explore", icon: "explore" },
+  { href: "/console/earn", label: "Earn", icon: "up" },
+  { href: "/console/create", label: "Create", icon: "create" },
+  { href: "/console/activity", label: "Activity", icon: "list" },
 ];
 const NAV_BOTTOM: { href: string; label: string; icon: IconName }[] = [
-  { href: "/console/guardrails", label: "Guardrails", icon: "rails" },
-  { href: "/console/dao", label: "DAO", icon: "ballot" },
-  { href: "/#faq", label: "Help", icon: "lifebuoy" },
+  { href: "/console/guardrails", label: "Guardrails", icon: "shield" },
+  { href: "/console/dao", label: "DAO", icon: "users" },
+  { href: "/#faq", label: "Help", icon: "help" },
 ];
 
 export function ConsoleShell({ children }: { children: ReactNode }) {

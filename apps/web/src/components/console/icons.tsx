@@ -28,15 +28,7 @@ export type IconName =
   | "user"
   | "share"
   | "play"
-  | "users"
-  | "kite"
-  | "compass"
-  | "sprout"
-  | "pie"
-  | "history"
-  | "rails"
-  | "ballot"
-  | "lifebuoy";
+  | "users";
 
 const PATHS: Record<IconName, string> = {
   dashboard:
@@ -71,14 +63,6 @@ const PATHS: Record<IconName, string> = {
   share: "M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h4",
   play: "M8 5.5v13a.5.5 0 00.76.43l10.5-6.5a.5.5 0 000-.86L8.76 5.07A.5.5 0 008 5.5z",
   users: "M9 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM2.5 20a6.5 6.5 0 0113 0M16 4.3a3.5 3.5 0 010 6.4M18 14.2a6.5 6.5 0 013.5 5.8",
-  kite: "M12 2.5 19 9 12 16 5 9zM5 9h14M12 2.5V16M12 16c-1.75 1.5 1.75 2.25 0 3.75s1.25 1.5.5 1.75",
-  compass: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM15.75 8.25l-2.1 5.4-5.4 2.1 2.1-5.4z",
-  sprout: "M12 20.5V11M12 13.5c0-4.25 2.75-7 7.25-7 0 4.25-2.75 7-7.25 7zM12 15.5c0-3.5-2.25-5.75-6-5.75 0 3.5 2.25 5.75 6 5.75zM7.5 20.5h9",
-  pie: "M10.5 4.6A8.25 8.25 0 1 0 19.4 13.5H10.5zM13.5 2.75v7.75h7.75A7.75 7.75 0 0 0 13.5 2.75z",
-  history: "M4.2 9.5A8.25 8.25 0 1 1 3.75 12M3.75 5.25V9.5H8M12 7.75V12l3 2",
-  rails: "M4.2 17.5a8.5 8.5 0 1 1 15.6 0M12 14l3.75-4.25M12 15.25a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5zM17.9 6.6l-1.2 1.2M6.1 6.6l1.2 1.2M12 4.5v1.5",
-  ballot: "M4 12.5h16v7.75H4zM7.5 12.5V3.75h9v8.75M10 8.25l1.5 1.5 3-3M9 16.5h6",
-  lifebuoy: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5.6 5.6l3.6 3.6M14.8 14.8l3.6 3.6M18.4 5.6l-3.6 3.6M9.2 14.8l-3.6 3.6",
 };
 
 export function Icon({ name, size = 20, className = "", stroke = 1.6 }: { name: IconName; size?: number; className?: string; stroke?: number }) {
