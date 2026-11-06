@@ -10,3 +10,6 @@ out
 
 # Local working notes (not part of the repository)
 DEMO_SCRIPT.md
+
+# Agent worktrees
+.claude/
