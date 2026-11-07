@@ -236,7 +236,7 @@ function AccountArea() {
             </div>
           </div>
           <Menu.Separator className="my-1 h-px bg-black/[0.06]" />
-          {!w.preview && mine && (mine.open.length > 0 || !mine.exists) && (
+          {!w.preview && mine && mine.open.length > 0 && (
             <>
               <div className="px-3 pt-1.5 pb-1 text-[12px] text-[#6b6b6b]">Your vaults</div>
               {mine.open.map((v) => (
