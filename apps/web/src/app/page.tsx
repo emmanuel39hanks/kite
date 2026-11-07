@@ -7,6 +7,7 @@ import { SkyVideo } from "@/components/landing/sky-video";
 import { slice } from "@/lib/mix";
 import { Plans } from "@/components/landing/plans";
 import { Safety } from "@/components/landing/safety";
+import { Daos } from "@/components/landing/daos";
 import { ASSETS, type EarnId } from "@/lib/assets";
 import { getYields } from "@/lib/market/yields";
 
@@ -22,6 +23,7 @@ export default function Home() {
       <Earn />
       <PrivatePlanner />
       <Safety />
+      <Daos />
       <Faq />
       <Closing />
       <Footer />
@@ -450,6 +452,10 @@ function Faq() {
     {
       q: "What does NEAR do here?",
       a: "NEAR Intents lets one account hold Bitcoin, Ethereum, digital dollars, stocks and gold together, and swap between them at the best price it can find. The rules Kite has to follow are written into a contract on NEAR that anyone can read. NEAR AI Cloud runs the private plan drafts.",
+    },
+    {
+      q: "Can a DAO use Kite?",
+      a: "Yes. A SputnikDAO on NEAR creates its own vault with one vote, and owns it from the start. Moving money in, changing the mix and taking money out are all votes; Kite only rebalances inside the limits the DAO set. Before members approve an invest vote, Kite's page checks every swap with NEAR Intents.",
     },
     {
       q: "Does my money earn anything?",
