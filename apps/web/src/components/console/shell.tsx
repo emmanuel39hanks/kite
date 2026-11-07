@@ -23,11 +23,11 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/console/explore", label: "Explore", icon: "compass" },
   { href: "/console/earn", label: "Earn", icon: "up" },
   { href: "/console/create", label: "Create", icon: "notepad" },
+  { href: "/console/dao", label: "DAO", icon: "dao" },
   { href: "/console/activity", label: "Activity", icon: "list" },
 ];
 const NAV_BOTTOM: { href: string; label: string; icon: IconName }[] = [
   { href: "/console/guardrails", label: "Guardrails", icon: "shield" },
-  { href: "/console/dao", label: "DAO", icon: "users" },
   { href: "/#faq", label: "FAQs", icon: "help" },
 ];
 

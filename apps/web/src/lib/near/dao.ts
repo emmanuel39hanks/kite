@@ -83,6 +83,9 @@ export function touchesVault(kind: DaoProposal["kind"], vault: string): boolean 
   const fc = (kind as ProposalKind).FunctionCall;
   if (!fc) return false;
   if (fc.receiver_id === vault) return true;
+  // The vote that created this vault through Kite's factory is part of its history too.
+  if (fc.receiver_id === NEAR.factory)
+    return fc.actions.length === 1 && fc.actions[0].method_name === "create_vault" && `${(decodeArgs(fc.actions[0].args) as { name?: string } | null)?.name}.${NEAR.factory}` === vault;
   return fc.receiver_id === NEAR.usdcContract && fc.actions.length > 0 && fc.actions.every((a) => {
     const args = decodeArgs(a.args) as { receiver_id?: string; msg?: string } | null;
     return a.method_name === "ft_transfer_call" && args?.receiver_id === NEAR.intents && args?.msg === vault;

@@ -133,6 +133,10 @@ export function limitsText(l: Limits): string {
 export function summarizeCall(method: string, args: unknown): string {
   const a = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
   switch (method) {
+    case "create_vault": {
+      const plan = Array.isArray(a.plan) ? (a.plan as { token?: string; target_bps?: number }[]) : [];
+      return `Create Kite vault ${String(a.name)}.${NEAR.factory}: ${plan.map((t) => `${(t.token && assetByIntentsId(t.token)?.ticker) || t.token} ${(t.target_bps ?? 0) / 100}%`).join(", ")}`;
+    }
     case "pause":
       return "Pause the vault";
     case "unpause":

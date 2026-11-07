@@ -21,7 +21,7 @@ export function DaoOwnedNotice({ owner, vault, className = "" }: { owner: string
   return (
     <Card className={`flex flex-wrap items-center gap-4 p-4 ${className}`}>
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
-        <Icon name="users" size={20} />
+        <Icon name="dao" size={20} />
       </span>
       <p className="min-w-0 flex-1 text-[14px] leading-5">{notOwnerMessage(owner)}</p>
       <Button size="sm" href={daoViewHref(vault)} iconRight="arrow-right">

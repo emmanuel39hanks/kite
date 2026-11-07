@@ -66,10 +66,10 @@ const nameFor = (dao: string) => dao.split(".")[0].replace(/[^a-z0-9_-]/g, "").r
  * A DAO creates its own vault: a council member files one proposal that calls Kite's factory, and when it
  * passes the vault exists as `<name>.kitevaults.near`, owned by the DAO from the first block.
  */
-export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) {
+export function CreateDaoVault({ onOpen, initialDao = "" }: { onOpen: (vault: string) => void; initialDao?: string }) {
   const w = useWallet();
-  const [dao, setDao] = useState("");
-  const [name, setName] = useState("");
+  const [dao, setDao] = useState(initialDao);
+  const [name, setName] = useState(initialDao ? nameFor(initialDao) : "");
   const [nameTouched, setNameTouched] = useState(false);
   const [planSlug, setPlanSlug] = useState(PLANS[PLANS.length - 1]?.slug ?? "");
   /** "custom" once the council builds its own mix instead of taking one of Kite's plans. */

@@ -234,7 +234,7 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
 
       {p && (
         <div className="mt-10">
-          <SectionTitle actions={!preview && <Button size="sm" href={daoViewHref(p.vault)} icon="users">DAO view</Button>}>
+          <SectionTitle actions={!preview && <Button size="sm" href={daoViewHref(p.vault)} icon="dao">DAO view</Button>}>
             {!preview && p.owner && p.owner !== account ? "Owned by a DAO" : "Give this vault to a DAO"}
           </SectionTitle>
           <DaoHandoff account={account} vault={p.vault} owner={p.owner} pendingOwner={p.pendingOwner} />

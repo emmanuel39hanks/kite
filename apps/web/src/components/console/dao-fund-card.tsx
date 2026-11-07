@@ -112,20 +112,14 @@ export function DaoFundCard({
   };
 
   return (
-    <div className="mt-10">
-      <div className="mb-4">
-        <h2 className="text-[22px] leading-7 tracking-[-0.05em]">Put money in</h2>
-        <p className="mt-1 max-w-[70ch] text-[14px] leading-5 text-[#6b6b6b]">
-          A DAO only moves its money by vote, so this takes two proposals. Anyone can send the DAO USDC; only the DAO can move it into the vault, and only the DAO can take it out again.
-        </p>
-      </div>
+    <div>
       <Card className="p-2">
         <ol className="grid gap-2 lg:grid-cols-3">
           {/* 1 · to the DAO */}
           <li className="flex flex-col rounded-2xl bg-white p-5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
             <StepHead n={1} title={steps[0].title} amount={b?.dao ?? null} where={steps[0].where} />
             <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">
-              Send USDC on NEAR to <span className="text-black">{dao}</span>, from any wallet or exchange. Or send it from your connected wallet here.
+              Anyone can send USDC to <span className="text-black">{dao}</span>.
             </p>
             <div className="mt-auto pt-4">
               <div className="flex gap-2">
@@ -153,7 +147,7 @@ export function DaoFundCard({
           {/* 2 · into the vault */}
           <li className="flex flex-col rounded-2xl bg-white p-5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
             <StepHead n={2} title={steps[1].title} amount={b?.vault ?? null} where={steps[1].where} />
-            <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">One proposal moves the DAO&apos;s USDC into the vault&apos;s NEAR Intents balance. Kite&apos;s key can trade it inside the limits, never take it out.</p>
+            <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">One vote moves it into the vault. Only the DAO can take it out.</p>
             <div className="mt-auto pt-4">
               {openMove ? (
                 <OpenNote p={openMove} />
@@ -181,7 +175,7 @@ export function DaoFundCard({
           <li className="flex flex-col rounded-2xl bg-white p-5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
             <StepHead n={3} title={steps[2].title} amount={null} where={steps[2].where} />
             <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">
-              Kite gets 1Click quotes for each part of the plan and checks every one with NEAR Intents: each swap pays back to this vault. {periodHours > hours ? `They stay good for ${hours} hours, so approve it within that, sooner than the DAO's ${Math.round(periodHours / 24)}-day voting window.` : `They stay good for ${hours} hours, the DAO's voting window.`}
+              One vote buys the plan. Every swap is checked to pay back to the vault. {periodHours > hours ? `Approve within ${hours} hours.` : ""}
             </p>
             <div className="mt-auto pt-4">
               {openInvest ? (
