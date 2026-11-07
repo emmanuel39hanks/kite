@@ -279,8 +279,8 @@ function Live({ p }: { p: Portfolio }) {
       />
 
       <div className="mt-3 grid gap-3 lg:grid-cols-3">
-        <MixCard p={p} invested={invested} />
-        <RulesCard g={k.guardrails} paused={p.paused} />
+        <MixCard p={p} invested={invested} editable={!ownedBy} />
+        <RulesCard g={k.guardrails} paused={p.paused} editable={!ownedBy} />
         <VaultCard p={p} keyOn={k.keyActive} ownedBy={ownedBy} preview={live.preview} />
       </div>
 
@@ -520,13 +520,21 @@ function DriftMeter({ drift, band }: { drift: number; band: number }) {
 /* ───────────── At a glance ───────────── */
 
 /** Where the money sits now, against the plan. */
-function MixCard({ p, invested }: { p: Portfolio; invested: boolean }) {
+function MixCard({ p, invested, editable }: { p: Portfolio; invested: boolean; editable: boolean }) {
   const now = p.target.map((t) => ({ ...t, weight: invested ? Math.round(p.current[t.id] ?? 0) : t.weight }));
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between">
+    <Card className="flex flex-col p-5">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="text-[16px] tracking-[-0.02em]">Your mix</h3>
-        <span className="text-[13px] text-[#6b6b6b]">now / target</span>
+        {editable && (
+          <Button size="sm" icon="refresh" href="/console/guardrails#mix">
+            Change mix
+          </Button>
+        )}
+      </div>
+      <div className="mt-1 flex justify-end gap-0 text-[12px] text-[#6b6b6b]">
+        <span className="w-10 text-right">now</span>
+        <span className="w-10 text-right">target</span>
       </div>
       <div className="mt-4 flex items-center gap-5">
         <div className="relative shrink-0">
@@ -543,7 +551,7 @@ function MixCard({ p, invested }: { p: Portfolio; invested: boolean }) {
             <li key={t.id} className="flex items-center gap-2 text-[14px] tracking-[-0.02em]">
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
               <span className="min-w-0 flex-1 truncate">{assetById(t.id).name}</span>
-              <span className="tabular-nums">{invested ? `${(p.current[t.id] ?? 0).toFixed(0)}%` : "–"}</span>
+              <span className="w-10 text-right tabular-nums">{invested ? `${(p.current[t.id] ?? 0).toFixed(0)}%` : "–"}</span>
               <span className="w-10 text-right text-[#6b6b6b] tabular-nums">{t.weight}%</span>
             </li>
           ))}
@@ -554,7 +562,7 @@ function MixCard({ p, invested }: { p: Portfolio; invested: boolean }) {
 }
 
 /** The guardrails, in plain words. The vault enforces them, not Kite. */
-function RulesCard({ g, paused }: { g: Guardrails; paused: boolean }) {
+function RulesCard({ g, paused, editable }: { g: Guardrails; paused: boolean; editable: boolean }) {
   const rules: [IconName, string][] = [
     ["refresh", `Rebalances when anything drifts ${g.driftBand} points`],
     ["deposit", `Moves at most ${g.maxTradePct}% in one trade`],
@@ -563,11 +571,13 @@ function RulesCard({ g, paused }: { g: Guardrails; paused: boolean }) {
   ];
   return (
     <Card className="flex flex-col p-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="text-[16px] tracking-[-0.02em]">Your rules</h3>
-        <Button size="sm" variant="ghost" href="/console/guardrails">
-          Edit
-        </Button>
+        {editable && (
+          <Button size="sm" icon="shield" href="/console/guardrails#rules">
+            Edit rules
+          </Button>
+        )}
       </div>
       <ul className="mt-3 space-y-2.5">
         {rules.map(([icon, text]) => (

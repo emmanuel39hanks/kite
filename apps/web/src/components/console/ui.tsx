@@ -69,8 +69,12 @@ function Spinner({ size = 16 }: { size?: number }) {
 /* ───────────── Surfaces ───────────── */
 
 /** The grey card Glider-style consoles use: soft fill, hairline border, 20px corners. */
-export function Card({ children, className = "", as: As = "section" }: { children: ReactNode; className?: string; as?: "section" | "div" | "article" }) {
-  return <As className={`rounded-[20px] bg-[#f5f5f7] ring-1 ring-inset ring-black/[0.06] ${className}`}>{children}</As>;
+export function Card({ children, className = "", as: As = "section", id }: { children: ReactNode; className?: string; as?: "section" | "div" | "article"; id?: string }) {
+  return (
+    <As id={id} className={`rounded-[20px] bg-[#f5f5f7] ring-1 ring-inset ring-black/[0.06] ${className}`}>
+      {children}
+    </As>
+  );
 }
 
 export function PageTitle({ children, actions }: { children: ReactNode; actions?: ReactNode }) {

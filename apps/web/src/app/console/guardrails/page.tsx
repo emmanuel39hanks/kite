@@ -85,7 +85,7 @@ function Form({ initial }: { initial: Guardrails }) {
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-3">
         {hasVault && k.portfolio && !ownedBy && <TargetMix key={JSON.stringify(k.portfolio.target)} />}
-        <Card className="p-2">
+        <Card className="scroll-mt-28 p-2" id="rules">
           <div className="px-4 pt-3 pb-4">
             <p className="max-w-[60ch] text-[15px] leading-6 text-[#6b6b6b]">
               The rules Kite has to follow. They live in your vault contract, so Kite can&apos;t change them. Changing them takes your signature.
@@ -165,6 +165,10 @@ function TargetMix() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const dirty = JSON.stringify(mix.map((s) => s.weight)) !== JSON.stringify(p.target.map((s) => s.weight));
+  // Arriving from Home's "Change mix": this card renders after the vault loads, so scroll to it then.
+  useEffect(() => {
+    if (window.location.hash === "#mix") document.getElementById("mix")?.scrollIntoView({ block: "start" });
+  }, []);
   const save = async () => {
     setBusy(true);
     setNote(null);
@@ -178,7 +182,7 @@ function TargetMix() {
     }
   };
   return (
-    <Card className="p-5">
+    <Card className="scroll-mt-28 p-5" id="mix">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-[18px] tracking-[-0.03em]">Target mix</h2>
