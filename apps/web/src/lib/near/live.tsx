@@ -188,7 +188,8 @@ function useRealLive() {
     async (name: string, planSlug: string, mix: Slice[], g: Guardrails) => {
       if (!k.account) throw new Error("Connect a NEAR wallet first");
       if (!mine) throw new Error("Still looking up your vault. Try again in a moment.");
-      if (mine.exists || k.vaultFound) throw new Error(`You already have a vault: ${mine.vault}`);
+      if (mine.exists || k.vaultFound) throw new Error(`This screen is on your vault ${mine.vault}. To create another, choose New vault in your account menu.`);
+      if (vault !== mine.next) throw new Error(`${vault} is still being created. Give it a minute and reload; don't create another.`);
       if (!isFactoryVault(vault)) throw new Error("Couldn't pick a name for your vault");
       // Kite's factory deploys the vault and makes this wallet its owner. Wallets like Meteor won't let an app
       // deploy code to the user's own account, but a function call to the factory is an ordinary transaction.
@@ -210,8 +211,8 @@ function useRealLive() {
             : `The vault wasn't created. Your ${NEAR.factoryDepositNear} NEAR goes back to your wallet; if it hasn't in a few minutes, the factory holds it for you to claim.`,
         );
       }
-      refreshMyVault(k.account, { vault, exists: true });
-      k.setPlanMeta(name, planSlug);
+      refreshMyVault(k.account, vault);
+      k.setPlanMeta(name, planSlug, vault);
       k.addEvent({ kind: "created", title: `Vault ${vault} created`, detail: "Kite's key can only call rebalance and settle.", tx: hash });
       return hash;
     },

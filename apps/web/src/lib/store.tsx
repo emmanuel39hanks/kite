@@ -70,7 +70,15 @@ type NewEvent = Omit<ActivityEvent, "id" | "at"> & { at?: number };
  * `rules` are the guardrails chosen before a vault exists (Create, or Guardrails with no vault). They're saved, and
  * carried over when a wallet connects, so the vault is created with what the person picked, not the defaults.
  */
-type Persisted = { name: string; planSlug: string; activity: ActivityEvent[]; draft: { name: string; mix: Slice[]; rules?: Guardrails } | null; rules: Guardrails | null };
+type Persisted = {
+  name: string;
+  planSlug: string;
+  activity: ActivityEvent[];
+  draft: { name: string; mix: Slice[]; rules?: Guardrails } | null;
+  rules: Guardrails | null;
+  /** Each vault's plan name, since one account can have several vaults. */
+  names: Record<string, { name: string; planSlug: string }>;
+};
 
 type State = Persisted & {
   account: string | null;
@@ -83,7 +91,7 @@ type State = Persisted & {
 
 export const DEFAULT_GUARDRAILS: Guardrails = { driftBand: 5, maxTradePct: 10, slippageBps: 100, tradesPerDay: 4 };
 
-const EMPTY: Persisted = { name: "My plan", planSlug: "custom", activity: [], draft: null, rules: null };
+const EMPTY: Persisted = { name: "My plan", planSlug: "custom", activity: [], draft: null, rules: null, names: {} };
 const keyFor = (account: string | null) => `kite-console:${account ?? "anon"}`;
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -91,7 +99,7 @@ type Ctx = State & {
   ready: boolean;
   switchAccount: (account: string | null) => void;
   setDraft: (d: Persisted["draft"]) => void;
-  setPlanMeta: (name: string, planSlug: string) => void;
+  setPlanMeta: (name: string, planSlug: string, vault?: string) => void;
   addEvent: (e: NewEvent) => void;
   addEvents: (list: NewEvent[]) => void;
   clearActivity: () => void;
@@ -112,6 +120,13 @@ function pickPersisted(raw: unknown): Partial<Persisted> {
   if (typeof r.planSlug === "string") out.planSlug = r.planSlug.slice(0, 80);
   if (Array.isArray(r.activity)) out.activity = (r.activity as ActivityEvent[]).filter((e) => e && typeof e.id === "string" && typeof e.title === "string" && typeof e.at === "number" && typeof e.kind === "string").slice(0, 200);
   if (validRules(r.rules)) out.rules = r.rules;
+  if (r.names && typeof r.names === "object") {
+    out.names = {};
+    for (const [v, m] of Object.entries(r.names as Record<string, unknown>).slice(0, 50)) {
+      const x = m as { name?: unknown; planSlug?: unknown };
+      if (typeof x?.name === "string" && typeof x.planSlug === "string") out.names[v] = { name: x.name.slice(0, 80), planSlug: x.planSlug.slice(0, 80) };
+    }
+  }
   const d = r.draft as { name?: unknown; mix?: unknown; rules?: unknown } | null;
   if (d && typeof d.name === "string" && Array.isArray(d.mix) && d.mix.every((m) => m && typeof (m as Slice).id === "string" && Number.isFinite((m as Slice).weight))) {
     out.draft = { name: d.name.slice(0, 80), mix: d.mix as Slice[], ...(validRules(d.rules) ? { rules: d.rules } : {}) };
@@ -148,9 +163,9 @@ export function KiteProvider({ children }: { children: ReactNode }) {
   // Persist the per-account bits.
   useEffect(() => {
     if (!ready) return;
-    const { name, planSlug, activity, draft, rules } = state;
+    const { name, planSlug, activity, draft, rules, names } = state;
     try {
-      localStorage.setItem(keyFor(state.account), JSON.stringify({ name, planSlug, activity, draft, rules }));
+      localStorage.setItem(keyFor(state.account), JSON.stringify({ name, planSlug, activity, draft, rules, names }));
     } catch {}
   }, [state, ready]);
 
@@ -180,7 +195,10 @@ export function KiteProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setDraft = useCallback((draft: Persisted["draft"]) => setState((s) => ({ ...s, draft })), []);
-  const setPlanMeta = useCallback((name: string, planSlug: string) => setState((s) => ({ ...s, name, planSlug })), []);
+  const setPlanMeta = useCallback(
+    (name: string, planSlug: string, vault?: string) => setState((s) => ({ ...s, name, planSlug, names: vault ? { ...s.names, [vault]: { name, planSlug } } : s.names })),
+    [],
+  );
   const addEvents = useCallback(
     (list: NewEvent[]) =>
       setState((s) => ({
@@ -195,7 +213,17 @@ export function KiteProvider({ children }: { children: ReactNode }) {
     (d) =>
       setState((s) =>
         d.found
-          ? { ...s, vaultFound: true, portfolio: { ...d.portfolio, name: d.portfolio.name || s.name, planSlug: d.portfolio.planSlug || s.planSlug }, guardrails: d.guardrails, keyActive: d.keyActive }
+          ? {
+              ...s,
+              vaultFound: true,
+              portfolio: {
+                ...d.portfolio,
+                name: d.portfolio.name || s.names[d.portfolio.vault]?.name || s.name,
+                planSlug: d.portfolio.planSlug || s.names[d.portfolio.vault]?.planSlug || s.planSlug,
+              },
+              guardrails: d.guardrails,
+              keyActive: d.keyActive,
+            }
           : { ...s, vaultFound: false, portfolio: null, guardrails: s.rules ?? s.draft?.rules ?? DEFAULT_GUARDRAILS },
       ),
     [],

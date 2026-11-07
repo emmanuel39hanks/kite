@@ -15,6 +15,7 @@ import type { Slice } from "@/lib/mix";
 import { planBySlug } from "@/lib/plans";
 import { liveAvailable, NEAR, txUrl } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";
+import { pickMyVault } from "@/lib/near/my-vault";
 import { verifyDeposit } from "@/lib/near/allocate-check";
 import { SOURCES as CHAIN_SOURCES } from "@/lib/near/sources";
 import { usdcBalance } from "@/lib/near/vault";
@@ -85,14 +86,19 @@ export function StartFlow({ slug }: { slug: string }) {
     );
   }
 
-  // One vault per account here: the screens all show the wallet's one vault.
+  // The screens act on the wallet's picked vault; a second one starts from "Create another vault" (or New vault in the menu).
   if (!topUp && k.vaultFound && step === "vault" && !created) {
     return (
       <Frame step={step} topUp={topUp}>
-        <Message title="You already have a vault" text={`${k.portfolio?.vault ?? "Your vault"} is set up with “${k.portfolio?.name}”. Add money to it, or go back home.`}>
-          <Button href="/console">Home</Button>
+        <Message
+          title="You already have a vault"
+          text={`${k.portfolio?.vault ?? "Your vault"} is set up with “${k.portfolio?.name}”. Add money to it, or create a second vault with this plan. Each vault has its own ${NEAR.factoryDepositNear} NEAR deposit, returned when you close it.`}
+        >
           <Button variant="primary" href="/console/start/add-money" icon="deposit">
             Add money
+          </Button>
+          <Button icon="plus" onClick={() => w.accountId && pickMyVault(w.accountId, "new")}>
+            Create another vault
           </Button>
         </Message>
       </Frame>

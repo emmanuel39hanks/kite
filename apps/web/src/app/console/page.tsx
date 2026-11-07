@@ -13,9 +13,10 @@ import { Badge, Button, Card, Change, Empty, Money, PageTitle, SectionTitle, Seg
 import { ValueChart } from "@/components/console/value-chart";
 import { Logo } from "@/components/logo";
 import { assetById, earnVersionOf, units as fmtUnits, usd, price as fmtPrice } from "@/lib/assets";
-import { accountUrl } from "@/lib/near/config";
+import { accountUrl, NEAR } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";
 import { useWallet } from "@/lib/near/wallet";
+import { pickMyVault, useMyVault } from "@/lib/near/my-vault";
 import { PLAN_DATA } from "@/lib/plans";
 import { driftOf, useKite, type Guardrails, type Portfolio } from "@/lib/store";
 import { nextTradeUsd, tradeBigEnough } from "@/lib/minimums";
@@ -65,14 +66,30 @@ function Skeleton() {
 
 function NoVault() {
   const h = useHistory(365);
+  const w = useWallet();
+  const k = useKite();
+  const mine = useMyVault(w.preview ? null : w.accountId);
+  // Chose "New vault" while already owning one: say so, and offer the way back.
+  const others = mine?.open ?? [];
   return (
     <>
       <PageTitle actions={<Button href="/console/create" icon="notepad">Create a plan</Button>}>Home</PageTitle>
       <Card className="p-8 sm:p-12">
-        <h2 className="text-[34px] leading-[1.05] tracking-[-0.05em]">You don&apos;t have a vault yet</h2>
+        <h2 className="text-[34px] leading-[1.05] tracking-[-0.05em]">{others.length ? "Set up a new vault" : "You don't have a vault yet"}</h2>
         <p className="mt-3 max-w-[52ch] text-[16px] leading-6 text-[#6b6b6b]">
-          Pick a plan to start. One signature creates your vault on NEAR; then add money from any chain and Kite keeps the mix on target.
+          {others.length
+            ? `Pick a plan for your next vault. It will be ${mine!.next}, with its own ${NEAR.factoryDepositNear} NEAR deposit, and your other vaults keep running as they are.`
+            : "Pick a plan to start. One signature creates your vault on NEAR; then add money from any chain and Kite keeps the mix on target."}
         </p>
+        {others.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {others.map((v) => (
+              <Button key={v} size="sm" icon="arrow-left" onClick={() => pickMyVault(w.accountId!, v)}>
+                Back to {k.names[v]?.name ?? v.replace(`.${NEAR.factory}`, "")}
+              </Button>
+            ))}
+          </div>
+        )}
       </Card>
       <div className="mt-10">
         <SectionTitle>Start with a plan</SectionTitle>

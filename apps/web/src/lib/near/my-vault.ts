@@ -37,7 +37,12 @@ async function nameFree(name: string): Promise<boolean> {
   return !known && (await accountState(id)) === "none";
 }
 
-export type MyVault = { vault: string; exists: boolean };
+/**
+ * `vault` is the one the screens act on: the vault this browser picked for the account, or its newest open vault,
+ * or (when none, or when the person chose "New vault") the free factory name a new one would get.
+ */
+export type MyVault = { vault: string; exists: boolean; open: string[]; next: string };
+type Found = { open: string[]; inflight: string | null; next: string };
 
 /** A factory name from an account id: `emmanuel.near` → `emmanuel`, `a.b.near` → `a-b`, long hex ids shortened. */
 export function baseVaultName(owner: string): string {
@@ -50,51 +55,94 @@ export function baseVaultName(owner: string): string {
   return validVaultName(s) ? s : "vault";
 }
 
-export async function resolveMyVault(owner: string): Promise<MyVault> {
-  const legacy = vaultIdFor(owner);
-  if ((await accountState(legacy)) === "code") return { vault: legacy, exists: true };
+/** Every open vault the wallet owns (newest first), a creation still in flight, and the next free factory name. */
+export async function findMyVaults(owner: string): Promise<Found> {
+  const open: string[] = [];
   const made = await factoryVaultsBy(owner);
-  for (const v of [...made].reverse()) if ((await accountState(v.vault)) === "code") return { vault: v.vault, exists: true };
+  for (const v of [...made].reverse()) if ((await accountState(v.vault)) === "code") open.push(v.vault);
+  const legacy = vaultIdFor(owner);
+  if ((await accountState(legacy)) === "code") open.push(legacy);
   // Recorded in the last few minutes but not deployed yet: a creation still in flight (a failed one is removed from
-  // the factory's record). Point at it rather than pick a new name. An older record with no account is a closed vault.
+  // the factory's record). An older record with no account is a closed vault.
   const last = made[made.length - 1];
-  if (last && Date.now() - last.created_ns / 1e6 < 10 * 60_000 && (await accountState(last.vault)) === "none") return { vault: last.vault, exists: false };
-  // A closed vault's name stays taken in the factory, so a second vault gets -2, -3, …
+  const inflight = last && !open.includes(last.vault) && Date.now() - last.created_ns / 1e6 < 10 * 60_000 && (await accountState(last.vault)) === "none" ? last.vault : null;
+  // A closed vault's name stays taken in the factory, so later vaults get -2, -3, …
   const base = baseVaultName(owner);
-  for (let i = 1; i <= 20; i++) {
+  for (let i = 1; i <= 40; i++) {
     const name = i === 1 ? base : `${base.slice(0, 28)}-${i}`;
-    if (await nameFree(name)) return { vault: factoryVaultId(name), exists: false };
+    if (factoryVaultId(name) !== inflight && (await nameFree(name))) return { open, inflight, next: factoryVaultId(name) };
   }
   throw new Error("Couldn't find a free vault name");
 }
 
-const cache = new Map<string, MyVault | "loading">();
+const pickKey = (owner: string) => `kite-vault:${owner}`;
+function readPick(owner: string): string | null {
+  try {
+    return localStorage.getItem(pickKey(owner));
+  } catch {
+    return null;
+  }
+}
+
+/** The vault to show, from what was found and what this browser picked ("new" = about to create one). */
+export function view(f: Found, pick: string | null): MyVault {
+  const base = { open: f.open, next: f.next };
+  if (pick === "new") return { ...base, vault: f.inflight ?? f.next, exists: false };
+  if (pick && f.open.includes(pick)) return { ...base, vault: pick, exists: true };
+  if (f.open.length) return { ...base, vault: f.open[0], exists: true };
+  return { ...base, vault: f.inflight ?? f.next, exists: false };
+}
+
+export async function resolveMyVault(owner: string): Promise<MyVault> {
+  return view(await findMyVaults(owner), readPick(owner));
+}
+
+const found = new Map<string, Found | "loading">();
+const views = new Map<string, MyVault>();
 const subs = new Set<() => void>();
 const emit = () => subs.forEach((f) => f());
 
+function settle(owner: string) {
+  const f = found.get(owner);
+  if (f && f !== "loading") views.set(owner, view(f, readPick(owner)));
+  emit();
+}
+
 function load(owner: string) {
-  cache.set(owner, "loading");
-  resolveMyVault(owner)
-    .then((v) => {
-      cache.set(owner, v);
-      emit();
+  if (!found.has(owner)) found.set(owner, "loading");
+  findMyVaults(owner)
+    .then((f) => {
+      found.set(owner, f);
+      settle(owner);
     })
     // An RPC hiccup: look again in a few seconds rather than in a tight loop.
-    .catch(() => setTimeout(() => {
-      cache.delete(owner);
-      emit();
-    }, 5000));
+    .catch(() =>
+      setTimeout(() => {
+        if (found.get(owner) === "loading") found.delete(owner);
+        emit();
+      }, 5000),
+    );
 }
 
-/** Re-read after a create or a close. */
-export function refreshMyVault(owner: string, known?: MyVault) {
-  if (known) {
-    cache.set(owner, known);
-    emit();
-  } else load(owner);
+/** Re-read after a create or a close. `made` is a vault just created: show it at once. */
+export function refreshMyVault(owner: string, made?: string) {
+  if (made) {
+    const f = found.get(owner);
+    if (f && f !== "loading") found.set(owner, { ...f, open: [made, ...f.open.filter((v) => v !== made)], inflight: null });
+    pickMyVault(owner, made);
+  }
+  load(owner);
 }
 
-/** The wallet's vault (or the id a new one would get), or null while it's being looked up. */
+/** Switch the screens to one of the wallet's vaults, or to "new" to create another. Remembered in this browser. */
+export function pickMyVault(owner: string, vault: string | "new") {
+  try {
+    localStorage.setItem(pickKey(owner), vault);
+  } catch {}
+  settle(owner);
+}
+
+/** The wallet's current vault (or the id a new one would get), or null while it's being looked up. */
 export function useMyVault(owner: string | null | undefined): MyVault | null {
   return useSyncExternalStore(
     (f) => {
@@ -103,9 +151,8 @@ export function useMyVault(owner: string | null | undefined): MyVault | null {
     },
     () => {
       if (!owner) return null;
-      const v = cache.get(owner);
-      if (v === undefined) queueMicrotask(() => !cache.has(owner) && load(owner));
-      return v && v !== "loading" ? v : null;
+      if (!found.has(owner)) queueMicrotask(() => !found.has(owner) && load(owner));
+      return views.get(owner) ?? null;
     },
     () => null,
   );

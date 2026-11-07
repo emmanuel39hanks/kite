@@ -8,8 +8,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Wordmark } from "@/components/kite-mark";
 import { Logo } from "@/components/logo";
 import { ASSETS } from "@/lib/assets";
-import { accountUrl } from "@/lib/near/config";
-import { useMyVault } from "@/lib/near/my-vault";
+import { accountUrl, NEAR } from "@/lib/near/config";
+import { pickMyVault, useMyVault } from "@/lib/near/my-vault";
 import { useWallet } from "@/lib/near/wallet";
 import { PLAN_DATA } from "@/lib/plans";
 import { useKite } from "@/lib/store";
@@ -236,6 +236,39 @@ function AccountArea() {
             </div>
           </div>
           <Menu.Separator className="my-1 h-px bg-black/[0.06]" />
+          {!w.preview && mine && (mine.open.length > 0 || !mine.exists) && (
+            <>
+              <div className="px-3 pt-1.5 pb-1 text-[12px] text-[#6b6b6b]">Your vaults</div>
+              {mine.open.map((v) => (
+                <Menu.Item
+                  key={v}
+                  onSelect={() => {
+                    pickMyVault(w.accountId!, v);
+                    router.push("/console");
+                  }}
+                  className="flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] outline-none data-[highlighted]:bg-[#f5f5f7]"
+                >
+                  <span className={`grid h-[17px] w-[17px] place-items-center ${v === mine.vault ? "text-[#05a800]" : "text-transparent"}`}>
+                    <Icon name="check" size={15} />
+                  </span>
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block truncate">{k.names[v]?.name ?? "Kite vault"}</span>
+                    <span className="block truncate font-mono text-[11px] text-[#6b6b6b]">{v.replace(`.${NEAR.factory}`, "")}</span>
+                  </span>
+                </Menu.Item>
+              ))}
+              <MenuItem
+                icon="plus"
+                onSelect={() => {
+                  pickMyVault(w.accountId!, "new");
+                  router.push("/console/explore");
+                }}
+              >
+                New vault
+              </MenuItem>
+              <Menu.Separator className="my-1 h-px bg-black/[0.06]" />
+            </>
+          )}
           <MenuItem icon="user" onSelect={() => router.push("/console/profile")}>
             My profile
           </MenuItem>
