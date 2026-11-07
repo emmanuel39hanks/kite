@@ -483,11 +483,13 @@ export function CreateDaoVault({ onOpen, initialDao = "" }: { onOpen: (vault: st
             <div className="flex flex-wrap gap-2">
               {canVote && (
                 <>
-                  <Button variant="primary" icon="external" href={trezuUrl(daoId)} external>
-                    Approve in Trezu
-                  </Button>
-                  <Button variant="ghost" icon="check" onClick={approve} loading={!!busy}>
-                    {busy ?? "Approve here"}
+                  {trezuUrl(daoId) && (
+                    <Button variant="primary" icon="external" href={trezuUrl(daoId)!} external>
+                      Approve in Trezu
+                    </Button>
+                  )}
+                  <Button variant={trezuUrl(daoId) ? "ghost" : "primary"} icon="check" onClick={approve} loading={!!busy}>
+                    {busy ?? (trezuUrl(daoId) ? "Approve here" : "Approve it")}
                   </Button>
                 </>
               )}

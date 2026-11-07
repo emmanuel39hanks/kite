@@ -739,14 +739,20 @@ function ProposalRow({
         </div>
         {approvable && (
           // Trezu sponsors the vote's gas, so that's the default; Kite has already checked the calls above.
-          <div className="flex flex-col items-end gap-1.5">
-            <Button size="sm" variant="primary" icon="external" href={trezuUrl(dao)} external>
-              Approve in Trezu
+          trezuUrl(dao) ? (
+            <div className="flex flex-col items-end gap-1.5">
+              <Button size="sm" variant="primary" icon="external" href={trezuUrl(dao)!} external>
+                Approve in Trezu
+              </Button>
+              <button type="button" onClick={onApprove} disabled={!connected || busy !== null} className="cursor-pointer text-[12px] text-[#6b6b6b] underline underline-offset-2 hover:text-black disabled:cursor-not-allowed disabled:opacity-50">
+                {busy === busyKey ? "Waiting for your wallet…" : "or approve here"}
+              </button>
+            </div>
+          ) : (
+            <Button size="sm" variant="primary" icon="check" onClick={onApprove} loading={busy === busyKey} disabled={!connected || busy !== null}>
+              Approve
             </Button>
-            <button type="button" onClick={onApprove} disabled={!connected || busy !== null} className="cursor-pointer text-[12px] text-[#6b6b6b] underline underline-offset-2 hover:text-black disabled:cursor-not-allowed disabled:opacity-50">
-              {busy === busyKey ? "Waiting for your wallet…" : "or approve here"}
-            </button>
-          </div>
+          )
         )}
       </div>
     </li>
