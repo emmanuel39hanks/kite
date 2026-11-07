@@ -15,7 +15,7 @@ import { Logo } from "@/components/logo";
 import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
 import { useMarket } from "@/lib/market/use-market";
 import { verifyAllocateProposal, type CheckedSwap } from "@/lib/near/allocate-check";
-import { accountUrl, NEAR } from "@/lib/near/config";
+import { accountUrl, NEAR, trezuUrl } from "@/lib/near/config";
 import { pickMyVault, refreshMyVault, useMyVault } from "@/lib/near/my-vault";
 import { myDaos, rememberDao, type MyDao } from "@/lib/near/known-daos";
 import { addProposalAction, approveAction, describeCalls, vaultProposals, type DaoProposal } from "@/lib/near/dao";
@@ -337,7 +337,7 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
       {ctx.proposals.length ? (
         <ul className="divide-y divide-black/[0.05] bg-white">
           {ctx.proposals.map((p) => (
-            <ProposalRow key={p.id} p={p} vault={vault} planTokens={state.plan.map((t) => t.token)} period={ctx.policy.proposal_period} connected={connected} busy={busy} onApprove={() => approve(ctx, p)} busyKey={`approve-${ctx.dao}-${p.id}`} />
+            <ProposalRow key={p.id} p={p} dao={ctx.dao} vault={vault} planTokens={state.plan.map((t) => t.token)} period={ctx.policy.proposal_period} connected={connected} busy={busy} onApprove={() => approve(ctx, p)} busyKey={`approve-${ctx.dao}-${p.id}`} />
           ))}
         </ul>
       ) : (
@@ -679,6 +679,7 @@ const STATUS_TONE: Record<string, "neutral" | "green" | "amber" | "red" | "blue"
 
 function ProposalRow({
   p,
+  dao,
   vault,
   planTokens,
   period,
@@ -688,6 +689,7 @@ function ProposalRow({
   onApprove,
 }: {
   p: DaoProposal;
+  dao: string;
   vault: string;
   planTokens: string[];
   period: string;
@@ -736,9 +738,15 @@ function ProposalRow({
           {swaps && <SwapList check={swaps} />}
         </div>
         {approvable && (
-          <Button size="sm" variant="primary" icon="check" onClick={onApprove} loading={busy === busyKey} disabled={!connected || busy !== null}>
-            Approve
-          </Button>
+          // Trezu sponsors the vote's gas, so that's the default; Kite has already checked the calls above.
+          <div className="flex flex-col items-end gap-1.5">
+            <Button size="sm" variant="primary" icon="external" href={trezuUrl(dao)} external>
+              Approve in Trezu
+            </Button>
+            <button type="button" onClick={onApprove} disabled={!connected || busy !== null} className="cursor-pointer text-[12px] text-[#6b6b6b] underline underline-offset-2 hover:text-black disabled:cursor-not-allowed disabled:opacity-50">
+              {busy === busyKey ? "Waiting for your wallet…" : "or approve here"}
+            </button>
+          </div>
         )}
       </div>
     </li>

@@ -10,7 +10,7 @@ import { RULE_PRESETS, sameRules } from "@/lib/guard-presets";
 import { MAX_ASSETS, mixValid, type Slice } from "@/lib/mix";
 import { Logo } from "@/components/logo";
 import { ASSETS, assetById } from "@/lib/assets";
-import { NEAR } from "@/lib/near/config";
+import { NEAR, trezuUrl } from "@/lib/near/config";
 import { approveAction, type DaoProposal } from "@/lib/near/dao";
 import { canApprove, cleanAccount, nearFromYocto, readDaoPolicy, rightsOf, type DaoPolicy } from "@/lib/near/dao-view";
 import { rememberDao } from "@/lib/near/known-daos";
@@ -482,9 +482,14 @@ export function CreateDaoVault({ onOpen, initialDao = "" }: { onOpen: (vault: st
             </p>
             <div className="flex flex-wrap gap-2">
               {canVote && (
-                <Button variant="primary" icon="check" onClick={approve} loading={!!busy}>
-                  {busy ?? "Approve it"}
-                </Button>
+                <>
+                  <Button variant="primary" icon="external" href={trezuUrl(daoId)} external>
+                    Approve in Trezu
+                  </Button>
+                  <Button variant="ghost" icon="check" onClick={approve} loading={!!busy}>
+                    {busy ?? "Approve here"}
+                  </Button>
+                </>
               )}
               {ours === true && proposed && (
                 <Button variant="primary" iconRight="arrow-right" onClick={() => onOpen(factoryVaultId(proposed))}>

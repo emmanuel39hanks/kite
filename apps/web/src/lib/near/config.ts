@@ -31,3 +31,5 @@ export const vaultIdFor = (owner: string) => `kite.${owner}`;
 
 export const txUrl = (hash: string) => `${NEAR.explorer}/txns/${encodeURIComponent(hash)}`;
 export const accountUrl = (id: string) => `${NEAR.explorer}/address/${id}`;
+/** A SputnikDAO in Trezu, where members vote without paying gas (Trezu sponsors it). */
+export const trezuUrl = (dao: string) => `https://trezu.app/${encodeURIComponent(dao)}`;
