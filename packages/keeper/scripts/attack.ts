@@ -1,8 +1,8 @@
 /**
  * Attack demo: a compromised (or prompt-injected) Kite keeper tries to steal from a live vault.
  *
- *   npm run attack -- --vault kite.<owner>.near            # free: real 1Click quotes, checked by the vault's own view
- *   npm run attack -- --vault kite.<owner>.near --send     # also sends real transactions with the agent key (KITE_AGENT_KEY)
+ *   npm run attack -- --vault <name>.kitevaults.near            # free: real 1Click quotes, checked by the vault's own view
+ *   npm run attack -- --vault <name>.kitevaults.near --send     # also sends real transactions with the agent key (KITE_AGENT_KEY)
  *   add --out ../docs/attack-log.md to save the transcript
  *
  * Every attack must be refused. The script exits non-zero if any one gets through.
@@ -20,7 +20,7 @@ const vault = arg("vault");
 const send = process.argv.includes("--send");
 const out = arg("out");
 if (!vault) {
-  console.error("Usage: npm run attack -- --vault kite.<owner>.near [--send] [--out file.md]");
+  console.error("Usage: npm run attack -- --vault <name>.kitevaults.near [--send] [--out file.md]");
   process.exit(2);
 }
 const ATTACKER = process.env.ATTACKER ?? "attacker.near";

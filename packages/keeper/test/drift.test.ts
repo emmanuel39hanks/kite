@@ -46,16 +46,16 @@ test("never sells more than the cap", () => {
   assert.ok(t.valueUsd <= 1000);
 });
 
-test("a small vault still rebalances: trades from $0.25 go through, smaller ones wait", () => {
+test("a small vault rebalances only once the trade reaches the vault's $1 minimum", () => {
   const plan2: Target[] = [
     { token: "nep141:usdc", decimals: 6, target_bps: 5000 },
     { token: "nep141:btc", decimals: 8, target_bps: 5000 },
   ];
   const px = { "nep141:usdc": 1, "nep141:btc": 100_000 };
   const lim: Limits = { ...limits, max_trade_bps: 5000 };
-  // $3 vault at 70/30: $0.60 over, a $0.60 trade.
-  const t = nextTrade(plan2, [2_100_000n, 900n], px, lim);
-  assert.ok(t && t.valueUsd > 0.5 && t.valueUsd < 0.61 && t.sell.token === "nep141:usdc");
-  // $1 vault at 60/40: $0.10 over, too small.
-  assert.equal(nextTrade(plan2, [600_000n, 400n], px, lim), null);
+  // $3 vault at 90/10: $1.20 over, a $1.19 trade.
+  const t = nextTrade(plan2, [2_700_000n, 300n], px, lim);
+  assert.ok(t && t.valueUsd >= 1 && t.valueUsd < 1.2 && t.sell.token === "nep141:usdc");
+  // $3 vault at 70/30: only $0.60 over, under the vault's $1 floor.
+  assert.equal(nextTrade(plan2, [2_100_000n, 900n], px, lim), null);
 });

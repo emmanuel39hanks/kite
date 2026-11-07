@@ -64,7 +64,7 @@ export function StartFlow({ slug }: { slug: string }) {
   // Waiting for the first chain read.
   if (k.vaultFound === null) return <Frame step={step} topUp={topUp} />;
 
-  // Once someone else (usually a DAO) owns kite.<you>, money sent to it is theirs. Don't offer it.
+  // Once someone else (usually a DAO) owns your vault, money sent to it is theirs. Don't offer it.
   if (ownedBy && k.vaultFound) {
     return (
       <Frame step={step} topUp={topUp}>

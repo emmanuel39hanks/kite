@@ -182,7 +182,7 @@ export function nextTrade(plan: Slice[], balances: Record<string, number>, price
   const shortfall = (-buy.drift / 100) * nav;
   const cap = (g.maxTradePct / 100) * nav;
   const valueUsd = Math.min(surplus, shortfall, cap) * 0.995;
-  if (valueUsd < 0.25) return null;
+  if (valueUsd < 1) return null; // the vault refuses trades under $1
   return { sell, buy, units: Math.min(valueUsd / sell.price, sell.units), valueUsd };
 }
 

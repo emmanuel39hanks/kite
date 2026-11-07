@@ -2,7 +2,7 @@
 
 /**
  * The console's link to the vault on NEAR.
- * - <LiveSync/> follows the connected wallet, looks for kite.<account>, and
+ * - <LiveSync/> follows the connected wallet, finds its vault (see my-vault.ts), and
  *   keeps the store in sync with the chain every 15 s.
  * - useLive() gives pages the real actions: create, deposit, invest, save
  *   guardrails, revoke/restore the key, unpause, check now.

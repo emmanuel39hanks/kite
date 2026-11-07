@@ -9,7 +9,7 @@ const opt = (name: string) => {
 
 const vault = opt("vault") ?? process.env.KITE_VAULT;
 if (!vault) {
-  console.error("Usage: npm run keeper -- --vault kite.<you>.near [--dry]");
+  console.error("Usage: npm run keeper -- --vault <name>.kitevaults.near [--dry]");
   process.exit(1);
 }
 

@@ -44,8 +44,8 @@ export function holdings(plan: Target[], balances: bigint[], prices: Record<stri
   return { rows, navUsd };
 }
 
-/** The smallest rebalance trade worth sending: 1Click quotes it at about 0.5% total cost, the same floor as investing. */
-export const MIN_TRADE_USD = 0.25;
+/** The smallest rebalance trade the vault accepts: it refuses anything under $1 (ERR_TOO_SMALL), so dust can't burn the daily trade count. */
+export const MIN_TRADE_USD = 1;
 
 /**
  * The single best trade right now, or null if nothing is outside the band.
@@ -64,7 +64,7 @@ export function nextTrade(plan: Target[], balances: bigint[], prices: Record<str
   const shortfall = (-buy.driftBps * navUsd) / BPS;
   const cap = (limits.max_trade_bps * navUsd) / BPS;
   const valueUsd = Math.min(surplus, shortfall, cap) * 0.995;
-  if (valueUsd < MIN_TRADE_USD) return null; // smaller than 1Click handles well
+  if (valueUsd < MIN_TRADE_USD) return null; // the vault would refuse it
 
   const amountIn = BigInt(Math.floor((valueUsd / sell.priceUsd) * 10 ** sell.decimals));
   return { sell, buy, amountIn: amountIn > sell.balance ? sell.balance : amountIn, valueUsd };

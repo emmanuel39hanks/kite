@@ -1,6 +1,6 @@
 //! Kite vault.
 //!
-//! One vault per user, deployed at `kite.<owner>`. The vault account owns the
+//! One vault per owner, created by Kite's factory at `<name>.kitevaults.near` (early vaults: `kite.<owner>`). The vault account owns the
 //! user's balances inside NEAR Intents (`intents.near`), so every asset (nBTC,
 //! ETH, SOL, USDC, XAUt…) sits in one ledger the vault controls by direct calls.
 //!
