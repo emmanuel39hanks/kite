@@ -242,7 +242,19 @@ async function daoCtx(account: string, vault: string): Promise<DaoCtx | null> {
   }
 }
 
+/** One read of the vault and its DAO, tried a few times: right after a wallet signature, NEAR's RPC often stumbles once. */
 async function load(vault: string): Promise<Loaded> {
+  for (let i = 0; ; i++) {
+    try {
+      return await loadOnce(vault);
+    } catch (e) {
+      if (i >= 3) throw e;
+      await new Promise((r) => setTimeout(r, 1200 * (i + 1)));
+    }
+  }
+}
+
+async function loadOnce(vault: string): Promise<Loaded> {
   const state = await readVault(vault);
   const offer = openOffer(state.status);
   const [owner, pending] = await Promise.all([daoCtx(state.status.owner, vault), offer ? daoCtx(offer, vault) : Promise.resolve(null)]);
@@ -262,7 +274,8 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
     let alive = true;
     load(vault)
       .then((d) => alive && setData(d))
-      .catch(() => alive && setData({ error: own ? "none" : `There's no Kite vault at ${vault}, or NEAR's RPC didn't answer. Check the name and try again.` }));
+      // A refresh that fails keeps what's on screen; only a first load can end in "no vault here".
+      .catch(() => alive && setData((prev) => (prev && !("error" in prev) ? prev : { error: own ? "none" : `There's no Kite vault at ${vault}, or NEAR's RPC didn't answer. Check the name and try again.` })));
     return () => {
       alive = false;
     };
