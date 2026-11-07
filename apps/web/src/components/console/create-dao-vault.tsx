@@ -13,6 +13,8 @@ import { ASSETS, assetById } from "@/lib/assets";
 import { NEAR } from "@/lib/near/config";
 import { approveAction, type DaoProposal } from "@/lib/near/dao";
 import { canApprove, cleanAccount, nearFromYocto, readDaoPolicy, rightsOf, type DaoPolicy } from "@/lib/near/dao-view";
+import { rememberDao } from "@/lib/near/known-daos";
+import { minToRebalance } from "@/lib/minimums";
 import {
   createVaultDescription,
   createVaultKind,
@@ -161,6 +163,7 @@ export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) 
     setErr(null);
     try {
       await w.send(daoId, [createVaultProposalAction(daoId, name, mix, g, BigInt(current.policy.proposal_bond), (id) => assetById(id).name)]);
+      rememberDao(daoId);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     }
@@ -370,6 +373,10 @@ export function CreateDaoVault({ onOpen }: { onOpen: (vault: string) => void }) 
                     <GuardSliders value={g} onChange={setG} />
                   </div>
                 )}
+                <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">
+                  Every trade Kite makes is at least $1; the vault refuses smaller ones. With these rules Kite steps in on time once the vault holds about{" "}
+                  <span className="text-black">${minToRebalance(g, mix.length)}</span>. Funding it with less still invests the money; it just waits for a bigger drift, or never trades if the biggest trade is under $1.
+                </p>
               </Step>
             </ol>
 

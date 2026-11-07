@@ -17,6 +17,7 @@ import { useMarket } from "@/lib/market/use-market";
 import { verifyAllocateProposal, type CheckedSwap } from "@/lib/near/allocate-check";
 import { accountUrl, NEAR } from "@/lib/near/config";
 import { useMyVault } from "@/lib/near/my-vault";
+import { knownDaoVaults, rememberDao } from "@/lib/near/known-daos";
 import { addProposalAction, approveAction, describeCalls, vaultProposals, type DaoProposal } from "@/lib/near/dao";
 import {
   callRisk,
@@ -83,6 +84,7 @@ function DaoView() {
   return (
     <>
       <PageTitle actions={<Segmented options={MODES} value={mode} onChange={setPicked} label="What to do" size="md" />}>DAO treasury</PageTitle>
+      <YourDaoVaults current={fromUrl} onPick={open} />
 
       {mode === "Create a vault" ? (
         <>
@@ -125,6 +127,42 @@ function DaoView() {
         </>
       )}
     </>
+  );
+}
+
+/** Vaults of the DAOs this browser has worked with, one click to open. Nothing shows until there are some. */
+function YourDaoVaults({ current, onPick }: { current: string | null; onPick: (v: string) => void }) {
+  const [list, setList] = useState<{ dao: string; vault: string }[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    knownDaoVaults().then((l) => alive && setList(l)).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!list?.length) return null;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <span className="text-[13px] text-[#6b6b6b]">Your DAO vaults</span>
+      {list.map((v) => (
+        <button
+          key={v.vault}
+          type="button"
+          onClick={() => onPick(v.vault)}
+          className={`flex cursor-pointer items-center gap-2 rounded-full py-1.5 pr-3.5 pl-1.5 text-[13px] ring-1 ring-inset transition-colors ${
+            v.vault === current ? "bg-black text-white ring-black" : "bg-white ring-black/[0.08] hover:bg-[#f5f5f7]"
+          }`}
+        >
+          <span className={`grid h-6 w-6 place-items-center rounded-full ${v.vault === current ? "bg-white/15" : "bg-[#f5f5f7]"}`}>
+            <Icon name="users" size={13} />
+          </span>
+          <span className="leading-tight">
+            <span className="block">{v.vault.replace(`.${NEAR.factory}`, "")}</span>
+            <span className={`block text-[11px] ${v.vault === current ? "text-white/60" : "text-[#6b6b6b]"}`}>{v.dao}</span>
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -232,6 +270,7 @@ function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCre
   if ("error" in data) return <StatusNote tone="err" className="mt-3">{data.error}</StatusNote>;
 
   const { state, owner, pending } = data;
+  if (owner) rememberDao(owner.dao);
   const offer = openOffer(state.status);
   const connected = !!w.accountId;
   const daos = [owner, pending && pending.dao !== owner?.dao ? pending : null].filter((x): x is DaoCtx => !!x);
