@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { CreateDaoVault } from "@/components/console/create-dao-vault";
 import { DaoFundCard } from "@/components/console/dao-fund-card";
 import { GuardSliders } from "@/components/console/guard-sliders";
+import { MixSliders } from "@/components/console/mix-sliders";
 import { TreasuryPolicy } from "@/components/console/treasury-policy";
 import { Icon } from "@/components/console/icons";
 import { Badge, Button, Card, Empty, PageTitle, SectionTitle, Segmented, StatusNote } from "@/components/console/ui";
@@ -37,7 +38,7 @@ import {
 import { agentAllowanceYocto, fromContractLimits, readVault, toContractLimits, type VaultState } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
 import type { Guardrails } from "@/lib/store";
-import { slice } from "@/lib/mix";
+import { mixValid, slice, type Slice } from "@/lib/mix";
 
 /**
  * A Kite vault owned by a SputnikDAO: who owns it, what it holds, and the DAO's proposals that call it.
@@ -258,7 +259,7 @@ function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCre
 
       {owner && <DaoFundCard vault={vault} dao={owner.dao} policy={owner.policy} proposals={owner.proposals} plan={state.plan} pending={!!state.status.pending} rev={rev} busy={busy} send={run} />}
 
-      {owner && <OwnerActions key={JSON.stringify(state.limits)} vault={vault} state={state} ctx={owner} account={w.accountId} busy={busy} onPropose={(name, a) => propose(owner, name, a)} />}
+      {owner && <OwnerActions key={JSON.stringify([state.limits, state.plan])} vault={vault} state={state} ctx={owner} account={w.accountId} busy={busy} onPropose={(name, a) => propose(owner, name, a)} />}
 
       {daos.map((ctx) => (
         <div key={ctx.dao} className="mt-10">
@@ -428,6 +429,20 @@ function OwnerActions({
   const bond = nearFromYocto(BigInt(ctx.policy.proposal_bond));
   const off = !account || busy !== null;
   const restoreReady = NEAR.agentPublicKey.startsWith("ed25519:");
+  // The target mix, same assets: only the shares change, so each token keeps its decimals and price limit.
+  const planNow: Slice[] = state.plan.flatMap((t) => {
+    const a = assetByIntentsId(t.token);
+    return a ? [slice(a.id, t.target_bps / 100)] : [];
+  });
+  const planKnown = planNow.length === state.plan.length;
+  const [mix, setMix] = useState<Slice[]>(planNow);
+  const mixChanged = JSON.stringify(mix.map((s) => s.weight)) !== JSON.stringify(planNow.map((s) => s.weight));
+  const proposeMix = () =>
+    onPropose("plan", {
+      kind: "plan",
+      plan: state.plan.map((t, i) => ({ ...t, target_bps: Math.round(mix[i].weight * 100) })),
+      text: mix.map((s) => `${assetByIntentsId(state.plan[mix.indexOf(s)].token)?.ticker ?? s.id} ${s.weight}%`).join(", "),
+    });
 
   return (
     <div className="mt-10">
@@ -436,6 +451,25 @@ function OwnerActions({
         {ctx.dao} owns {vault}, so each button creates one proposal on the DAO with its {bond} NEAR bond. Nothing changes until the DAO approves it.
       </p>
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-3">
+        {planKnown && (
+          <Card className="p-5">
+            <h2 className="text-[18px] tracking-[-0.03em]">Target mix</h2>
+            <p className="mt-1 mb-4 text-[13px] leading-5 text-[#6b6b6b]">What Kite keeps the vault at. The proposal calls set_plan with these shares; Kite trades toward them at its next daily check, inside the guardrails.</p>
+            <MixSliders mix={mix} onChange={setMix} disabled={off} />
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button variant="primary" size="sm" onClick={proposeMix} loading={busy === "plan"} disabled={off || !mixChanged || !mixValid(mix) || !!state.status.pending}>
+                Propose this mix
+              </Button>
+              {mixChanged && (
+                <Button variant="ghost" size="sm" onClick={() => setMix(planNow)}>
+                  Discard
+                </Button>
+              )}
+              {state.status.pending && <span className="text-[13px] text-[#6b6b6b]">A swap is in flight; propose once it settles.</span>}
+            </div>
+          </Card>
+        )}
         <Card className="p-2">
           <div className="px-4 pt-3 pb-4">
             <h2 className="text-[18px] tracking-[-0.03em]">Guardrails</h2>
@@ -453,6 +487,7 @@ function OwnerActions({
             )}
           </div>
         </Card>
+        </div>
 
         <div className="space-y-3">
           <Card className="p-5">

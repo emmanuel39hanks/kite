@@ -4,6 +4,7 @@
  * owner button. Pure functions apart from readDaoPolicy, so they can be tested without a network.
  */
 import { JsonRpcProvider } from "near-api-js";
+import { assetByIntentsId } from "@/lib/assets";
 import { NEAR } from "./config";
 import { touchesVault, type DaoProposal, type ProposalKind, type VaultCall } from "./dao";
 
@@ -148,7 +149,7 @@ export function summarizeCall(method: string, args: unknown): string {
       return `Set guardrails: ${limitsText((a.limits ?? {}) as Limits)}`;
     case "set_plan": {
       const plan = Array.isArray(a.plan) ? (a.plan as { token?: string; target_bps?: number }[]) : [];
-      return `Set the plan: ${plan.map((t) => `${t.token} ${(t.target_bps ?? 0) / 100}%`).join(", ")}`;
+      return `Set the target mix: ${plan.map((t) => `${(t.token && assetByIntentsId(t.token)?.ticker) || t.token} ${(t.target_bps ?? 0) / 100}%`).join(", ")}`;
     }
     case "withdraw":
       return `Withdraw ${String(a.amount)} of ${String(a.token)} to ${String(a.receiver_id)}`;
@@ -179,7 +180,8 @@ export type OwnerAction =
   | { kind: "unpause" }
   | { kind: "revoke" }
   | { kind: "restore"; publicKey: string; allowanceYocto: string }
-  | { kind: "limits"; contractLimits: Record<string, number> };
+  | { kind: "limits"; contractLimits: Record<string, number> }
+  | { kind: "plan"; plan: { token: string; target_bps: number; decimals: number; max_slippage_bps?: number }[]; text: string };
 
 /** The description and calls for one owner action, proposed to the DAO that owns (or is taking) the vault. */
 export function ownerProposal(vault: string, a: OwnerAction): { description: string; calls: VaultCall[] } {
@@ -204,6 +206,11 @@ export function ownerProposal(vault: string, a: OwnerAction): { description: str
       return {
         description: `Change the guardrails on Kite vault ${vault}: ${limitsText(a.contractLimits)}.`,
         calls: [{ method: "set_limits", args: { limits: a.contractLimits } }],
+      };
+    case "plan":
+      return {
+        description: `Change the target mix of Kite vault ${vault} to ${a.text}. Kite trades toward it at its next daily check, inside the vault's guardrails. If a swap is in flight when this passes, the vault refuses and the DAO votes again.`,
+        calls: [{ method: "set_plan", args: { plan: a.plan } }],
       };
   }
 }

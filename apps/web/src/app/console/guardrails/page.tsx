@@ -3,11 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/console/icons";
-import { Badge, Button, Card, PageTitle, Slider, StatusNote, Switch } from "@/components/console/ui";
-import { MixBar } from "@/components/charts";
-import { Logo } from "@/components/logo";
+import { Badge, Button, Card, PageTitle, StatusNote, Switch } from "@/components/console/ui";
+import { MixSliders } from "@/components/console/mix-sliders";
 import { assetById } from "@/lib/assets";
-import { mixValid, rebalance, type Slice } from "@/lib/mix";
+import { mixValid, type Slice } from "@/lib/mix";
 import { AiRules } from "@/components/console/ai-rules";
 import { DaoOwnedNotice, useForeignOwner } from "@/components/console/dao-owned";
 import { GuardSliders } from "@/components/console/guard-sliders";
@@ -204,26 +203,9 @@ function TargetMix() {
           </Button>
         </div>
       </div>
-      <ul className="mt-4 space-y-3">
-        {mix.map((s) => {
-          const a = assetById(s.id);
-          const now = p.current[s.id] ?? 0;
-          return (
-            <li key={s.id} className="flex items-center gap-3">
-              <Logo id={s.id} size={26} />
-              <div className="w-[84px] shrink-0 leading-tight sm:w-[110px]">
-                <div className="truncate text-[14px] tracking-[-0.02em]">{a.name}</div>
-                <div className="text-[12px] text-[#6b6b6b] tabular-nums">now {now.toFixed(1)}%</div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <Slider value={s.weight} min={1} max={100 - (mix.length - 1)} onChange={(v) => setMix(rebalance(mix, s.id, v))} color={s.color} label={`${a.name} target share`} />
-              </div>
-              <span className="w-11 text-right text-[17px] tracking-[-0.03em] tabular-nums">{s.weight}%</span>
-            </li>
-          );
-        })}
-      </ul>
-      <MixBar slices={mix} className="mt-4 h-1.5" />
+      <div className="mt-4">
+        <MixSliders mix={mix} onChange={setMix} now={p.current} />
+      </div>
       {p.pending && <p className="mt-3 text-[13px] text-[#6b6b6b]">A swap is in flight. You can change the mix once it settles.</p>}
       {note && (
         <StatusNote tone={note.tone} className="mt-3">
