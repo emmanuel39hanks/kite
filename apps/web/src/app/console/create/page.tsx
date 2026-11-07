@@ -23,7 +23,7 @@ const STEPS = ["Pick what to hold", "Choose how much", "Set the rules", "Name an
 export default function CreatePage() {
   const k = useKite();
   if (!k.ready) return null;
-  return <Wizard initialName={k.draft?.name ?? ""} initialMix={k.draft?.mix ?? []} initialRules={k.draft?.rules ?? k.guardrails} />;
+  return <Wizard initialName={k.draft?.name ?? ""} initialMix={k.draft?.mix ?? []} initialRules={k.guardrails} />;
 }
 
 function Wizard({ initialName, initialMix, initialRules }: { initialName: string; initialMix: Slice[]; initialRules: Guardrails }) {
@@ -87,7 +87,7 @@ function Wizard({ initialName, initialMix, initialRules }: { initialName: string
             />
           )}
           {step === 1 && <AmountStep mix={mix} setMix={setMix} />}
-          {step === 2 && <RulesStep rules={rules} setRules={setRules} />}
+          {step === 2 && <RulesStep rules={rules} setRules={setRules} assets={mix.length} />}
           {step === 3 && <ReviewStep name={name} setName={setName} mix={mix} rules={rules} />}
         </div>
         <div className="flex items-center justify-between gap-3 px-3 pt-3 pb-1.5">
@@ -320,7 +320,7 @@ const RULE_DEFS: RuleDef[] = [
 // Ranges come from one place, so every screen agrees with the vault and with each other.
 const RULES = RULE_DEFS.map((r) => ({ ...r, ...GUARD_BOUNDS[r.key] }));
 
-function RulesStep({ rules, setRules }: { rules: Guardrails; setRules: (g: Guardrails) => void }) {
+function RulesStep({ rules, setRules, assets }: { rules: Guardrails; setRules: (g: Guardrails) => void; assets: number }) {
   const [custom, setCustom] = useState(!PRESETS.some((p) => same(p.g, rules)));
   return (
     <>
@@ -380,7 +380,7 @@ function RulesStep({ rules, setRules }: { rules: Guardrails; setRules: (g: Guard
         <Icon name="help" size={15} className="mt-0.5 shrink-0" />
         <span>
           Every trade Kite makes is at least $1; the vault refuses smaller ones. With these rules, Kite can step in on time once your vault holds about{" "}
-          <span className="text-black">${minToRebalance(rules)}</span>. A smaller vault still invests and holds your plan, it just waits for a bigger drift.
+          <span className="text-black">${minToRebalance(rules, assets)}</span>. A smaller vault still invests and holds your plan, it just waits for a bigger drift.
         </span>
       </p>
     </>

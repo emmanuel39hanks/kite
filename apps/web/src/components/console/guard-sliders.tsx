@@ -25,9 +25,9 @@ const DEFS: FieldDef[] = [
 const FIELDS: Field[] = DEFS.map((f) => ({ ...f, ...GUARD_BOUNDS[f.key] }));
 
 /** The four guardrail sliders, inside the bounds the app allows (GUARD_BOUNDS). */
-export function GuardSliders({ value, onChange, vaultUsd }: { value: Guardrails; onChange: (g: Guardrails) => void; vaultUsd?: number }) {
+export function GuardSliders({ value, onChange, vaultUsd, assets }: { value: Guardrails; onChange: (g: Guardrails) => void; vaultUsd?: number; assets?: number }) {
   // The vault refuses trades under $1: say so when these rules and this vault's size would keep Kite from trading.
-  const warning = vaultUsd ? rebalanceWarning(vaultUsd, value) : null;
+  const warning = vaultUsd ? rebalanceWarning(vaultUsd, value, assets) : null;
   return (
     <>
     {warning && (

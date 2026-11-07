@@ -46,6 +46,8 @@ export function holdings(plan: Target[], balances: bigint[], prices: Record<stri
 
 /** The smallest rebalance trade the vault accepts: it refuses anything under $1 (ERR_TOO_SMALL), so dust can't burn the daily trade count. */
 export const MIN_TRADE_USD = 1;
+/** Sized 2% above the floor: the vault judges the signed quote's USD figure, which can come in a little under ours. */
+export const TRADE_HEADROOM = 1.02;
 
 /**
  * The single best trade right now, or null if nothing is outside the band.
@@ -64,7 +66,7 @@ export function nextTrade(plan: Target[], balances: bigint[], prices: Record<str
   const shortfall = (-buy.driftBps * navUsd) / BPS;
   const cap = (limits.max_trade_bps * navUsd) / BPS;
   const valueUsd = Math.min(surplus, shortfall, cap) * 0.995;
-  if (valueUsd < MIN_TRADE_USD) return null; // the vault would refuse it
+  if (valueUsd < MIN_TRADE_USD * TRADE_HEADROOM) return null; // the vault would refuse it
 
   const amountIn = BigInt(Math.floor((valueUsd / sell.priceUsd) * 10 ** sell.decimals));
   return { sell, buy, amountIn: amountIn > sell.balance ? sell.balance : amountIn, valueUsd };

@@ -45,7 +45,9 @@ function Form({ initial }: { initial: Guardrails }) {
   };
 
   const save = () =>
-    hasVault
+    k.account && !w.preview && k.vaultFound === null
+      ? setNote({ tone: "err", text: "Still reading your vault. Try again in a moment." })
+      : hasVault
       ? act("save", () => live.saveGuardrails(g), "Saved to your vault.")
       : (k.setGuardrails(g), setNote({ tone: "ok", text: "Saved. These go into your vault when you create it." }));
 
@@ -84,7 +86,7 @@ function Form({ initial }: { initial: Guardrails }) {
             </p>
           </div>
           <AiRules current={g} onApply={setG} />
-          <GuardSliders value={g} onChange={setG} vaultUsd={hasVault ? k.portfolio?.value : undefined} />
+          <GuardSliders value={g} onChange={setG} vaultUsd={hasVault && k.portfolio ? k.portfolio.value - k.portfolio.cash : undefined} assets={k.portfolio?.target.length} />
         </Card>
 
         <div className="space-y-3 xl:sticky xl:top-[100px] xl:self-start">

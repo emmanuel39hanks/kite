@@ -18,7 +18,7 @@ import { loadPreview, onPreviewChange, PREVIEW_VAULT, rowsOf, savePreview } from
 import { usePreviewActions } from "@/lib/preview/actions";
 import { verifyAllocation, type Transfer } from "./allocate-check";
 import { NEAR } from "./config";
-import { createVaultArgs, factoryDepositYocto, isFactoryVault } from "./factory";
+import { createVaultArgs, factoryDepositYocto, factoryVaultsBy, isFactoryVault } from "./factory";
 import { refreshMyVault, useMyVault } from "./my-vault";
 import { actionCreators } from "@near-js/transactions";
 import { foreignOwner, notOwnerMessage } from "./dao-view";
@@ -180,7 +180,7 @@ function useRealLive() {
     async (name: string, planSlug: string, mix: Slice[], g: Guardrails) => {
       if (!k.account) throw new Error("Connect a NEAR wallet first");
       if (!mine) throw new Error("Still looking up your vault. Try again in a moment.");
-      if (mine.exists) throw new Error(`You already have a vault: ${mine.vault}`);
+      if (mine.exists || k.vaultFound) throw new Error(`You already have a vault: ${mine.vault}`);
       if (!isFactoryVault(vault)) throw new Error("Couldn't pick a name for your vault");
       // Kite's factory deploys the vault and makes this wallet its owner. Wallets like Meteor won't let an app
       // deploy code to the user's own account, but a function call to the factory is an ordinary transaction.
@@ -193,8 +193,14 @@ function useRealLive() {
         if (!made) await new Promise((r) => setTimeout(r, 1500));
       }
       if (!made) {
+        // Still recorded by the factory means it's still being created, not failed: don't offer a second one.
+        const pending = await factoryVaultsBy(k.account).then((l) => l.some((v) => v.vault === vault)).catch(() => true);
         refreshMyVault(k.account);
-        throw new Error(`The vault wasn't created. Your ${NEAR.factoryDepositNear} NEAR goes back to your wallet; if it hasn't in a few minutes, the factory holds it for you to claim.`);
+        throw new Error(
+          pending
+            ? `${vault} is still being created. Give it a minute and reload; don't create another.`
+            : `The vault wasn't created. Your ${NEAR.factoryDepositNear} NEAR goes back to your wallet; if it hasn't in a few minutes, the factory holds it for you to claim.`,
+        );
       }
       refreshMyVault(k.account, { vault, exists: true });
       k.setPlanMeta(name, planSlug);

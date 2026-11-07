@@ -1,4 +1,4 @@
-import { holdings, nextTrade, toUsdE6, tradeSlippageBps } from "./drift.ts";
+import { holdings, MIN_TRADE_USD, nextTrade, toUsdE6, tradeSlippageBps } from "./drift.ts";
 import { MIN_GAS_YOCTO, callRebalance, callSettle, readGasLeft, readVault } from "./near.ts";
 import { prices as livePrices, quoteFull, signedPayload, status as swapStatus, submitDeposit, verifyPayload } from "./oneclick.ts";
 
@@ -85,6 +85,16 @@ export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 12
   if (!(Number.isFinite(inUsd) && Number.isFinite(outUsd) && outUsd >= inUsd * keep && Number(q.minAmountOut) >= Number(q.amountOut) * keep)) {
     log("Quote costs more than the price limit. Skipping; the vault would refuse it anyway.");
     return { action: "skipped" as const, reason: "price" };
+  }
+  // The vault sizes the trade by the quote's own USD figure. If that falls under $1 or over the per-trade cap, it
+  // refuses the call, nothing changes, and tomorrow's run would try the same thing and burn gas again. Skip instead.
+  if (inUsd < MIN_TRADE_USD) {
+    log(`Quoted at $${inUsd.toFixed(2)}, under the vault's $1 minimum. Skipping.`);
+    return { action: "skipped" as const, reason: "size" };
+  }
+  if (inUsd * 10_000 > navUsd * v.limits.max_trade_bps * 0.995) {
+    log(`Quoted at $${inUsd.toFixed(2)}, over the vault's ${v.limits.max_trade_bps / 100}% per-trade cap. Skipping.`);
+    return { action: "skipped" as const, reason: "size" };
   }
   if (dry || !q.depositAddress) {
     log("Dry run: not sending.");

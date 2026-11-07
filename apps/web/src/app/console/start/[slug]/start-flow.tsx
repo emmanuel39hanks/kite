@@ -41,13 +41,12 @@ export function StartFlow({ slug }: { slug: string }) {
 
   // What we're setting up: a ready-made plan, the builder's draft, or the existing vault.
   const setup = useMemo(() => {
-    // The builder's rules come from its saved draft: the in-memory guardrails reset when a wallet connects.
-    if (topUp) return k.portfolio ? { name: k.portfolio.name, mix: k.portfolio.target, slug: k.portfolio.planSlug, rules: k.guardrails } : null;
-    if (slug === "custom") return k.draft ? { name: k.draft.name, mix: k.draft.mix, slug: "custom", rules: k.draft.rules ?? k.guardrails } : null;
-    return plan && !plan.comingSoon ? { name: plan.name, mix: plan.mix, slug: plan.slug, rules: k.guardrails } : null;
-  }, [topUp, slug, plan, k.draft, k.portfolio, k.guardrails]);
-  // Once the vault exists its own limits are the truth.
-  const rules = k.vaultFound ? k.guardrails : (setup?.rules ?? k.guardrails);
+    if (topUp) return k.portfolio ? { name: k.portfolio.name, mix: k.portfolio.target, slug: k.portfolio.planSlug } : null;
+    if (slug === "custom") return k.draft ? { name: k.draft.name, mix: k.draft.mix, slug: "custom" } : null;
+    return plan && !plan.comingSoon ? { name: plan.name, mix: plan.mix, slug: plan.slug } : null;
+  }, [topUp, slug, plan, k.draft, k.portfolio]);
+  // Before the vault exists these are the saved rules from Create or Guardrails; after, the vault's own limits.
+  const rules = k.guardrails;
   const [investing, setInvesting] = useState(0);
 
   const [step, setStep] = useState<Step>(topUp ? "money" : "vault");
@@ -361,7 +360,7 @@ function MoneyStep({ mix, rules, onDone }: { mix: Slice[]; rules: Guardrails; on
   const MIN = minToInvest(mix);
   const valid = Number.isFinite(n) && n >= MIN;
   const already = k.portfolio?.value ?? 0;
-  const sizeNote = valid ? rebalanceWarning(already + n, rules) : null;
+  const sizeNote = valid ? rebalanceWarning(already + n, rules, mix.length) : null;
 
   useEffect(() => {
     if (!k.account || live.preview) return;

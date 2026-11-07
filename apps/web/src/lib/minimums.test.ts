@@ -13,7 +13,9 @@ test("the smallest deposit buys every asset in the plan at $0.25 a swap", () => 
 test("rebalancing needs the trade at the band to reach the vault's $1 floor", () => {
   assert.equal(minToRebalance({ driftBand: 5, maxTradePct: 10 }), 21);
   assert.equal(minToRebalance({ driftBand: 5, maxTradePct: 50 }), 21);
-  assert.equal(minToRebalance({ driftBand: 10, maxTradePct: 3 }), 34);
+  assert.equal(minToRebalance({ driftBand: 10, maxTradePct: 3 }), 35);
+  // Four equal holdings: one 5 points over leaves three about 1.7 under, so the trade is smaller.
+  assert.equal(minToRebalance({ driftBand: 5, maxTradePct: 10 }, 4), 62);
   assert.equal(biggestTradeUsd(2.93, { maxTradePct: 10 }), 0.293);
   assert.equal(maxTradeNeeded(2.93), 35);
   assert.equal(maxTradeNeeded(1.5), null);

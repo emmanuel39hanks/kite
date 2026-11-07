@@ -10,6 +10,8 @@ import type { Guardrails } from "./store";
 
 export const MIN_SWAP_USD = 0.25;
 export const MIN_TRADE_USD = 1;
+/** Kite sizes trades 2% above the floor (packages/keeper drift.ts), since the vault judges the quote's USD figure. */
+const HEADROOM = 1.02;
 /** The invest step refuses less than this in total. */
 export const MIN_INVEST_USD = 0.5;
 
@@ -24,12 +26,15 @@ export function minToInvest(mix: Slice[]): number {
 }
 
 /**
- * About how much a vault must hold for Kite to rebalance as soon as a holding crosses the band. Kite's trade is the
- * smaller of the drift and the per-trade cap, so at the band it's about min(band, cap)% of the vault, and that must
- * reach $1. Below this the vault still invests and holds; it just needs a bigger drift before a trade is allowed.
+ * About how much a vault must hold for Kite to rebalance as soon as a holding crosses the band. Kite sells the most
+ * overweight holding into the most underweight one, sized to the smallest of the surplus, the shortfall and the cap.
+ * When one of `assets` holdings is `band` points over, the others are typically band/(assets−1) points under each,
+ * so the trade is about min(band/(assets−1), cap)% of the vault, and that must reach $1. Below this the vault still
+ * invests and holds; it just needs a bigger drift before a trade is allowed.
  */
-export function minToRebalance(g: Pick<Guardrails, "driftBand" | "maxTradePct">): number {
-  return up((MIN_TRADE_USD * 100) / Math.min(g.driftBand, g.maxTradePct) / 0.995, 1);
+export function minToRebalance(g: Pick<Guardrails, "driftBand" | "maxTradePct">, assets = 2): number {
+  const pct = Math.min(g.driftBand / Math.max(1, assets - 1), g.maxTradePct);
+  return up(((MIN_TRADE_USD * HEADROOM * 100) / pct) / 0.995, 1);
 }
 
 /** The largest trade the rules allow in a vault worth `valueUsd`. */
@@ -38,19 +43,19 @@ export const biggestTradeUsd = (valueUsd: number, g: Pick<Guardrails, "maxTradeP
 /** The smallest per-trade cap (in whole %) that lets a vault worth `valueUsd` make a $1 trade, or null if none can (over 50%). */
 export function maxTradeNeeded(valueUsd: number): number | null {
   if (!(valueUsd > 0)) return null;
-  const pct = Math.ceil(((MIN_TRADE_USD / 0.995) * 100) / valueUsd);
+  const pct = Math.ceil(((MIN_TRADE_USD * HEADROOM) / 0.995) * 100 / valueUsd);
   return pct <= 50 ? pct : null;
 }
 
 const usd = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: n < 100 ? 2 : 0, maximumFractionDigits: n < 100 ? 2 : 0 })}`;
 
 /** One plain sentence about whether Kite can rebalance a vault of this size under these rules, or null when it's fine. */
-export function rebalanceWarning(valueUsd: number, g: Pick<Guardrails, "driftBand" | "maxTradePct">): string | null {
+export function rebalanceWarning(valueUsd: number, g: Pick<Guardrails, "driftBand" | "maxTradePct">, assets = 2): string | null {
   if (!(valueUsd > 0)) return null;
-  const floor = minToRebalance(g);
+  const floor = minToRebalance(g, assets);
   if (valueUsd >= floor) return null;
   const biggest = biggestTradeUsd(valueUsd, g);
-  if (biggest < MIN_TRADE_USD / 0.995) {
+  if (biggest * 0.995 < MIN_TRADE_USD * HEADROOM) {
     const need = maxTradeNeeded(valueUsd);
     return `With ${usd(valueUsd)} in the vault, Kite's biggest trade is ${usd(biggest)}, but the vault only accepts trades of $1 or more, so Kite can't rebalance it. ${
       need ? `Raise “Biggest single trade” to at least ${need}%, or add money` : "Add money"
