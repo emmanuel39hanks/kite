@@ -22,7 +22,7 @@ import { createVaultArgs, factoryDepositYocto, factoryVaultsBy, isFactoryVault }
 import { refreshMyVault, useMyVault } from "./my-vault";
 import { actionCreators } from "@near-js/transactions";
 import { foreignOwner, notOwnerMessage } from "./dao-view";
-import { ALLOCATE_TGAS_EACH, agentAllowanceYocto, allocateCalls, depositUsdcFromWallet, fromContractLimits, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
+import { ALLOCATE_TGAS_EACH, agentAllowanceYocto, allocateCalls, depositUsdcFromWallet, fromContractLimits, toContractPlan, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
 import { useWallet } from "./wallet";
 
 const provider = new JsonRpcProvider({ url: NEAR.rpc });
@@ -248,6 +248,17 @@ function useRealLive() {
     [k, ownerSend],
   );
 
+  /** New target shares for the vault's same assets (the vault also refuses while a swap is in flight). */
+  const savePlan = useCallback(
+    async (mix: Slice[]) => {
+      if (k.portfolio?.pending) throw new Error("A swap is in flight. Change the mix once it has settled.");
+      const hash = await ownerSend([ownerCall("set_plan", { plan: toContractPlan(mix) })]);
+      k.addEvent({ kind: "guardrails", title: "Target mix updated", detail: `${mix.map((s) => `${assetById(s.id).ticker} ${s.weight}%`).join(", ")}. Kite trades toward it at its next check.`, tx: hash });
+      return hash;
+    },
+    [k, ownerSend],
+  );
+
   const revoke = useCallback(async () => {
     const hash = await ownerSend([ownerCall("revoke_agent", {})]);
     k.addEvent({ kind: "key", title: "Kite's key revoked", detail: "Deleted from your vault. Kite can't trade.", tx: hash });
@@ -312,5 +323,5 @@ function useRealLive() {
     return d;
   }, [k, vault]);
 
-  return { vault, createVault, depositFromWallet, allocate, saveGuardrails, revoke, restoreKey, unpause, checkNow, withdrawAll, closeVault };
+  return { vault, createVault, depositFromWallet, allocate, saveGuardrails, savePlan, revoke, restoreKey, unpause, checkNow, withdrawAll, closeVault };
 }

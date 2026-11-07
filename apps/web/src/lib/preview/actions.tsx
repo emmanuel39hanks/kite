@@ -169,6 +169,17 @@ export function usePreviewActions() {
     [addEvent, setGuardrails],
   );
 
+  /** New target shares for the same assets. */
+  const savePlan = useCallback(
+    async (mix: Slice[]) => {
+      mustVault();
+      updatePreview((x) => ((x.vault!.plan = mix), x));
+      addEvent({ ...sim, kind: "guardrails", title: "Target mix updated", detail: mix.map((s) => `${assetById(s.id).ticker} ${s.weight}%`).join(", ") });
+      return "";
+    },
+    [addEvent],
+  );
+
   const setKey = useCallback(
     async (on: boolean) => {
       mustVault();
@@ -293,6 +304,7 @@ export function usePreviewActions() {
     allocate,
     investAsOf,
     saveGuardrails,
+    savePlan,
     revoke,
     restoreKey,
     unpause,

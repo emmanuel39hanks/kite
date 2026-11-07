@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/console/icons";
-import { Badge, Button, Card, PageTitle, StatusNote, Switch } from "@/components/console/ui";
+import { Badge, Button, Card, PageTitle, Slider, StatusNote, Switch } from "@/components/console/ui";
+import { MixBar } from "@/components/charts";
+import { Logo } from "@/components/logo";
+import { assetById } from "@/lib/assets";
+import { mixValid, rebalance, type Slice } from "@/lib/mix";
 import { AiRules } from "@/components/console/ai-rules";
 import { DaoOwnedNotice, useForeignOwner } from "@/components/console/dao-owned";
 import { GuardSliders } from "@/components/console/guard-sliders";
@@ -79,6 +83,8 @@ function Form({ initial }: { initial: Guardrails }) {
       )}
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-3">
+        {hasVault && k.portfolio && !ownedBy && <TargetMix key={JSON.stringify(k.portfolio.target)} />}
         <Card className="p-2">
           <div className="px-4 pt-3 pb-4">
             <p className="max-w-[60ch] text-[15px] leading-6 text-[#6b6b6b]">
@@ -88,6 +94,7 @@ function Form({ initial }: { initial: Guardrails }) {
           <AiRules current={g} onApply={setG} />
           <GuardSliders value={g} onChange={setG} vaultUsd={hasVault && k.portfolio ? k.portfolio.value - k.portfolio.cash : undefined} assets={k.portfolio?.target.length} />
         </Card>
+        </div>
 
         <div className="space-y-3 xl:sticky xl:top-[100px] xl:self-start">
           <Card className="p-5">
@@ -145,6 +152,76 @@ function Form({ initial }: { initial: Guardrails }) {
         </div>
       </div>
     </>
+  );
+}
+
+/** The vault's target shares, changed in place: same assets, one signature (`set_plan`). Kite trades toward the new
+ *  mix at its next check, inside the guardrails. */
+function TargetMix() {
+  const k = useKite();
+  const live = useLive();
+  const p = k.portfolio!;
+  const [mix, setMix] = useState<Slice[]>(p.target);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const dirty = JSON.stringify(mix.map((s) => s.weight)) !== JSON.stringify(p.target.map((s) => s.weight));
+  const save = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      await live.savePlan(mix);
+      setNote({ tone: "ok", text: "Saved to your vault. Kite trades toward the new mix at its next check, inside your guardrails." });
+    } catch (e) {
+      setNote({ tone: "err", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card className="p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-[18px] tracking-[-0.03em]">Target mix</h2>
+          <p className="mt-1 text-[13px] leading-5 text-[#6b6b6b]">What Kite keeps your vault at. Change a share and the others move so it stays 100%.</p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          {dirty && (
+            <Button size="sm" variant="ghost" onClick={() => setMix(p.target)}>
+              Undo
+            </Button>
+          )}
+          <Button size="sm" variant="primary" onClick={save} disabled={!dirty || !mixValid(mix) || !!p.pending} loading={busy}>
+            Save mix
+          </Button>
+        </div>
+      </div>
+      <ul className="mt-4 space-y-3">
+        {mix.map((s) => {
+          const a = assetById(s.id);
+          const now = p.current[s.id] ?? 0;
+          return (
+            <li key={s.id} className="flex items-center gap-3">
+              <Logo id={s.id} size={26} />
+              <div className="w-[84px] shrink-0 leading-tight sm:w-[110px]">
+                <div className="truncate text-[14px] tracking-[-0.02em]">{a.name}</div>
+                <div className="text-[12px] text-[#6b6b6b] tabular-nums">now {now.toFixed(1)}%</div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <Slider value={s.weight} min={1} max={100 - (mix.length - 1)} onChange={(v) => setMix(rebalance(mix, s.id, v))} color={s.color} label={`${a.name} target share`} />
+              </div>
+              <span className="w-11 text-right text-[17px] tracking-[-0.03em] tabular-nums">{s.weight}%</span>
+            </li>
+          );
+        })}
+      </ul>
+      <MixBar slices={mix} className="mt-4 h-1.5" />
+      {p.pending && <p className="mt-3 text-[13px] text-[#6b6b6b]">A swap is in flight. You can change the mix once it settles.</p>}
+      {note && (
+        <StatusNote tone={note.tone} className="mt-3">
+          {note.text}
+        </StatusNote>
+      )}
+    </Card>
   );
 }
 
