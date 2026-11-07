@@ -46,6 +46,9 @@ export type Portfolio = {
   owner?: string;
   /** An account the vault has been offered to (propose_owner) and that hasn't accepted yet. */
   pendingOwner?: string | null;
+  /** When Kite last traded this vault (ms), from the vault itself; 0 if never. */
+  lastTradeMs?: number;
+  tradesToday?: number;
 };
 
 export type ActivityEvent = {

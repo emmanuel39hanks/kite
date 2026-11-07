@@ -139,14 +139,22 @@ export function LiveSync() {
           pending: p ? { sell: p.sell, buy: p.buy, depositAddress: p.deposit_address } : null,
           owner: s.status.owner,
           pendingOwner: s.status.pending_owner ?? null,
+          lastTradeMs: s.status.last_trade_ns ? Math.floor(s.status.last_trade_ns / 1e6) : 0,
+          tradesToday: s.status.trades_today,
         },
       });
     };
     tick().catch(() => {});
     const t = setInterval(() => tick().catch(() => {}), 15_000);
+    // Browsers slow timers in hidden tabs (to about once a minute), so read again the moment the page is back in view.
+    const onShow = () => document.visibilityState === "visible" && tick().catch(() => {});
+    document.addEventListener("visibilitychange", onShow);
+    window.addEventListener("focus", onShow);
     return () => {
       alive = false;
       clearInterval(t);
+      document.removeEventListener("visibilitychange", onShow);
+      window.removeEventListener("focus", onShow);
     };
   }, [vault, setVault]);
 

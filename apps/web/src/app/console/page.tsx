@@ -124,6 +124,12 @@ function Live({ p }: { p: Portfolio }) {
   const h = useHistory(DAYS[range]);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  // Kite traded while this page was open: say so, so the new numbers don't change silently.
+  const [seenTrade, setSeenTrade] = useState(p.lastTradeMs ?? 0);
+  if ((p.lastTradeMs ?? 0) > seenTrade) {
+    setSeenTrade(p.lastTradeMs ?? 0);
+    setMsg({ tone: "ok", text: "Kite just rebalanced your vault. The new mix is below; Activity has the transaction." });
+  }
   // A message left by another page that sent us back here (e.g. "Target mix saved").
   useEffect(() => {
     try {
@@ -292,6 +298,14 @@ function Live({ p }: { p: Portfolio }) {
           </Stat>
           <Stat label="Next check" aside={k.keyActive ? <Badge tone="green">Kite&apos;s key on</Badge> : <Badge>Key revoked</Badge>}>
             <Countdown />
+            {!live.preview && p.lastTradeMs ? (
+              <p className="mt-1 text-[12px] leading-4 text-[#6b6b6b]">
+                Kite last traded <Ago ms={p.lastTradeMs} />.{" "}
+                <a href="/console/activity" className="underline underline-offset-2 hover:text-black">
+                  See it
+                </a>
+              </p>
+            ) : null}
             {live.preview && <p className="mt-1 text-[12px] leading-4 text-[#6b6b6b]">Preview has no daily job. Press Check now to run it.</p>}
           </Stat>
         </div>
@@ -420,6 +434,18 @@ function Stat({ label, aside, children }: { label: string; aside?: React.ReactNo
       <div>{children}</div>
     </Card>
   );
+}
+
+/** "3 min ago", kept current. */
+function Ago({ ms }: { ms: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const m = Math.max(0, Math.round((now - ms) / 60_000));
+  const text = m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+  return <time dateTime={new Date(ms).toISOString()}>{text}</time>;
 }
 
 function Countdown() {
