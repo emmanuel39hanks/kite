@@ -12,6 +12,7 @@ import { JsonRpcProvider } from "near-api-js";
 import { NEAR, vaultIdFor } from "./config";
 import { factoryVaultId, factoryVaultsBy, validVaultName } from "./factory";
 import type { FactoryVault } from "./factory";
+import { myDaos } from "./known-daos";
 
 const provider = new JsonRpcProvider({ url: NEAR.rpc });
 const NO_CODE = "11111111111111111111111111111111";
@@ -41,8 +42,8 @@ async function nameFree(name: string): Promise<boolean> {
  * `vault` is the one the screens act on: the vault this browser picked for the account, or its newest open vault,
  * or (when none, or when the person chose "New vault") the free factory name a new one would get.
  */
-export type MyVault = { vault: string; exists: boolean; open: string[]; next: string };
-type Found = { open: string[]; inflight: string | null; next: string };
+export type MyVault = { vault: string; exists: boolean; open: string[]; next: string; daoVaults: { vault: string; dao: string }[] };
+type Found = { open: string[]; inflight: string | null; next: string; daoVaults?: { vault: string; dao: string }[] };
 
 /** A factory name from an account id: `emmanuel.near` → `emmanuel`, `a.b.near` → `a-b`, long hex ids shortened. */
 export function baseVaultName(owner: string): string {
@@ -70,7 +71,11 @@ export async function findMyVaults(owner: string): Promise<Found> {
   const base = baseVaultName(owner);
   for (let i = 1; i <= 40; i++) {
     const name = i === 1 ? base : `${base.slice(0, 28)}-${i}`;
-    if (factoryVaultId(name) !== inflight && (await nameFree(name))) return { open, inflight, next: factoryVaultId(name) };
+    if (factoryVaultId(name) !== inflight && (await nameFree(name))) {
+      // Vaults of the DAOs this wallet is in: shown on Home too, read-only (money and changes are DAO votes).
+      const daoVaults = (await myDaos(owner).catch(() => [])).flatMap((d) => d.vaults.map((vault) => ({ vault, dao: d.dao })));
+      return { open, inflight, next: factoryVaultId(name), daoVaults };
+    }
   }
   throw new Error("Couldn't find a free vault name");
 }
@@ -86,10 +91,12 @@ function readPick(owner: string): string | null {
 
 /** The vault to show, from what was found and what this browser picked ("new" = about to create one). */
 export function view(f: Found, pick: string | null): MyVault {
-  const base = { open: f.open, next: f.next };
+  const daoVaults = f.daoVaults ?? [];
+  const base = { open: f.open, next: f.next, daoVaults };
   if (pick === "new") return { ...base, vault: f.inflight ?? f.next, exists: false };
-  if (pick && f.open.includes(pick)) return { ...base, vault: pick, exists: true };
+  if (pick && (f.open.includes(pick) || daoVaults.some((d) => d.vault === pick))) return { ...base, vault: pick, exists: true };
   if (f.open.length) return { ...base, vault: f.open[0], exists: true };
+  if (daoVaults.length) return { ...base, vault: daoVaults[0].vault, exists: true };
   return { ...base, vault: f.inflight ?? f.next, exists: false };
 }
 

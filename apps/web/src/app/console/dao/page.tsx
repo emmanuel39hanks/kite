@@ -16,7 +16,7 @@ import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
 import { useMarket } from "@/lib/market/use-market";
 import { verifyAllocateProposal, type CheckedSwap } from "@/lib/near/allocate-check";
 import { accountUrl, NEAR } from "@/lib/near/config";
-import { useMyVault } from "@/lib/near/my-vault";
+import { pickMyVault, refreshMyVault, useMyVault } from "@/lib/near/my-vault";
 import { myDaos, rememberDao, type MyDao } from "@/lib/near/known-daos";
 import { addProposalAction, approveAction, describeCalls, vaultProposals, type DaoProposal } from "@/lib/near/dao";
 import {
@@ -122,7 +122,7 @@ function DaoView() {
             </Card>
           )}
           {vault ? (
-            <VaultDao key={vault} vault={vault} own={!fromUrl} onCreate={() => setPicked("Create a vault")} />
+            <VaultDao key={vault} vault={vault} own={!fromUrl} onCreate={() => setPicked("Create a vault")} initialTab={TAB_PARAM[params.get("tab") ?? ""]} />
           ) : (
             <Card className="mt-3">
               <Empty title="Pick a vault" text="Enter a Kite vault, like treasury.kitevaults.near, to see who owns it and what its DAO is voting on." />
@@ -249,13 +249,14 @@ async function load(vault: string): Promise<Loaded> {
   return { state, owner, pending };
 }
 
-function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCreate: () => void }) {
+function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: boolean; onCreate: () => void; initialTab?: Tab }) {
   const w = useWallet();
+  const router = useRouter();
   const [data, setData] = useState<Loaded | { error: string } | null>(null);
   const [rev, setRev] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<Note>(null);
-  const [tab, setTab] = useState<Tab | null>(null);
+  const [tab, setTab] = useState<Tab | null>(initialTab ?? null);
 
   useEffect(() => {
     let alive = true;
@@ -334,7 +335,23 @@ function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCre
 
   return (
     <>
-      <Overview vault={vault} state={state} owner={owner?.dao ?? null} offer={offer} onRefresh={() => setRev((r) => r + 1)} />
+      <Overview
+        vault={vault}
+        state={state}
+        owner={owner?.dao ?? null}
+        offer={offer}
+        onRefresh={() => setRev((r) => r + 1)}
+        onDashboard={
+          w.accountId && !w.preview
+            ? () => {
+                rememberDao(state.status.owner);
+                pickMyVault(w.accountId!, vault);
+                refreshMyVault(w.accountId!);
+                router.push("/console");
+              }
+            : undefined
+        }
+      />
 
       {note && (
         <StatusNote tone={note.tone} className="mt-3">
@@ -370,8 +387,9 @@ function VaultDao({ vault, own, onCreate }: { vault: string; own: boolean; onCre
 
 const TABS = ["Proposals", "Add money", "Change"] as const;
 type Tab = (typeof TABS)[number];
+const TAB_PARAM: Record<string, Tab> = { votes: "Proposals", add: "Add money", change: "Change" };
 
-function Overview({ vault, state, owner, offer, onRefresh }: { vault: string; state: VaultState; owner: string | null; offer: string | null; onRefresh: () => void }) {
+function Overview({ vault, state, owner, offer, onRefresh, onDashboard }: { vault: string; state: VaultState; owner: string | null; offer: string | null; onRefresh: () => void; onDashboard?: () => void }) {
   const { quote } = useMarket();
   const rows = state.plan.map((t, i) => {
     const a = assetByIntentsId(t.token);
@@ -395,6 +413,11 @@ function Overview({ vault, state, owner, offer, onRefresh }: { vault: string; st
           </div>
         </div>
         <div className="flex gap-2">
+          {onDashboard && (
+            <Button size="sm" variant="primary" icon="home" onClick={onDashboard}>
+              Dashboard
+            </Button>
+          )}
           <Button size="sm" icon="refresh" onClick={onRefresh}>
             Refresh
           </Button>

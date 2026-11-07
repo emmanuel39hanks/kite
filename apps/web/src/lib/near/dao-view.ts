@@ -34,7 +34,7 @@ export function openOffer(status: { owner: string; pending_owner?: string | null
 }
 
 export function notOwnerMessage(owner: string): string {
-  return `This vault belongs to ${owner}. Changes go through its proposals.`;
+  return `Owned by ${owner}. Adding money and every change are DAO votes.`;
 }
 
 /** yoctoNEAR as a short NEAR amount, e.g. 100000000000000000000000n → "0.1". */

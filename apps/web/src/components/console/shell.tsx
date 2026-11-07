@@ -236,7 +236,7 @@ function AccountArea() {
             </div>
           </div>
           <Menu.Separator className="my-1 h-px bg-black/[0.06]" />
-          {!w.preview && mine && mine.open.length > 0 && (
+          {!w.preview && mine && mine.open.length + mine.daoVaults.length > 0 && (
             <>
               <div className="px-3 pt-1.5 pb-1 text-[12px] text-[#6b6b6b]">Your vaults</div>
               {mine.open.map((v) => (
@@ -254,6 +254,24 @@ function AccountArea() {
                   <span className="min-w-0 flex-1 leading-tight">
                     <span className="block truncate">{k.names[v]?.name ?? "Kite vault"}</span>
                     <span className="block truncate font-mono text-[11px] text-[#6b6b6b]">{v.replace(`.${NEAR.factory}`, "")}</span>
+                  </span>
+                </Menu.Item>
+              ))}
+              {mine.daoVaults.map((d) => (
+                <Menu.Item
+                  key={d.vault}
+                  onSelect={() => {
+                    pickMyVault(w.accountId!, d.vault);
+                    router.push("/console");
+                  }}
+                  className="flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] outline-none data-[highlighted]:bg-[#f5f5f7]"
+                >
+                  <span className={`grid h-[17px] w-[17px] place-items-center ${d.vault === mine.vault ? "text-[#05a800]" : "text-transparent"}`}>
+                    <Icon name="check" size={15} />
+                  </span>
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block truncate">{d.vault.replace(`.${NEAR.factory}`, "")}</span>
+                    <span className="block truncate text-[11px] text-[#6b6b6b]">DAO: {d.dao}</span>
                   </span>
                 </Menu.Item>
               ))}

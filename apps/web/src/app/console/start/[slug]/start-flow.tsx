@@ -39,6 +39,10 @@ export function StartFlow({ slug }: { slug: string }) {
   const w = useWallet();
   const topUp = slug === "add-money";
   const plan = planBySlug(slug);
+  // Setting up a plan from a DAO's vault on screen: this is a personal vault, so switch to a new one.
+  useEffect(() => {
+    if (!topUp && ownedBy && w.accountId) pickMyVault(w.accountId, "new");
+  }, [topUp, ownedBy, w.accountId]);
 
   // What we're setting up: a ready-made plan, the builder's draft, or the existing vault.
   const setup = useMemo(() => {

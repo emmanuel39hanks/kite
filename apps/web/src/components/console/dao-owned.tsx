@@ -14,7 +14,7 @@ export function useForeignOwner(): string | null {
   return foreignOwner(k.portfolio?.owner, k.account);
 }
 
-export const daoViewHref = (vault: string) => `/console/dao?vault=${encodeURIComponent(vault)}`;
+export const daoViewHref = (vault: string, tab?: "add" | "change" | "votes") => `/console/dao?vault=${encodeURIComponent(vault)}${tab ? `&tab=${tab}` : ""}`;
 
 /** Shown in place of owner controls once the vault belongs to someone else. */
 export function DaoOwnedNotice({ owner, vault, className = "" }: { owner: string; vault: string; className?: string }) {
@@ -23,10 +23,20 @@ export function DaoOwnedNotice({ owner, vault, className = "" }: { owner: string
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
         <Icon name="dao" size={20} />
       </span>
-      <p className="min-w-0 flex-1 text-[14px] leading-5">{notOwnerMessage(owner)}</p>
-      <Button size="sm" href={daoViewHref(vault)} iconRight="arrow-right">
-        Open the DAO view
-      </Button>
+      <p className="min-w-0 flex-1 text-[14px] leading-5">
+        <span className="text-[#6b6b6b]">{notOwnerMessage(owner)}</span>
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" href={daoViewHref(vault, "votes")}>
+          Votes
+        </Button>
+        <Button size="sm" href={daoViewHref(vault, "change")}>
+          Propose a change
+        </Button>
+        <Button size="sm" variant="primary" icon="deposit" href={daoViewHref(vault, "add")}>
+          Add money
+        </Button>
+      </div>
     </Card>
   );
 }

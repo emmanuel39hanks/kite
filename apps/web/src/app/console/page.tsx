@@ -17,6 +17,7 @@ import { accountUrl, NEAR } from "@/lib/near/config";
 import { useLive } from "@/lib/near/live";
 import { useWallet } from "@/lib/near/wallet";
 import { pickMyVault, useMyVault } from "@/lib/near/my-vault";
+import { VaultSwitcher } from "@/components/console/vault-switcher";
 import { PLAN_DATA } from "@/lib/plans";
 import { driftOf, useKite, type Guardrails, type Portfolio } from "@/lib/store";
 import { nextTradeUsd, tradeBigEnough } from "@/lib/minimums";
@@ -243,7 +244,7 @@ function Live({ p }: { p: Portfolio }) {
           </>
         }
       >
-        {p.name}
+        <VaultSwitcher title={p.name} />
       </PageTitle>
 
       {msg && (

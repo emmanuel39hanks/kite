@@ -218,7 +218,11 @@ export function KiteProvider({ children }: { children: ReactNode }) {
               vaultFound: true,
               portfolio: {
                 ...d.portfolio,
-                name: d.portfolio.name || s.names[d.portfolio.vault]?.name || s.name,
+                // A DAO's vault is called by its own name, not this wallet's plan name.
+                name:
+                  d.portfolio.name ||
+                  s.names[d.portfolio.vault]?.name ||
+                  (d.portfolio.owner && s.account && d.portfolio.owner !== s.account ? d.portfolio.vault.split(".")[0] : s.name),
                 planSlug: d.portfolio.planSlug || s.names[d.portfolio.vault]?.planSlug || s.planSlug,
               },
               guardrails: d.guardrails,
