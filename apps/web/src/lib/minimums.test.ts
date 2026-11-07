@@ -30,3 +30,12 @@ test("the warning says plainly when Kite can't trade, and is quiet when it can",
   assert.equal(rebalanceWarning(500, { driftBand: 5, maxTradePct: 10 }), null);
   assert.equal(rebalanceWarning(0, { driftBand: 5, maxTradePct: 10 }), null);
 });
+
+test("the trade Kite would make now, and whether the vault accepts it", async () => {
+  const { nextTradeUsd, tradeBigEnough } = await import("./minimums");
+  // $2.89 at 50/50 against a 90/10 target: 40 points each way.
+  assert.ok(!tradeBigEnough(nextTradeUsd(2.89, [-40, 40], { maxTradePct: 10 })));
+  const t = nextTradeUsd(2.89, [-40, 40], { maxTradePct: 50 });
+  assert.ok(tradeBigEnough(t) && t > 1.1 && t < 1.16);
+  assert.equal(nextTradeUsd(2.89, [0, 0], { maxTradePct: 50 }), 0);
+});

@@ -63,3 +63,18 @@ export function rebalanceWarning(valueUsd: number, g: Pick<Guardrails, "driftBan
   }
   return `With ${usd(valueUsd)} in the vault, Kite only trades once a holding has drifted far enough for the trade to reach $1, so later than your ${g.driftBand}-point rule. From about ${usd(floor)}, it steps in right at ${g.driftBand} points.`;
 }
+
+/**
+ * Roughly the trade Kite would make now, the keeper's rule: the most overweight holding sold into the most
+ * underweight, sized to the smallest of the surplus, the shortfall and the cap. `drifts` are now − target, in points.
+ */
+export function nextTradeUsd(investedUsd: number, drifts: number[], g: Pick<Guardrails, "maxTradePct">): number {
+  if (!(investedUsd > 0) || !drifts.length) return 0;
+  const over = Math.max(...drifts);
+  const under = -Math.min(...drifts);
+  if (over <= 0 || under <= 0) return 0;
+  return (Math.min(over, under, g.maxTradePct) / 100) * investedUsd * 0.995;
+}
+
+/** Whether a trade of this size clears the vault's $1 floor with the keeper's margin. */
+export const tradeBigEnough = (usd: number) => usd >= MIN_TRADE_USD * HEADROOM;

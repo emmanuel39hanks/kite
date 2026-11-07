@@ -18,6 +18,7 @@ import { useLive } from "@/lib/near/live";
 import { useWallet } from "@/lib/near/wallet";
 import { PLAN_DATA } from "@/lib/plans";
 import { driftOf, useKite, type Guardrails, type Portfolio } from "@/lib/store";
+import { nextTradeUsd, tradeBigEnough } from "@/lib/minimums";
 import { backtest, holdingsValue, useHistory, useMarket, useYields } from "@/lib/market/use-market";
 
 const RANGES = ["1W", "1M", "1Y"] as const;
@@ -181,6 +182,8 @@ function Live({ p }: { p: Portfolio }) {
   const invested = p.value - p.cash > 0.5;
   const worst = invested && rows.length ? Math.max(...rows.map((r) => Math.abs(r.drift))) : 0;
   const offPlan = invested && worst >= k.guardrails.driftBand;
+  // Off plan, but the trade it calls for is under the vault's $1 floor: say so instead of promising a rebalance.
+  const tooSmall = offPlan && !tradeBigEnough(nextTradeUsd(p.value - p.cash, driftOf(p).map((d) => d.drift), k.guardrails));
 
   const act = async (name: string, fn: () => Promise<unknown>, ok: string) => {
     setBusy(name);
@@ -273,10 +276,19 @@ function Live({ p }: { p: Portfolio }) {
           </Stat>
           <Stat
             label="Plan health"
-            aside={p.paused ? <Badge tone="red">Paused</Badge> : !invested ? <Badge>Not invested</Badge> : offPlan ? <Badge tone="amber">Rebalance due</Badge> : <Badge tone="green">On plan</Badge>}
+            aside={p.paused ? <Badge tone="red">Paused</Badge> : !invested ? <Badge>Not invested</Badge> : offPlan ? (tooSmall ? <Badge tone="amber">Trade too small</Badge> : <Badge tone="amber">Rebalance due</Badge>) : <Badge tone="green">On plan</Badge>}
           >
             <span className="text-[28px] leading-9 tracking-[-0.05em] tabular-nums">{worst.toFixed(1)}</span>
             <span className="text-[14px] text-[#6b6b6b]"> of {k.guardrails.driftBand} pts allowed drift</span>
+            {tooSmall && !ownedBy && (
+              <p className="mt-1 text-[12px] leading-4 text-[#8a5a00]">
+                The trade Kite needs is under the vault&apos;s $1 minimum.{" "}
+                <a href="/console/guardrails#rules" className="underline underline-offset-2">
+                  Raise the biggest trade
+                </a>{" "}
+                or add money.
+              </p>
+            )}
           </Stat>
           <Stat label="Next check" aside={k.keyActive ? <Badge tone="green">Kite&apos;s key on</Badge> : <Badge>Key revoked</Badge>}>
             <Countdown />
