@@ -7,6 +7,7 @@ export type IconName =
   | "help"
   | "search"
   | "deposit"
+  | "withdraw"
   | "external"
   | "dots"
   | "check"
@@ -44,6 +45,7 @@ const PATHS: Record<IconName, string> = {
   help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.25a2.5 2.5 0 1 1 3.6 2.25c-.7.35-1.1.85-1.1 1.5v.5M12 16.5h.01",
   search: "M10.5 17.5a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM15.5 15.5 20 20",
   deposit: "M12 3.5v10m0 0-4-4m4 4 4-4M4 14.5v3A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-3",
+  withdraw: "M12 14V4m0 0L8 8m4-4 4 4M4 14.5v3A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-3",
   external: "M14 4h6v6M20 4l-9 9M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10",
   dots: "M6 12h.01M12 12h.01M18 12h.01",
   check: "M5 12.5l4.5 4.5L19 7.5",

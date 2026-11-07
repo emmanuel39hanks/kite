@@ -214,7 +214,7 @@ function Live({ p }: { p: Portfolio }) {
               Check now
             </Button>
             {!ownedBy && (
-              <Button icon="up" href="/console/guardrails#withdraw">
+              <Button icon="withdraw" href="/console/guardrails#withdraw">
                 Withdraw
               </Button>
             )}
@@ -669,7 +669,7 @@ function VaultCard({ p, keyOn, ownedBy, preview }: { p: Portfolio; keyOn: boolea
       </dl>
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
         {!ownedBy && (
-          <Button size="sm" icon="up" href="/console/guardrails#withdraw">
+          <Button size="sm" icon="withdraw" href="/console/guardrails#withdraw">
             Withdraw
           </Button>
         )}

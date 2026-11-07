@@ -272,7 +272,7 @@ function CloseVault() {
             <div className="text-[14px]">1. Withdraw everything</div>
             <p className="text-[12px] leading-4 text-[#6b6b6b]">To your own NEAR Intents account, in one signature.</p>
           </div>
-          <Button size="sm" onClick={() => run("withdraw", live.withdrawAll, "Withdrawn. It shows in your NEAR Intents account in a few seconds.")} loading={busy === "withdraw"} disabled={empty || busy !== null}>
+          <Button size="sm" icon="withdraw" onClick={() => run("withdraw", live.withdrawAll, "Withdrawn. It shows in your NEAR Intents account in a few seconds.")} loading={busy === "withdraw"} disabled={empty || busy !== null}>
             Withdraw
           </Button>
         </li>
