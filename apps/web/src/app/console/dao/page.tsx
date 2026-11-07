@@ -375,7 +375,7 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
             {shown === "Proposals" && open > 0 && <Badge tone="blue">{open} waiting for a vote</Badge>}
           </div>
           {shown === "Proposals" && proposalList}
-          {shown === "Add money" && <DaoFundCard vault={vault} dao={owner.dao} policy={owner.policy} proposals={owner.proposals} plan={state.plan} pending={!!state.status.pending} rev={rev} busy={busy} send={run} />}
+          {shown === "Add money" && <DaoFundCard vault={vault} dao={owner.dao} policy={owner.policy} proposals={owner.proposals} plan={state.plan} balances={state.balances} pending={!!state.status.pending} rev={rev} busy={busy} send={run} onVotes={() => setTab("Proposals")} />}
           {shown === "Change" && <OwnerActions key={JSON.stringify([state.limits, state.plan])} vault={vault} state={state} ctx={owner} account={w.accountId} busy={busy} onPropose={(name, a) => propose(owner, name, a)} />}
         </div>
       ) : (
