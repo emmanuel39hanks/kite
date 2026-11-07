@@ -63,7 +63,8 @@ export type ActivityEvent = {
 
 type NewEvent = Omit<ActivityEvent, "id" | "at"> & { at?: number };
 
-type Persisted = { name: string; planSlug: string; activity: ActivityEvent[]; draft: { name: string; mix: Slice[] } | null };
+/** The draft keeps its rules: the guardrails in memory reset when a wallet connects or the page reloads. */
+type Persisted = { name: string; planSlug: string; activity: ActivityEvent[]; draft: { name: string; mix: Slice[]; rules?: Guardrails } | null };
 
 type State = Persisted & {
   account: string | null;
@@ -99,8 +100,12 @@ function pickPersisted(raw: unknown): Partial<Persisted> {
   if (typeof r.name === "string") out.name = r.name.slice(0, 80);
   if (typeof r.planSlug === "string") out.planSlug = r.planSlug.slice(0, 80);
   if (Array.isArray(r.activity)) out.activity = (r.activity as ActivityEvent[]).filter((e) => e && typeof e.id === "string" && typeof e.title === "string" && typeof e.at === "number" && typeof e.kind === "string").slice(0, 200);
-  const d = r.draft as { name?: unknown; mix?: unknown } | null;
-  if (d && typeof d.name === "string" && Array.isArray(d.mix) && d.mix.every((m) => m && typeof (m as Slice).id === "string" && Number.isFinite((m as Slice).weight))) out.draft = { name: d.name.slice(0, 80), mix: d.mix as Slice[] };
+  const d = r.draft as { name?: unknown; mix?: unknown; rules?: unknown } | null;
+  if (d && typeof d.name === "string" && Array.isArray(d.mix) && d.mix.every((m) => m && typeof (m as Slice).id === "string" && Number.isFinite((m as Slice).weight))) {
+    const g = d.rules as Record<string, unknown> | undefined;
+    const rulesOk = !!g && (["driftBand", "maxTradePct", "slippageBps", "tradesPerDay"] as const).every((key) => typeof g[key] === "number" && Number.isFinite(g[key]) && (g[key] as number) > 0);
+    out.draft = { name: d.name.slice(0, 80), mix: d.mix as Slice[], ...(rulesOk ? { rules: g as unknown as Guardrails } : {}) };
+  }
   return out;
 }
 

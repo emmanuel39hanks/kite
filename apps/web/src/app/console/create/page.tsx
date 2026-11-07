@@ -14,6 +14,7 @@ import { ASSETS, assetById, baseOf, earnVersionOf, usd, price as fmtPrice } from
 import { evenly, MAX_ASSETS, rebalance, slice, type Slice } from "@/lib/mix";
 import { PLAN_DATA } from "@/lib/plans";
 import { RULE_PRESETS as PRESETS, sameRules as same } from "@/lib/guard-presets";
+import { minToRebalance } from "@/lib/minimums";
 import { useKite, type Guardrails } from "@/lib/store";
 import { backtest, useHistory, useMarket, useYields } from "@/lib/market/use-market";
 
@@ -22,7 +23,7 @@ const STEPS = ["Pick what to hold", "Choose how much", "Set the rules", "Name an
 export default function CreatePage() {
   const k = useKite();
   if (!k.ready) return null;
-  return <Wizard initialName={k.draft?.name ?? ""} initialMix={k.draft?.mix ?? []} initialRules={k.guardrails} />;
+  return <Wizard initialName={k.draft?.name ?? ""} initialMix={k.draft?.mix ?? []} initialRules={k.draft?.rules ?? k.guardrails} />;
 }
 
 function Wizard({ initialName, initialMix, initialRules }: { initialName: string; initialMix: Slice[]; initialRules: Guardrails }) {
@@ -38,7 +39,7 @@ function Wizard({ initialName, initialMix, initialRules }: { initialName: string
 
   const finish = () => {
     k.setGuardrails(rules);
-    k.setDraft({ name: name.trim(), mix });
+    k.setDraft({ name: name.trim(), mix, rules });
     router.push("/console/start/custom");
   };
 
@@ -375,6 +376,13 @@ function RulesStep({ rules, setRules }: { rules: Guardrails; setRules: (g: Guard
           })}
         </ul>
       )}
+      <p className="mt-4 flex gap-2 rounded-2xl bg-[#f5f5f7] px-4 py-3 text-[13px] leading-5 text-[#6b6b6b]">
+        <Icon name="help" size={15} className="mt-0.5 shrink-0" />
+        <span>
+          Every trade Kite makes is at least $1; the vault refuses smaller ones. With these rules, Kite can step in on time once your vault holds about{" "}
+          <span className="text-black">${minToRebalance(rules)}</span>. A smaller vault still invests and holds your plan, it just waits for a bigger drift.
+        </span>
+      </p>
     </>
   );
 }

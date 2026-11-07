@@ -84,7 +84,7 @@ function Form({ initial }: { initial: Guardrails }) {
             </p>
           </div>
           <AiRules current={g} onApply={setG} />
-          <GuardSliders value={g} onChange={setG} />
+          <GuardSliders value={g} onChange={setG} vaultUsd={hasVault ? k.portfolio?.value : undefined} />
         </Card>
 
         <div className="space-y-3 xl:sticky xl:top-[100px] xl:self-start">

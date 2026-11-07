@@ -2,7 +2,8 @@
 
 import { GUARD_BOUNDS } from "@/lib/ai/guard-bounds";
 import { DEFAULT_GUARDRAILS, type Guardrails } from "@/lib/store";
-import { Slider } from "./ui";
+import { rebalanceWarning } from "@/lib/minimums";
+import { Slider, StatusNote } from "./ui";
 
 type Field = {
   key: keyof Guardrails;
@@ -24,8 +25,16 @@ const DEFS: FieldDef[] = [
 const FIELDS: Field[] = DEFS.map((f) => ({ ...f, ...GUARD_BOUNDS[f.key] }));
 
 /** The four guardrail sliders, inside the bounds the app allows (GUARD_BOUNDS). */
-export function GuardSliders({ value, onChange }: { value: Guardrails; onChange: (g: Guardrails) => void }) {
+export function GuardSliders({ value, onChange, vaultUsd }: { value: Guardrails; onChange: (g: Guardrails) => void; vaultUsd?: number }) {
+  // The vault refuses trades under $1: say so when these rules and this vault's size would keep Kite from trading.
+  const warning = vaultUsd ? rebalanceWarning(vaultUsd, value) : null;
   return (
+    <>
+    {warning && (
+      <StatusNote tone="warn" className="mb-2">
+        {warning}
+      </StatusNote>
+    )}
     <ul className="space-y-2">
       {FIELDS.map((f) => {
         const v = value[f.key];
@@ -50,5 +59,6 @@ export function GuardSliders({ value, onChange }: { value: Guardrails; onChange:
         );
       })}
     </ul>
+    </>
   );
 }

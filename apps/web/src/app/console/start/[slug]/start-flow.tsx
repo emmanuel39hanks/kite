@@ -19,7 +19,8 @@ import { verifyDeposit } from "@/lib/near/allocate-check";
 import { SOURCES as CHAIN_SOURCES } from "@/lib/near/sources";
 import { usdcBalance } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
-import { useKite } from "@/lib/store";
+import { useKite, type Guardrails } from "@/lib/store";
+import { minToInvest, rebalanceWarning } from "@/lib/minimums";
 import { useMarket } from "@/lib/market/use-market";
 import { PreviewBar } from "@/components/console/preview-bar";
 import { dryQuote, usePreview, type DryQuote } from "@/lib/preview/engine";
@@ -40,10 +41,14 @@ export function StartFlow({ slug }: { slug: string }) {
 
   // What we're setting up: a ready-made plan, the builder's draft, or the existing vault.
   const setup = useMemo(() => {
-    if (topUp) return k.portfolio ? { name: k.portfolio.name, mix: k.portfolio.target, slug: k.portfolio.planSlug } : null;
-    if (slug === "custom") return k.draft ? { name: k.draft.name, mix: k.draft.mix, slug: "custom" } : null;
-    return plan && !plan.comingSoon ? { name: plan.name, mix: plan.mix, slug: plan.slug } : null;
-  }, [topUp, slug, plan, k.draft, k.portfolio]);
+    // The builder's rules come from its saved draft: the in-memory guardrails reset when a wallet connects.
+    if (topUp) return k.portfolio ? { name: k.portfolio.name, mix: k.portfolio.target, slug: k.portfolio.planSlug, rules: k.guardrails } : null;
+    if (slug === "custom") return k.draft ? { name: k.draft.name, mix: k.draft.mix, slug: "custom", rules: k.draft.rules ?? k.guardrails } : null;
+    return plan && !plan.comingSoon ? { name: plan.name, mix: plan.mix, slug: plan.slug, rules: k.guardrails } : null;
+  }, [topUp, slug, plan, k.draft, k.portfolio, k.guardrails]);
+  // Once the vault exists its own limits are the truth.
+  const rules = k.vaultFound ? k.guardrails : (setup?.rules ?? k.guardrails);
+  const [investing, setInvesting] = useState(0);
 
   const [step, setStep] = useState<Step>(topUp ? "money" : "vault");
   // Set once this visit creates the vault, so the "already have a vault" screen doesn't replace the success panel.
@@ -113,11 +118,11 @@ export function StartFlow({ slug }: { slug: string }) {
   return (
     <Frame step={step} topUp={topUp}>
       <div className="mx-auto grid max-w-[1160px] gap-3 px-4 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:py-12">
-        <Summary name={setup.name} mix={setup.mix} />
+        <Summary name={setup.name} mix={setup.mix} rules={rules} />
         <div>
-          {step === "vault" && <VaultStep name={setup.name} mix={setup.mix} slug={setup.slug} onCreated={() => setCreated(true)} onDone={() => setStep("money")} />}
-          {step === "money" && <MoneyStep onDone={() => setStep("live")} />}
-          {step === "live" && <LiveStep mix={setup.mix} />}
+          {step === "vault" && <VaultStep name={setup.name} mix={setup.mix} rules={rules} slug={setup.slug} onCreated={() => setCreated(true)} onDone={() => setStep("money")} />}
+          {step === "money" && <MoneyStep mix={setup.mix} rules={rules} onDone={(usd) => { setInvesting(usd ?? 0); setStep("live"); }} />}
+          {step === "live" && <LiveStep mix={setup.mix} investing={investing} />}
         </div>
       </div>
     </Frame>
@@ -173,8 +178,7 @@ function Message({ title, text, children }: { title: string; text: string; child
   );
 }
 
-function Summary({ name, mix }: { name: string; mix: Slice[] }) {
-  const k = useKite();
+function Summary({ name, mix, rules }: { name: string; mix: Slice[]; rules: Guardrails }) {
   return (
     <Card className="self-start p-6">
       <div className="text-[14px] text-[#6b6b6b]">Your plan</div>
@@ -194,7 +198,7 @@ function Summary({ name, mix }: { name: string; mix: Slice[] }) {
       <div className="mt-6 grid grid-cols-3 gap-2">
         {[
           ["Checked", "Daily"],
-          ["Steps in at", `${k.guardrails.driftBand} pts off`],
+          ["Steps in at", `${rules.driftBand} pts off`],
           ["Withdraw", "Only you"],
         ].map(([l, v]) => (
           <div key={l} className="rounded-2xl bg-white p-3.5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
@@ -224,8 +228,7 @@ const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /* ─────────────── Step 1: the signature ─────────────── */
 
-function VaultStep({ name, mix, slug, onCreated, onDone }: { name: string; mix: Slice[]; slug: string; onCreated: () => void; onDone: () => void }) {
-  const k = useKite();
+function VaultStep({ name, mix, rules, slug, onCreated, onDone }: { name: string; mix: Slice[]; rules: Guardrails; slug: string; onCreated: () => void; onDone: () => void }) {
   const live = useLive();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -238,7 +241,7 @@ function VaultStep({ name, mix, slug, onCreated, onDone }: { name: string; mix: 
     try {
       onCreated();
       try {
-        setHash(await live.createVault(name, slug, mix, k.guardrails));
+        setHash(await live.createVault(name, slug, mix, rules));
       } catch (e) {
         throw e;
       }
@@ -338,9 +341,7 @@ const SOURCES: { id: string; label: string; token: LogoId; chain: LogoId; asset:
 ];
 
 type Quote = { depositAddress: string; amountInFormatted: string; amountOutFormatted: string; timeEstimate: number };
-const MIN = 2;
-
-function MoneyStep({ onDone }: { onDone: () => void }) {
+function MoneyStep({ mix, rules, onDone }: { mix: Slice[]; rules: Guardrails; onDone: (investingUsd?: number) => void }) {
   const k = useKite();
   const live = useLive();
   const { price } = useMarket();
@@ -356,7 +357,11 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
   const [dry, setDry] = useState<DryQuote | null>(null);
   const pv = usePreview(live.preview);
   const n = Number(amount.replace(/,/g, ""));
+  // Every asset in the plan needs a swap of at least $0.25, so the plan sets the smallest useful amount.
+  const MIN = minToInvest(mix);
   const valid = Number.isFinite(n) && n >= MIN;
+  const already = k.portfolio?.value ?? 0;
+  const sizeNote = valid ? rebalanceWarning(already + n, rules) : null;
 
   useEffect(() => {
     if (!k.account || live.preview) return;
@@ -422,8 +427,10 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
 
   const invest = () =>
     run(async () => {
+      // What's in the vault before the swaps leave, so the next screen doesn't show a half-landed total.
+      const before = k.portfolio?.value ?? 0;
       await live.allocate();
-      onDone();
+      onDone(before);
     });
   const investAsOf = (days: 30 | 90 | 365) =>
     run(async () => {
@@ -470,7 +477,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
             </div>
           </div>
         )}
-        <button type="button" onClick={onDone} className="mt-3 w-full cursor-pointer text-[14px] text-[#6b6b6b] hover:text-black">
+        <button type="button" onClick={() => onDone()} className="mt-3 w-full cursor-pointer text-[14px] text-[#6b6b6b] hover:text-black">
           Later
         </button>
         <ErrorNote text={error} />
@@ -485,7 +492,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
           <h2 className="text-[28px] tracking-[-0.05em]">Add money</h2>
           <p className="mt-2 text-[15px] leading-6 text-[#6b6b6b]">Send from the chain you already use. It lands in your vault as USDC, then one signature puts it into your plan.</p>
         </div>
-        <button type="button" onClick={onDone} className="shrink-0 cursor-pointer text-[14px] text-[#6b6b6b] hover:text-black">
+        <button type="button" onClick={() => onDone()} className="shrink-0 cursor-pointer text-[14px] text-[#6b6b6b] hover:text-black">
           Skip
         </button>
       </div>
@@ -544,9 +551,18 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
           />
         </div>
         <span id="amount-hint" className={`mt-1.5 block text-[13px] ${valid ? "text-[#6b6b6b]" : "text-rose-600"}`}>
-          {valid ? (src.id === "near" ? "Goes straight into your vault. Network fee only." : "Swap cost about 0.3–0.7%, quoted before you send.") : `Enter at least $${MIN}.`}
+          {valid
+            ? src.id === "near"
+              ? "Goes straight into your vault. Network fee only."
+              : "Swap cost about 0.3–0.7%, quoted before you send."
+            : `Enter at least ${usd(MIN)}: each asset in your plan needs a swap of $0.25 or more.`}
         </span>
       </label>
+      {sizeNote && (
+        <StatusNote tone="warn" className="mt-3">
+          {sizeNote}
+        </StatusNote>
+      )}
 
       {quote && (
         <div className="mt-5 rounded-2xl bg-[#f5f5f7] p-4 text-[14px]">
@@ -616,7 +632,7 @@ function MoneyStep({ onDone }: { onDone: () => void }) {
 
 /* ─────────────── Step 3: live ─────────────── */
 
-function LiveStep({ mix }: { mix: Slice[] }) {
+function LiveStep({ mix, investing }: { mix: Slice[]; investing: number }) {
   const k = useKite();
   const live = useLive();
   const [now, setNow] = useState(() => Date.now());
@@ -638,7 +654,9 @@ function LiveStep({ mix }: { mix: Slice[] }) {
         </span>
         <h2 className="mt-5 text-[44px] leading-none tracking-[-0.05em]">You&apos;re live</h2>
         <p className="mx-auto mt-3 max-w-[40ch] text-[15px] leading-6 text-[#6b6b6b]">
-          {k.portfolio && k.portfolio.value >= 1
+          {investing > 0 && (k.portfolio?.value ?? 0) < investing * 0.97
+            ? `Investing ${usd(investing)}. The swaps land in about a minute, and Home updates as they do. Kite checks your vault every day and only trades when something drifts too far.`
+            : k.portfolio && k.portfolio.value >= 1
             ? `${usd(k.portfolio.value)} is in your vault. Kite checks it every day and only trades when something drifts too far.`
             : "Your vault is ready. Swaps settle in about a minute; Home updates as they land."}
           {live.preview && " In preview there's no daily job: press Check now on Home to run Kite's check against live prices."}

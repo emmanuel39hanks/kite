@@ -103,14 +103,14 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
 }
 
 /** A result line after an action: the console's neutral card, with only the icon carrying the tone. */
-export function StatusNote({ tone, children, className = "" }: { tone: "ok" | "err"; children: ReactNode; className?: string }) {
+export function StatusNote({ tone, children, className = "" }: { tone: "ok" | "err" | "warn"; children: ReactNode; className?: string }) {
   return (
     <div
       role={tone === "err" ? "alert" : "status"}
       className={`flex items-start gap-3 rounded-2xl bg-white px-4 py-3 text-[14px] leading-5 text-black ring-1 ring-inset ring-black/[0.06] shadow-[0_0_6px_rgba(0,0,0,0.02),0_2px_2px_rgba(0,0,0,0.04)] ${className}`}
     >
-      <span className={`mt-px grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full text-white ${tone === "ok" ? "bg-[#05a800]" : "bg-rose-500"}`}>
-        <Icon name={tone === "ok" ? "check" : "x"} size={11} stroke={2.4} />
+      <span className={`mt-px grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full text-white ${tone === "ok" ? "bg-[#05a800]" : tone === "warn" ? "bg-[#d98a00]" : "bg-rose-500"}`}>
+        {tone === "warn" ? <span className="text-[12px] leading-none font-semibold">!</span> : <Icon name={tone === "ok" ? "check" : "x"} size={11} stroke={2.4} />}
       </span>
       <span className="min-w-0">{children}</span>
     </div>
