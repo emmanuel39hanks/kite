@@ -20,8 +20,21 @@ export function VaultSwitcher({ title }: { title: string }) {
   const k = useKite();
   const mine = useMyVault(w.preview ? null : w.accountId);
   const count = (mine?.open.length ?? 0) + (mine?.daoVaults.length ?? 0);
-  if (!mine || !w.accountId || count < 2) return <>{title}</>;
-  const isDao = mine.daoVaults.some((d) => d.vault === mine.vault);
+  const isDao = !!mine?.daoVaults.some((d) => d.vault === mine.vault);
+  const badge = (
+    <span className="grid h-9 w-9 place-items-center rounded-xl bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-black/[0.06]">
+      <Icon name={isDao ? "dao" : "wallet"} size={17} />
+    </span>
+  );
+  if (!mine || !w.accountId || count < 2)
+    return isDao ? (
+      <span className="flex items-center gap-2.5">
+        {badge}
+        {title}
+      </span>
+    ) : (
+      <>{title}</>
+    );
   const item = "flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] outline-none data-[highlighted]:bg-[#f5f5f7]";
   const tick = (on: boolean) => (
     <span className={`grid h-[17px] w-[17px] shrink-0 place-items-center ${on ? "text-[#05a800]" : "text-transparent"}`}>
@@ -32,9 +45,7 @@ export function VaultSwitcher({ title }: { title: string }) {
     <Menu.Root>
       <Menu.Trigger asChild>
         <button type="button" className="group flex cursor-pointer items-center gap-2.5 rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-[#8cc6f6]">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)] ring-1 ring-inset ring-black/[0.06]">
-            <Icon name={isDao ? "dao" : "wallet"} size={17} />
-          </span>
+          {badge}
           <span>{title}</span>
           <Icon name="chevron-down" size={18} className="text-black/40 transition-transform group-data-[state=open]:rotate-180" />
         </button>
