@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { Action } from "@near-js/transactions";
 import { JsonRpcProvider } from "near-api-js";
-import { assetById, assetByIntentsId } from "@/lib/assets";
+import { assetById, assetByIntentsId, usd } from "@/lib/assets";
 import { slice, type Slice } from "@/lib/mix";
 import { useKite, type Guardrails } from "@/lib/store";
 import { useMarket } from "@/lib/market/use-market";
@@ -20,6 +20,7 @@ import { verifyAllocation, type Transfer } from "./allocate-check";
 import { NEAR } from "./config";
 import { createVaultArgs, factoryDepositYocto, factoryVaultsBy, isFactoryVault } from "./factory";
 import { refreshMyVault, useMyVault } from "./my-vault";
+import { convertQuotes, ownerIntentsToWalletActions } from "./convert";
 import { actionCreators } from "@near-js/transactions";
 import { foreignOwner, notOwnerMessage } from "./dao-view";
 import { ALLOCATE_TGAS_EACH, agentAllowanceYocto, allocateCalls, depositUsdcFromWallet, fromContractLimits, toContractPlan, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
@@ -298,17 +299,38 @@ function useRealLive() {
     return tokens.map((token, i) => ({ token, amount: balances[i] }));
   }, [vault]);
 
-  /** Move everything in the vault to the owner's own NEAR Intents account, in one signature. */
+  /**
+   * Everything out, back to the owner's wallet as USDC. Each token goes to a checked 1Click address that swaps it to
+   * USDC and delivers it to the wallet (refunds to the owner's NEAR Intents account); the vault's own USDC goes to the
+   * owner's Intents balance and then out to the wallet. Holdings too small to swap come out as they are.
+   */
   const withdrawAll = useCallback(async () => {
     if (!k.account) throw new Error("Connect a NEAR wallet first");
+    const owner = k.account;
     const held = (await heldTokens()).filter((h) => h.amount > 0n);
     if (!held.length) throw new Error("The vault is already empty.");
-    const hash = await ownerSend(
-      held.map((h) => ownerCall("withdraw", { token: h.token, amount: h.amount.toString(), receiver_id: k.account }, 40n)),
-    );
-    k.addEvent({ kind: "deposit", title: "Withdrew everything", detail: `${held.length} assets moved to your NEAR Intents account (${k.account}).`, tx: hash });
+    const { transfers, skipped } = await convertQuotes(owner, held);
+    const swapped = new Set(transfers.map((t) => t.token));
+    const calls = [
+      ...transfers.map((t) => ownerCall("withdraw", { token: t.token, amount: t.amount, receiver_id: t.to }, 35n)),
+      ...held.filter((h) => !swapped.has(h.token)).map((h) => ownerCall("withdraw", { token: h.token, amount: h.amount.toString(), receiver_id: owner }, 35n)),
+    ];
+    // A transaction carries at most 300 Tgas: eight withdrawals at a time.
+    let hash = "";
+    for (let i = 0; i < calls.length; i += 8) hash = await ownerSend(calls.slice(i, i + 8));
+    // The vault's USDC (and any left in the owner's Intents balance) now goes on to the wallet.
+    const usdc = await intentsBalance(owner, NEAR.usdc).catch(() => 0n);
+    if (usdc > 0n) await w.send(NEAR.intents, ownerIntentsToWalletActions(owner, [], usdc));
+    const toWallet = transfers.reduce((n, t) => n + t.outUsd, 0) + Number(usdc) / 1e6;
+    const leftover = skipped.filter((h) => h.token !== NEAR.usdc);
+    k.addEvent({
+      kind: "deposit",
+      title: `Withdrew about ${usd(toWallet)} as USDC to your wallet`,
+      detail: `${transfers.length ? `${transfers.length} swap${transfers.length === 1 ? "" : "s"} to USDC land in about a minute. ` : ""}${leftover.length ? `${leftover.map((h) => assetByIntentsId(h.token)?.ticker ?? h.token).join(", ")} too small to swap; moved to your NEAR Intents balance (Profile can convert it later).` : ""}`,
+      tx: hash,
+    });
     return hash;
-  }, [k, ownerSend, heldTokens]);
+  }, [k, w, ownerSend, heldTokens]);
 
   /** Delete the vault and return its NEAR deposit. The contract refuses unless every balance is zero. */
   const closeVault = useCallback(async () => {

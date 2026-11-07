@@ -163,3 +163,50 @@ export async function verifyAllocateProposal(opts: {
     }),
   );
 }
+
+/**
+ * The same independent check for converting back to dollars: each address must be a 1Click swap of exactly this
+ * token and amount, sent from inside NEAR Intents, into USDC delivered to the owner's own NEAR wallet, refunding to
+ * the owner. Nothing pays anyone else.
+ */
+export async function verifyConvert(opts: {
+  transfers: { token: string; amount: string; to: string }[];
+  owner: string;
+  usdcToken: string;
+  fetchStatus?: (address: string) => Promise<Stored>;
+}) {
+  const { transfers, owner, usdcToken } = opts;
+  const get =
+    opts.fetchStatus ??
+    (async (a: string) => {
+      for (let i = 0; i < 4; i++) {
+        const r = await fetch(`${STATUS}?depositAddress=${encodeURIComponent(a)}`, { cache: "no-store" });
+        if (r.ok) return (await r.json()) as Stored;
+        if (i < 3) await new Promise((res) => setTimeout(res, 1500));
+      }
+      throw new Error("unknown swap address");
+    });
+  const bad = (why: string): never => {
+    throw new Error(`The swaps back to USDC didn't check out (${why}), so nothing was signed. Try again in a moment.`);
+  };
+  if (new Set(transfers.map((t) => t.token)).size !== transfers.length) bad("repeat");
+  await Promise.all(
+    transfers.map(async (t) => {
+      let q: Record<string, unknown> | undefined;
+      try {
+        q = (await get(t.to)).quoteResponse?.quoteRequest;
+      } catch {
+        return bad("address unknown to NEAR Intents");
+      }
+      if (!q) return bad("no stored request");
+      const ok =
+        q.recipient === owner && q.recipientType === "DESTINATION_CHAIN" && q.refundTo === owner && q.refundType === "INTENTS" && q.depositType === "INTENTS" &&
+        q.originAsset === t.token && q.destinationAsset === usdcToken && q.amount === t.amount && q.dry === false && q.swapType === "EXACT_INPUT" &&
+        typeof q.slippageTolerance === "number" && q.slippageTolerance <= MAX_SLIPPAGE_BPS;
+      if (!ok) return bad("swap isn't to your wallet");
+      for (const k of ["referral", "customRecipientMsg", "virtualChainRecipient", "virtualChainRefundRecipient"]) if (q[k]) return bad("unexpected field");
+      const fees = Array.isArray(q.appFees) ? (q.appFees as { recipient?: string; fee?: number }[]) : [];
+      if (fees.some((f) => f.recipient !== ONECLICK_FEE_RECIPIENT || !(typeof f.fee === "number" && f.fee <= MAX_FEE_BPS))) return bad("unexpected fee");
+    }),
+  );
+}

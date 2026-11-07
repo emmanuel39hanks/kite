@@ -252,9 +252,9 @@ function CloseVault() {
         <li className="flex items-center justify-between gap-3 rounded-2xl bg-white p-3.5 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
           <div className="min-w-0">
             <div className="text-[14px]">1. Withdraw everything</div>
-            <p className="text-[12px] leading-4 text-[#6b6b6b]">To your own NEAR Intents account, in one signature.</p>
+            <p className="text-[12px] leading-4 text-[#6b6b6b]">Back to your NEAR wallet as USDC. Every holding is swapped to USDC on the way (about 0.3–0.5%); your wallet asks you to sign once or twice.</p>
           </div>
-          <Button size="sm" icon="withdraw" onClick={() => run("withdraw", live.withdrawAll, "Withdrawn. It shows in your NEAR Intents account in a few seconds.")} loading={busy === "withdraw"} disabled={empty || busy !== null}>
+          <Button size="sm" icon="withdraw" onClick={() => run("withdraw", live.withdrawAll, "Withdrawn. The USDC lands in your NEAR wallet in about a minute.")} loading={busy === "withdraw"} disabled={empty || busy !== null}>
             Withdraw
           </Button>
         </li>

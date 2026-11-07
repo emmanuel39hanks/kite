@@ -5,6 +5,7 @@ import { MixBar } from "@/components/charts";
 import { ConnectGate } from "@/components/console/connect-gate";
 import { DaoHandoff } from "@/components/console/dao-handoff";
 import { PastVaults } from "@/components/console/past-vaults";
+import { IntentsBalance } from "@/components/console/intents-balance";
 import { daoViewHref } from "@/components/console/dao-owned";
 import { Icon } from "@/components/console/icons";
 import { Avatar, Badge, Button, Card, Change, Empty, Money, PageTitle, SectionTitle, Segmented } from "@/components/console/ui";
@@ -225,6 +226,7 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
               ))}
             </ul>
           </Card>
+          {!preview && <IntentsBalance account={account} />}
         </div>
       </div>
 
