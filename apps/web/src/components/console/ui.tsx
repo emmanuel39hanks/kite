@@ -270,7 +270,7 @@ export function Avatar({ seed, size = 28 }: { seed: string; size?: number }) {
   for (const c of seed) h = (h * 31 + c.charCodeAt(0)) % 360;
   return (
     <span
-      className="inline-block shrink-0 rounded-full ring-1 ring-black/5"
+      className="block shrink-0 rounded-full ring-1 ring-black/5"
       style={{ width: size, height: size, background: `linear-gradient(135deg, hsl(${h} 80% 62%), hsl(${(h + 70) % 360} 75% 45%))` }}
       aria-hidden="true"
     />

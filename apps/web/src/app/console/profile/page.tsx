@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MixBar } from "@/components/charts";
 import { ConnectGate } from "@/components/console/connect-gate";
 import { DaoHandoff } from "@/components/console/dao-handoff";
+import { PastVaults } from "@/components/console/past-vaults";
 import { daoViewHref } from "@/components/console/dao-owned";
 import { Icon } from "@/components/console/icons";
 import { Avatar, Badge, Button, Card, Change, Empty, Money, PageTitle, SectionTitle, Segmented } from "@/components/console/ui";
@@ -99,7 +100,7 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
       <Card className="p-3 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 px-2 pt-2 sm:px-0 sm:pt-0">
           <div className="flex min-w-0 items-center gap-4 sm:gap-5">
-            <span className="rounded-full bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+            <span className="grid shrink-0 place-items-center rounded-full bg-white p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
               <Avatar seed={account} size={96} />
             </span>
             <div className="min-w-0">
@@ -226,6 +227,8 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
           </Card>
         </div>
       </div>
+
+      {!preview && <PastVaults account={account} current={k.vaultFound ? (p?.vault ?? null) : null} />}
 
       {p && (
         <div className="mt-10">

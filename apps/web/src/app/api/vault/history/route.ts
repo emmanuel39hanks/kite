@@ -1,4 +1,5 @@
 import { assetByIntentsId } from "@/lib/assets";
+import { deepJson } from "@/lib/server/deep-json";
 import { clientIp, isKiteVault, limited } from "@/lib/server/guards";
 
 const NEARBLOCKS = "https://api.nearblocks.io/v1";
@@ -45,7 +46,7 @@ export async function GET(req: Request) {
       const ev: ChainEvent = { hash: t.transaction_hash, at: Math.floor(Number(t.block_timestamp) / 1e6), method: a.method as "rebalance" | "settle", ok: !failed.has(t.transaction_hash) };
       if (ev.method === "rebalance" && a.args) {
         try {
-          const q = JSON.parse(JSON.parse(a.args).quote) as { originAsset: string; destinationAsset: string; amountIn: string; amountOut: string };
+          const q = deepJson((deepJson(a.args) as { quote?: unknown } | null)?.quote) as { originAsset: string; destinationAsset: string; amountIn: string; amountOut: string };
           const s = assetByIntentsId(q.originAsset);
           const b = assetByIntentsId(q.destinationAsset);
           if (s && b) ev.swap = { sell: s.id, buy: b.id, sellUnits: num(q.amountIn, s.decimals), buyUnits: num(q.amountOut, b.decimals) };
