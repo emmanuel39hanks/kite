@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Button, Card, StatusNote } from "@/components/console/ui";
+import { Badge, Button, Card, Disclosure, StatusNote } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
 import { assetById } from "@/lib/assets";
 import { askPrivately, warmUp, type Receipt } from "@/lib/ai/private-ai";
@@ -88,27 +88,38 @@ export function VaultReview({ p }: { p: Portfolio }) {
 
       {res ? (
         <>
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-4 divide-y divide-black/[0.06] rounded-2xl bg-white ring-1 ring-inset ring-black/[0.06] shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
             {res.bullets.map((b) => (
-              <li key={b.stat} className="grid gap-1 sm:grid-cols-[minmax(0,220px)_1fr] sm:gap-4">
-                <div className="text-[14px] tabular-nums">{statValue(res.stats, b.stat)}</div>
-                <p className="text-[14px] leading-5 text-black/70">{b.text}</p>
+              <li key={b.stat} className="grid gap-1 px-4 py-3.5 sm:grid-cols-[minmax(0,200px)_1fr] sm:gap-5">
+                <div className="text-[15px] tracking-[-0.02em] tabular-nums">{statValue(res.stats, b.stat)}</div>
+                <p className="text-[14px] leading-5 text-black/65">{b.text}</p>
               </li>
             ))}
+            <li className="flex items-center gap-2.5 px-4 py-3.5 text-[14px]">
+              <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-white ${res.suggestion === "none" ? "bg-[#05a800]" : "bg-[#d98a00]"}`}>
+                {res.suggestion === "none" ? <Icon name="check" size={11} stroke={2.4} /> : <span className="text-[11px] leading-none font-semibold">!</span>}
+              </span>
+              <span>
+                <span className="text-[#6b6b6b]">Suggestion: </span>
+                {SUGGESTIONS[res.suggestion]}
+              </span>
+            </li>
           </ul>
-          <p className="mt-3 text-[13px]">{SUGGESTIONS[res.suggestion]}</p>
-          <details className="mt-3 rounded-xl bg-[#f5f5f7] px-3 py-2 text-[12px] leading-5 text-black/60">
-            <summary className="cursor-pointer text-[13px] text-black [&::-webkit-details-marker]:hidden">
-              <Icon name="check" size={12} className="mr-1.5 inline text-[#05a800]" />
-              {res.receipt.signatureKind === "provider_tee" ? "Answered privately and signed by the model's hardware" : "Signed by NEAR AI's gateway"}
-            </summary>
-            <p className="mt-1.5">
-              The numbers above are computed in code, and any sentence containing a number of its own is thrown away. The model can&apos;t change your plan or settings. Signature id {res.receipt.completionId.slice(0, 12)}…, checked in this browser.
-            </p>
-          </details>
-          <button type="button" onClick={() => setRes(null)} className="mt-2 cursor-pointer text-[13px] text-black/50 hover:text-black">
+          <Disclosure
+            className="mt-2"
+            icon={
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#05a800]/10 text-[#05a800]">
+                <Icon name="check" size={11} stroke={2.4} />
+              </span>
+            }
+            title={res.receipt.signatureKind === "provider_tee" ? "Answered privately and signed by the model's hardware" : "Signed by NEAR AI's gateway"}
+          >
+            The numbers above are computed in code, and any sentence containing a number of its own is thrown away. The model can&apos;t change your plan or settings. Signature id{" "}
+            <span className="font-mono text-[12px]">{res.receipt.completionId.slice(0, 12)}…</span>, checked in this browser.
+          </Disclosure>
+          <Button size="sm" variant="ghost" icon="refresh" onClick={() => setRes(null)} className="mt-3">
             Review again
-          </button>
+          </Button>
         </>
       ) : (
         <dl className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -117,7 +128,7 @@ export function VaultReview({ p }: { p: Portfolio }) {
               ["With rebalancing", `${stats.planReturnPct >= 0 ? "+" : ""}${stats.planReturnPct}%`, `past ${stats.days} days`],
               ["Never rebalanced", `${stats.holdReturnPct >= 0 ? "+" : ""}${stats.holdReturnPct}%`, "same start, left alone"],
               ["Worst fall", `-${stats.maxDrawdownPct}%`, "peak to bottom"],
-              ["Ups and downs", `${stats.volatilityPct}%`, `a year, about ${stats.rebalancesPerYear} rebalances`],
+              ["Ups and downs", `${stats.volatilityPct}%`, `a year, about ${stats.rebalancesPerYear} rebalance${stats.rebalancesPerYear === 1 ? "" : "s"}`],
             ] as const
           ).map(([label, value, note]) => (
             <div key={label} className="rounded-xl bg-white px-3.5 py-3 ring-1 ring-inset ring-black/[0.05]">

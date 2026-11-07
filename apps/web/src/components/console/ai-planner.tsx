@@ -19,7 +19,7 @@ import { assetStats, allowedNumbers } from "@/lib/ai/planner-data";
 import { useKite } from "@/lib/store";
 import { useHistory, useYields } from "@/lib/market/use-market";
 import { Icon } from "./icons";
-import { Button, StatusNote } from "./ui";
+import { Button, Disclosure, StatusNote } from "./ui";
 
 type Stage = "idle" | "verify" | "draft" | "sign" | "done";
 const STAGES: { id: Exclude<Stage, "idle" | "done">; label: string }[] = [
@@ -198,15 +198,16 @@ function DraftView({
       )}
       {draft.caution && <p className="mt-2 text-[13px] leading-5 text-black/70">Worth knowing: {draft.caution}</p>}
 
-      <details className="group mt-4 rounded-xl bg-[#f5f5f7] px-3 py-2.5 text-[12px] leading-5">
-        <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] [&::-webkit-details-marker]:hidden">
+      <Disclosure
+        className="mt-4"
+        icon={
           <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-[#05a800] text-white">
             <Icon name="check" size={11} stroke={2.4} />
           </span>
-          Private and verified
-          <span className="ml-auto text-black/50 group-open:hidden">How it&apos;s verified</span>
-        </summary>
-        <ul className="mt-2 space-y-1 text-black/60">
+        }
+        title="Private and verified"
+      >
+        <ul className="space-y-1">
           <li>Your words are encrypted in this browser to the model&apos;s attested key ({receipt.model}). Kite&apos;s server relays encrypted bytes only.</li>
           {receipt.signatureKind === "provider_tee" ? (
             <>
@@ -221,7 +222,7 @@ function DraftView({
         <a href="https://cloud.near.ai/verify" target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-black/70 hover:text-black">
           Check it yourself on NEAR AI (paste {receipt.completionId.slice(0, 12)}…) <Icon name="external" size={11} />
         </a>
-      </details>
+      </Disclosure>
 
       <div className="mt-4 flex flex-wrap gap-2.5">
         <Button variant="primary" iconRight="arrow-right" onClick={() => onUse({ name: draft.name, mix, rules: draft.rules })}>

@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Badge, Button, Card, Segmented, StatusNote } from "@/components/console/ui";
+import { Badge, Button, Card, Disclosure, Segmented, StatusNote } from "@/components/console/ui";
 import { PolicyChecklist } from "@/components/console/policy-checklist";
 import { sdkChecks } from "@/lib/ai/evidence-sdk";
 import { verdict, verifyPolicy, type VerifyResult } from "@/lib/ai/verify-policy";
@@ -137,9 +137,8 @@ export function Verifier() {
             <PolicyChecklist checks={res.checks} />
           </div>
           {res.bundle && (
-            <details className="mt-4 rounded-xl bg-white px-3.5 py-2.5 text-[12px] leading-5 text-black/70 ring-1 ring-inset ring-black/[0.06]">
-              <summary className="cursor-pointer text-[13px] text-black">The evidence, as signed</summary>
-              <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 break-all">
+            <Disclosure className="mt-4" title="The evidence, as signed">
+              <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 break-all">
                 <dt className="text-[#6b6b6b]">Model</dt>
                 <dd>{res.bundle.model}</dd>
                 <dt className="text-[#6b6b6b]">Signed by</dt>
@@ -159,13 +158,12 @@ export function Verifier() {
               <pre className="mt-1 max-h-[240px] overflow-auto rounded-lg bg-[#f5f5f7] p-2.5 font-mono text-[11px] whitespace-pre-wrap">{res.bundle.request}</pre>
               <div className="mt-3 text-[#6b6b6b]">What it answered (exact bytes)</div>
               <pre className="mt-1 max-h-[240px] overflow-auto rounded-lg bg-[#f5f5f7] p-2.5 font-mono text-[11px] whitespace-pre-wrap">{res.bundle.response}</pre>
-            </details>
+            </Disclosure>
           )}
           {res.body && (
-            <details className="mt-3 rounded-xl bg-white px-3.5 py-2.5 ring-1 ring-inset ring-black/[0.06]">
-              <summary className="cursor-pointer text-[13px]">The proposal text</summary>
-              <pre className="mt-2 font-[inherit] text-[13px] leading-5 whitespace-pre-wrap text-black/80">{res.body}</pre>
-            </details>
+            <Disclosure className="mt-3" title="The proposal text">
+              <pre className="font-[inherit] text-[13px] leading-5 whitespace-pre-wrap text-black/80">{res.body}</pre>
+            </Disclosure>
           )}
         </Card>
       )}

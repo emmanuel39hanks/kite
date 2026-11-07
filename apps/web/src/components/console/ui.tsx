@@ -117,6 +117,25 @@ export function StatusNote({ tone, children, className = "" }: { tone: "ok" | "e
   );
 }
 
+/** A section that opens in place, styled like the landing page's questions: a white panel, the title on the left,
+ *  a + that turns to × when open. Native <details>, so it works without script and with the keyboard. */
+export function Disclosure({ title, icon, children, className = "", defaultOpen = false }: { title: ReactNode; icon?: ReactNode; children: ReactNode; className?: string; defaultOpen?: boolean }) {
+  return (
+    <details open={defaultOpen} className={`group rounded-2xl bg-white ring-1 ring-inset ring-black/[0.06] shadow-[0_2px_2px_rgba(0,0,0,0.04)] ${className}`}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-[14px] tracking-[-0.02em] [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-2.5">
+          {icon}
+          <span className="min-w-0">{title}</span>
+        </span>
+        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#f5f5f7] text-[16px] leading-none text-black/70 transition-transform group-open:rotate-45 motion-reduce:transition-none">
+          +
+        </span>
+      </summary>
+      <div className="px-4 pb-4 text-[13px] leading-5 text-black/65">{children}</div>
+    </details>
+  );
+}
+
 /* ───────────── Numbers ───────────── */
 
 export function Money({ value, className = "", digits = 2 }: { value: number; className?: string; digits?: number }) {

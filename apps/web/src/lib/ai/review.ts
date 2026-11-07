@@ -115,7 +115,7 @@ export function statValue(s: ReviewStats, k: StatKey): string {
     case "top_asset": return `${s.topAsset.weightPct}% in your largest holding`;
     case "crypto_share": return `${s.cryptoSharePct}% in crypto, ${s.safeSharePct}% in dollars and gold`;
     case "drift_now": return `${s.driftNowPts} points off target now`;
-    case "rebalances": return `about ${s.rebalancesPerYear} rebalances a year`;
+    case "rebalances": return `about ${s.rebalancesPerYear} rebalance${s.rebalancesPerYear === 1 ? "" : "s"} a year`;
     case "yearly_cost": return `about ${s.yearlyCostPct}% of the portfolio a year in swap costs`;
     case "earn_yield": return `${s.earnYieldPct}% a year from staking and lending`;
   }
