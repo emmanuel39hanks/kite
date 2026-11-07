@@ -14,6 +14,7 @@ import { NEAR } from "./config";
 import { addProposalAction } from "./dao";
 import { usdcText } from "./dao-view";
 import { ALLOCATE_TGAS_EACH, allocateCalls } from "./vault";
+import { convertQuotes } from "./convert";
 
 const TGAS = 10n ** 12n;
 /** What the USDC contract charges to register an account (NEP-145 storage). */
@@ -94,3 +95,28 @@ export async function investProposal(opts: { vault: string; plan: { token: strin
   // One allocate per swap (see allocateCalls): up to eight actions of 30 Tgas inside act_proposal's 300.
   return { action: addProposalAction(vault, description, allocateCalls(transfers), bond, Number(ALLOCATE_TGAS_EACH)), spent, quoted };
 }
+
+/**
+ * Everything out of the vault and back to the DAO as USDC, in one proposal. Each holding (USDC too) goes by `withdraw`
+ * to a 1Click address that swaps it to USDC and delivers it to the DAO's own NEAR account, refunding to the DAO's
+ * NEAR Intents balance if a swap can't complete. The quotes last the voting window (up to 72 hours); voters' pages
+ * check each address again before offering a vote.
+ */
+export async function withdrawAllProposal(opts: { vault: string; dao: string; holdings: { token: string; amount: bigint }[]; hours: number; names: (token: string) => string }) {
+  const { vault, dao, holdings, hours, names } = opts;
+  const { transfers, skipped } = await convertQuotes(dao, holdings, { includeUsdc: true, hours });
+  if (!transfers.length) throw new Error("Nothing in the vault is large enough for NEAR Intents to send back right now.");
+  if (transfers.length > 8) throw new Error("More than eight holdings: withdraw in two proposals.");
+  const until = new Date(Date.now() + hours * 3600_000).toISOString().replace(/\.\d+Z$/, "Z");
+  const total = transfers.reduce((n, t) => n + t.outUsd, 0);
+  const description = [
+    `Withdraw everything from Kite vault ${vault} back to this DAO as USDC (about $${total.toFixed(2)} after fees):`,
+    ...transfers.map((t) => `- ${names(t.token)} → USDC, paid to ${dao}`),
+    ``,
+    `Quotes valid until ${until}. If this passes later, or a price moves more than 1%, the tokens come back to this DAO's NEAR Intents balance instead.${skipped.length ? ` Too small to send now: ${skipped.map((h) => names(h.token)).join(", ")}.` : ""}`,
+  ].join("\n");
+  return { description, calls: transfers.map((t) => ({ method: "withdraw", args: { token: t.token, amount: t.amount, receiver_id: t.to } })), gasTgas: 35, total, skipped };
+}
+
+/** Close the vault once it's empty: the vault deletes itself and its NEAR deposit goes back to the DAO. */
+export const closeVaultCalls = () => ({ calls: [{ method: "close_vault", args: { also_check: [NEAR.usdc] } }], gasTgas: 150 });

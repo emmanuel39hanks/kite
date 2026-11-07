@@ -185,11 +185,15 @@ export type OwnerAction =
   | { kind: "revoke" }
   | { kind: "restore"; publicKey: string; allowanceYocto: string }
   | { kind: "limits"; contractLimits: Record<string, number> }
-  | { kind: "plan"; plan: { token: string; target_bps: number; decimals: number; max_slippage_bps?: number }[]; text: string };
+  | { kind: "plan"; plan: { token: string; target_bps: number; decimals: number; max_slippage_bps?: number }[]; text: string }
+  /** Prepared elsewhere (withdraw as USDC, close): description, calls and gas per call already worked out. */
+  | { kind: "prepared"; description: string; calls: VaultCall[]; gasTgas: number };
 
 /** The description and calls for one owner action, proposed to the DAO that owns (or is taking) the vault. */
-export function ownerProposal(vault: string, a: OwnerAction): { description: string; calls: VaultCall[] } {
+export function ownerProposal(vault: string, a: OwnerAction): { description: string; calls: VaultCall[]; gasTgas?: number } {
   switch (a.kind) {
+    case "prepared":
+      return { description: a.description, calls: a.calls, gasTgas: a.gasTgas };
     case "accept":
       return {
         description: `Take ownership of Kite vault ${vault}, offered by ${a.offeredBy}. Once this passes, every change to the vault is a proposal of this DAO.`,

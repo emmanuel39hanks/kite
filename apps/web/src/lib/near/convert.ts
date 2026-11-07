@@ -24,11 +24,14 @@ export async function intentsHoldings(account: string): Promise<Holding[]> {
   return tokens.map((token, i) => ({ token, amount: BigInt(res[i] ?? "0") })).filter((h) => h.amount > 0n);
 }
 
-/** Quotes to swap each non-USDC holding into USDC delivered to `owner`'s wallet, checked with NEAR Intents itself. */
-export async function convertQuotes(owner: string, holdings: Holding[]): Promise<{ transfers: ConvertTransfer[]; skipped: Holding[] }> {
-  const others = holdings.filter((h) => h.token !== NEAR.usdc && h.amount > 0n);
+/**
+ * Quotes to swap each holding into USDC delivered to `owner`'s NEAR account, checked with NEAR Intents itself.
+ * USDC is left out unless `includeUsdc` (then 1Click just delivers it). `hours` is how long the quotes last.
+ */
+export async function convertQuotes(owner: string, holdings: Holding[], opts: { includeUsdc?: boolean; hours?: number } = {}): Promise<{ transfers: ConvertTransfer[]; skipped: Holding[] }> {
+  const others = holdings.filter((h) => (opts.includeUsdc || h.token !== NEAR.usdc) && h.amount > 0n);
   if (!others.length) return { transfers: [], skipped: [] };
-  const r = await fetch("/api/convert/quotes", { method: "POST", body: JSON.stringify({ owner, holdings: others.map((h) => ({ token: h.token, amount: h.amount.toString() })) }) });
+  const r = await fetch("/api/convert/quotes", { method: "POST", body: JSON.stringify({ owner, hours: opts.hours ?? 1, holdings: others.map((h) => ({ token: h.token, amount: h.amount.toString() })) }) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.error ?? "Couldn't get quotes to convert to USDC");
   const transfers = (d.transfers ?? []) as ConvertTransfer[];

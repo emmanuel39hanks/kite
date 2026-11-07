@@ -14,9 +14,10 @@ import { Donut } from "@/components/charts";
 import { Logo } from "@/components/logo";
 import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
 import { useMarket } from "@/lib/market/use-market";
-import { verifyAllocateProposal, type CheckedSwap } from "@/lib/near/allocate-check";
+import { verifyAllocateProposal, verifyConvert, type CheckedSwap } from "@/lib/near/allocate-check";
 import { accountUrl, NEAR, trezuUrl } from "@/lib/near/config";
 import { pickMyVault, refreshMyVault, useMyVault } from "@/lib/near/my-vault";
+import { closeVaultCalls, usdcInIntents, withdrawAllProposal } from "@/lib/near/dao-fund";
 import { myDaos, rememberDao, type MyDao } from "@/lib/near/known-daos";
 import { addProposalAction, approveAction, describeCalls, vaultProposals, type DaoProposal } from "@/lib/near/dao";
 import {
@@ -300,8 +301,8 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
   );
 
   const propose = (ctx: DaoCtx, name: string, action: OwnerAction) => {
-    const { description, calls } = ownerProposal(vault, action);
-    return run(name, ctx.dao, addProposalAction(vault, description, calls, BigInt(ctx.policy.proposal_bond)), `Proposal sent to ${ctx.dao}. It runs once the DAO approves it.`);
+    const { description, calls, gasTgas } = ownerProposal(vault, action);
+    return run(name, ctx.dao, addProposalAction(vault, description, calls, BigInt(ctx.policy.proposal_bond), gasTgas), `Proposal sent to ${ctx.dao}. It runs once the DAO approves it.`);
   };
   const approve = (ctx: DaoCtx, p: DaoProposal) =>
     run(`approve-${ctx.dao}-${p.id}`, ctx.dao, approveAction(p.id, p.kind), `Vote recorded on proposal ${p.id}. If it reached the DAO's threshold, the DAO tried the calls; the list below shows whether they ran.`);
@@ -660,6 +661,8 @@ function OwnerActions({
         </div>
       </Card>
 
+      <TakeOut vault={vault} state={state} ctx={ctx} off={off} busy={busy} onPropose={onPropose} />
+
       <Disclosure title="Verified treasury policy, written by NEAR AI">
         <TreasuryPolicy
           vault={vault}
@@ -672,6 +675,65 @@ function OwnerActions({
       </Disclosure>
       <p className="px-1 text-[12px] text-[#6b6b6b]">Each button files one proposal{bond !== "0" ? ` with the DAO's ${bond} NEAR bond` : ""}. Nothing changes until the DAO approves it.</p>
     </div>
+  );
+}
+
+/** Money back to the DAO as USDC, then closing the vault for its NEAR deposit. Both are proposals. */
+function TakeOut({ vault, state, ctx, off, busy, onPropose }: { vault: string; state: VaultState; ctx: DaoCtx; off: boolean; busy: string | null; onPropose: (name: string, a: OwnerAction) => void }) {
+  const [usdc, setUsdc] = useState<bigint | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [quoting, setQuoting] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    usdcInIntents(vault).then((v) => alive && setUsdc(v)).catch(() => alive && setUsdc(null));
+    return () => {
+      alive = false;
+    };
+  }, [vault, state]);
+  const holdings = [...state.plan.map((t, i) => ({ token: t.token, amount: state.balances[i] ?? 0n })), ...(state.plan.some((t) => t.token === NEAR.usdc) ? [] : [{ token: NEAR.usdc, amount: usdc ?? 0n }])].filter((h) => h.amount > 0n);
+  const empty = usdc !== null && holdings.length === 0;
+  const hours = Math.max(1, Math.min(72, Math.ceil(Number(BigInt(ctx.policy.proposal_period) / 1_000_000_000n) / 3600)));
+  const names = (t: string) => assetByIntentsId(t)?.name ?? t;
+
+  const withdraw = async () => {
+    setErr(null);
+    setQuoting(true);
+    try {
+      const p = await withdrawAllProposal({ vault, dao: ctx.dao, holdings, hours, names });
+      onPropose("withdraw", { kind: "prepared", description: p.description, calls: p.calls, gasTgas: p.gasTgas });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setQuoting(false);
+    }
+  };
+  const close = () => {
+    const c = closeVaultCalls();
+    onPropose("close", { kind: "prepared", description: `Close Kite vault ${vault}. It's empty; the vault deletes itself and its ${NEAR.factoryDepositNear} NEAR deposit (less gas used) goes back to this DAO.`, calls: c.calls, gasTgas: c.gasTgas });
+  };
+
+  return (
+    <Card className="divide-y divide-black/[0.05] overflow-hidden p-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white px-5 py-4">
+        <div>
+          <div className="text-[15px] tracking-[-0.02em]">Withdraw everything as USDC</div>
+          <div className="text-[13px] text-[#6b6b6b]">Every holding is swapped to USDC and paid to {ctx.dao}. Approve within {hours} hours.</div>
+        </div>
+        <Button size="sm" icon="withdraw" onClick={withdraw} loading={quoting || busy === "withdraw"} disabled={off || holdings.length === 0 || !!state.status.pending}>
+          Propose withdrawing
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white px-5 py-4">
+        <div>
+          <div className="text-[15px] tracking-[-0.02em]">Close the vault</div>
+          <div className="text-[13px] text-[#6b6b6b]">{empty ? `Returns the ${NEAR.factoryDepositNear} NEAR deposit to the DAO.` : "Once it's empty. Withdraw first."}</div>
+        </div>
+        <Button size="sm" variant="danger" onClick={close} loading={busy === "close"} disabled={off || !empty || !!state.status.pending}>
+          Propose closing
+        </Button>
+      </div>
+      {err && <p className="bg-white px-5 pb-4 text-[13px] text-rose-600">{err}</p>}
+    </Card>
   );
 }
 
@@ -701,7 +763,8 @@ function ProposalRow({
   const calls = describeCalls(p.kind);
   const lapsed = isLapsed(p, period);
   const swaps = useSwapCheck(p, vault, planTokens);
-  const approvable = canApprove(p, vault, period) && (swaps === null || swaps.ok === true);
+  const out = useWithdrawCheck(p, dao);
+  const approvable = canApprove(p, vault, period) && (swaps === null || swaps.ok === true) && (out === null || out.ok === true);
   const when = new Date(Number(BigInt(p.submission_time) / 1_000_000n));
   return (
     <li className="px-5 py-4">
@@ -736,6 +799,11 @@ function ProposalRow({
             })}
           </ul>
           {swaps && <SwapList check={swaps} />}
+          {out && (
+            <p className={`mt-2 text-[13px] ${out.ok === false ? "text-rose-600" : out.ok ? "text-[#05a800]" : "text-[#6b6b6b]"}`}>
+              {out.ok === null ? "Checking each withdrawal with NEAR Intents…" : out.ok ? `Checked: every withdrawal becomes USDC paid to ${dao}.` : `Not offered for a vote: ${out.why}`}
+            </p>
+          )}
         </div>
         {approvable && (
           // Trezu sponsors the vote's gas, so that's the default; Kite has already checked the calls above.
@@ -765,6 +833,43 @@ type SwapCheck = { ok: null } | { ok: true; swaps: CheckedSwap[] } | { ok: false
  * For an open `allocate` proposal: check every swap with NEAR Intents before the page offers a vote, because anyone
  * the DAO lets propose can file one. Null for any other proposal.
  */
+/**
+ * A proposal that withdraws from the vault must pay the DAO: either straight to the DAO's account, or to a 1Click
+ * address that NEAR Intents confirms swaps into USDC delivered to the DAO (refunds to the DAO). Anything else isn't
+ * offered for a vote here.
+ */
+function useWithdrawCheck(p: DaoProposal, dao: string): { ok: null } | { ok: true } | { ok: false; why: string } | null {
+  const calls = describeCalls(p.kind).filter((c) => c.method === "withdraw" || c.method === "withdraw_external");
+  const open = p.status === "InProgress";
+  const key = JSON.stringify(calls);
+  const [check, setCheck] = useState<{ ok: null } | { ok: true } | { ok: false; why: string }>({ ok: null });
+  useEffect(() => {
+    if (!calls.length || !open) return;
+    let alive = true;
+    (async () => {
+      const list = JSON.parse(key) as { method: string; args: { token?: string; amount?: string; receiver_id?: string } | null }[];
+      const swaps: { token: string; amount: string; to: string }[] = [];
+      for (const c of list) {
+        const a = c.args ?? {};
+        if (c.method === "withdraw_external") {
+          if (a.receiver_id !== dao) throw new Error(`a withdrawal pays ${a.receiver_id ?? "someone"}, not ${dao}`);
+          continue;
+        }
+        if (!a.token || !a.amount || !a.receiver_id) throw new Error("a withdrawal is missing its details");
+        if (a.receiver_id !== dao) swaps.push({ token: a.token, amount: a.amount, to: a.receiver_id });
+      }
+      if (swaps.length) await verifyConvert({ transfers: swaps, owner: dao, usdcToken: NEAR.usdc });
+    })()
+      .then(() => alive && setCheck({ ok: true }))
+      .catch((e) => alive && setCheck({ ok: false, why: e instanceof Error ? e.message : String(e) }));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-check only when the proposal's calls change
+  }, [key, open, dao]);
+  return calls.length && open ? check : null;
+}
+
 function useSwapCheck(p: DaoProposal, vault: string, planTokens: string[]): SwapCheck | null {
   // Kite files one allocate per swap; gather the transfers of every allocate in the proposal and check them all.
   const calls = describeCalls(p.kind).filter((c) => c.method === "allocate");

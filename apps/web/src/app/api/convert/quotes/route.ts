@@ -13,18 +13,20 @@ import { clientIp, crossSite, refuseCrossSite, isNearAccount, limited } from "@/
 export async function POST(req: Request) {
   if (crossSite(req)) return refuseCrossSite();
   if (limited(`conv:${clientIp(req)}`, 12, 10 * 60_000)) return Response.json({ error: "Too many requests. Try again in a few minutes." }, { status: 429 });
-  let body: { owner?: unknown; holdings?: unknown };
+  let body: { owner?: unknown; holdings?: unknown; hours?: unknown };
   try {
     body = await req.json();
   } catch {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
-  const { owner, holdings } = (body ?? {}) as { owner: string; holdings: { token: string; amount: string }[] };
+  const { owner, holdings, hours = 1 } = (body ?? {}) as { owner: string; holdings: { token: string; amount: string }[]; hours?: number };
   const sane =
     isNearAccount(owner) &&
     Array.isArray(holdings) && holdings.length >= 1 && holdings.length <= 12 &&
-    holdings.every((h) => typeof h?.token === "string" && !!assetByIntentsId(h.token) && h.token !== NEAR.usdc && typeof h.amount === "string" && /^[1-9]\d{0,38}$/.test(h.amount)) &&
-    new Set(holdings.map((h) => h.token)).size === holdings.length;
+    // USDC itself is fine: 1Click delivers it out of NEAR Intents to the account, at no fee.
+    holdings.every((h) => typeof h?.token === "string" && !!assetByIntentsId(h.token) && typeof h.amount === "string" && /^[1-9]\d{0,38}$/.test(h.amount)) &&
+    new Set(holdings.map((h) => h.token)).size === holdings.length &&
+    Number.isInteger(hours) && hours >= 1 && hours <= 72;
   if (!sane) return Response.json({ error: "Bad request" }, { status: 400 });
 
   const transfers: { token: string; amount: string; to: string; outUsd: number }[] = [];
@@ -45,7 +47,8 @@ export async function POST(req: Request) {
         recipientType: "DESTINATION_CHAIN",
         refundTo: owner,
         refundType: "INTENTS",
-        deadline: new Date(Date.now() + 3600_000).toISOString(),
+        // A DAO votes before the swaps run, so it asks for quotes that last its voting window (up to 72 hours).
+        deadline: new Date(Date.now() + hours * 3600_000).toISOString(),
       }),
       signal: AbortSignal.timeout(20_000),
     }).catch(() => null);
