@@ -123,6 +123,17 @@ function Live({ p }: { p: Portfolio }) {
   const h = useHistory(DAYS[range]);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  // A message left by another page that sent us back here (e.g. "Target mix saved").
+  useEffect(() => {
+    try {
+      const flash = sessionStorage.getItem("kite-flash");
+      if (flash) {
+        sessionStorage.removeItem("kite-flash");
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reading a one-time message from storage
+        setMsg({ tone: "ok", text: flash });
+      }
+    } catch {}
+  }, []);
 
   // The vault's own history when we have it (preview); otherwise current holdings at real past prices.
   // Either way the last point is today's live value.
@@ -193,6 +204,11 @@ function Live({ p }: { p: Portfolio }) {
             <Button icon="refresh" onClick={() => act("check", live.checkNow, "Checked.")} loading={busy === "check"}>
               Check now
             </Button>
+            {!ownedBy && (
+              <Button icon="up" href="/console/guardrails#withdraw">
+                Withdraw
+              </Button>
+            )}
             {!ownedBy && (
               <Button variant="primary" icon="deposit" href="/console/start/add-money">
                 Add money
@@ -613,7 +629,12 @@ function VaultCard({ p, keyOn, ownedBy, preview }: { p: Portfolio; keyOn: boolea
           </div>
         ))}
       </dl>
-      <div className="mt-auto pt-4">
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4">
+        {!ownedBy && (
+          <Button size="sm" icon="up" href="/console/guardrails#withdraw">
+            Withdraw
+          </Button>
+        )}
         {preview ? (
           <p className="text-[12px] leading-4 text-[#6b6b6b]">In the preview this vault lives in your browser. A real one is a contract on NEAR you can inspect.</p>
         ) : (

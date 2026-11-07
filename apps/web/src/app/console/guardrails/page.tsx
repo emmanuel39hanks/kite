@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/console/icons";
 import { Badge, Button, Card, PageTitle, Slider, StatusNote, Switch } from "@/components/console/ui";
 import { MixBar } from "@/components/charts";
@@ -160,6 +161,7 @@ function Form({ initial }: { initial: Guardrails }) {
 function TargetMix() {
   const k = useKite();
   const live = useLive();
+  const router = useRouter();
   const p = k.portfolio!;
   const [mix, setMix] = useState<Slice[]>(p.target);
   const [busy, setBusy] = useState(false);
@@ -174,7 +176,10 @@ function TargetMix() {
     setNote(null);
     try {
       await live.savePlan(mix);
-      setNote({ tone: "ok", text: "Saved to your vault. Kite trades toward the new mix at its next check, inside your guardrails." });
+      try {
+        sessionStorage.setItem("kite-flash", `Target mix saved: ${mix.map((s) => `${assetById(s.id).ticker} ${s.weight}%`).join(", ")}. Kite trades toward it at its next check, inside your guardrails.`);
+      } catch {}
+      router.push("/console");
     } catch (e) {
       setNote({ tone: "err", text: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -250,8 +255,13 @@ function CloseVault() {
     }
   };
 
+  // Arriving from Home's "Withdraw": this card renders after the vault loads, so scroll to it then.
+  useEffect(() => {
+    if (window.location.hash === "#withdraw") document.getElementById("withdraw")?.scrollIntoView({ block: "start" });
+  }, []);
+
   return (
-    <Card className="p-5">
+    <Card className="scroll-mt-28 p-5" id="withdraw">
       <h2 className="text-[18px] tracking-[-0.03em]">Withdraw and close</h2>
       <p className="mt-1 text-[13px] leading-5 text-[#6b6b6b]">
         Take everything out, then close the vault to get its {NEAR.vaultStorageNear} NEAR deposit back. The vault refuses to close while it still holds anything, so nothing can get stuck.
