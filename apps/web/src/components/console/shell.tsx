@@ -8,7 +8,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Wordmark } from "@/components/kite-mark";
 import { Logo } from "@/components/logo";
 import { ASSETS } from "@/lib/assets";
-import { accountUrl, vaultIdFor } from "@/lib/near/config";
+import { accountUrl } from "@/lib/near/config";
+import { useMyVault } from "@/lib/near/my-vault";
 import { useWallet } from "@/lib/near/wallet";
 import { PLAN_DATA } from "@/lib/plans";
 import { useKite } from "@/lib/store";
@@ -197,6 +198,7 @@ function AccountArea() {
   const k = useKite();
   const pv = usePreviewActions();
   const [copied, setCopied] = useState(false);
+  const mine = useMyVault(w.preview ? null : w.accountId);
   if (!w.accountId) {
     return (
       <Button variant="primary" icon="wallet" onClick={w.signIn} disabled={!w.ready}>
@@ -205,7 +207,7 @@ function AccountArea() {
     );
   }
   const short = w.accountId.length > 22 ? `${w.accountId.slice(0, 8)}…${w.accountId.slice(-8)}` : w.accountId;
-  const vault = vaultIdFor(w.accountId);
+  const vault = mine?.exists ? mine.vault : null;
   return (
     <Menu.Root>
       <Menu.Trigger asChild>
@@ -267,7 +269,7 @@ function AccountArea() {
           >
             {copied ? "Copied" : "Copy account"}
           </MenuItem>
-          {k.vaultFound && (
+          {k.vaultFound && vault && (
             <MenuItem icon="external" onSelect={() => window.open(accountUrl(vault), "_blank", "noopener,noreferrer")}>
               View vault on NearBlocks
             </MenuItem>

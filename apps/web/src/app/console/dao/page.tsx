@@ -14,7 +14,8 @@ import { Logo } from "@/components/logo";
 import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
 import { useMarket } from "@/lib/market/use-market";
 import { verifyAllocateProposal, type CheckedSwap } from "@/lib/near/allocate-check";
-import { accountUrl, NEAR, vaultIdFor } from "@/lib/near/config";
+import { accountUrl, NEAR } from "@/lib/near/config";
+import { useMyVault } from "@/lib/near/my-vault";
 import { addProposalAction, approveAction, describeCalls, vaultProposals, type DaoProposal } from "@/lib/near/dao";
 import {
   callRisk,
@@ -70,7 +71,8 @@ function DaoView() {
   const fromUrl = cleanAccount(params.get("vault") ?? "");
   const [picked, setPicked] = useState<Mode | null>(null);
   const mode: Mode = picked ?? (fromUrl ? "Open a vault" : "Create a vault");
-  const vault = fromUrl ?? (w.accountId && !w.preview ? vaultIdFor(w.accountId) : null);
+  const mine = useMyVault(w.accountId && !w.preview ? w.accountId : null);
+  const vault = fromUrl ?? (mine?.exists ? mine.vault : null);
 
   // The preview shows all of this too: it only reads NEAR mainnet. Filing or voting needs a real wallet.
   const open = (v: string) => {

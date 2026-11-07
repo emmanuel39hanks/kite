@@ -17,9 +17,12 @@ import { useMarket } from "@/lib/market/use-market";
 import { loadPreview, onPreviewChange, PREVIEW_VAULT, rowsOf, savePreview } from "@/lib/preview/engine";
 import { usePreviewActions } from "@/lib/preview/actions";
 import { verifyAllocation, type Transfer } from "./allocate-check";
-import { NEAR, vaultIdFor } from "./config";
+import { NEAR } from "./config";
+import { createVaultArgs, factoryDepositYocto, isFactoryVault } from "./factory";
+import { refreshMyVault, useMyVault } from "./my-vault";
+import { actionCreators } from "@near-js/transactions";
 import { foreignOwner, notOwnerMessage } from "./dao-view";
-import { ALLOCATE_TGAS_EACH, agentAllowanceYocto, allocateCalls, createVaultActions, depositUsdcFromWallet, fromContractLimits, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
+import { ALLOCATE_TGAS_EACH, agentAllowanceYocto, allocateCalls, depositUsdcFromWallet, fromContractLimits, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
 import { useWallet } from "./wallet";
 
 const provider = new JsonRpcProvider({ url: NEAR.rpc });
@@ -41,7 +44,8 @@ export function LiveSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [w.ready, w.accountId]);
 
-  const vault = k.account && !w.preview ? vaultIdFor(k.account) : null;
+  const mine = useMyVault(k.account && !w.preview ? k.account : null);
+  const vault = mine?.vault ?? null;
   const { setVault } = k;
 
   // Preview: the vault lives in this browser; value it at live prices whenever either changes.
@@ -160,7 +164,8 @@ export function useLive() {
 function useRealLive() {
   const w = useWallet();
   const k = useKite();
-  const vault = k.account ? vaultIdFor(k.account) : "";
+  const mine = useMyVault(k.account);
+  const vault = mine?.vault ?? "";
   // Once a DAO owns the vault, this wallet's owner calls would only fail on chain. Stop them here with the reason.
   const ownedBy = foreignOwner(k.portfolio?.owner, k.account);
   const ownerSend = useCallback(
@@ -174,12 +179,29 @@ function useRealLive() {
   const createVault = useCallback(
     async (name: string, planSlug: string, mix: Slice[], g: Guardrails) => {
       if (!k.account) throw new Error("Connect a NEAR wallet first");
-      const hash = await w.send(vault, await createVaultActions(k.account, vault, mix, g));
+      if (!mine) throw new Error("Still looking up your vault. Try again in a moment.");
+      if (mine.exists) throw new Error(`You already have a vault: ${mine.vault}`);
+      if (!isFactoryVault(vault)) throw new Error("Couldn't pick a name for your vault");
+      // Kite's factory deploys the vault and makes this wallet its owner. Wallets like Meteor won't let an app
+      // deploy code to the user's own account, but a function call to the factory is an ordinary transaction.
+      const vaultName = vault.slice(0, -(NEAR.factory.length + 1));
+      const hash = await w.send(NEAR.factory, [actionCreators.functionCall("create_vault", createVaultArgs(vaultName, mix, g), 200n * 10n ** 12n, factoryDepositYocto())]);
+      // The factory refunds the deposit if creation fails, and the transaction itself still succeeds, so check.
+      let made = false;
+      for (let i = 0; i < 12 && !made; i++) {
+        made = await vaultExists(vault);
+        if (!made) await new Promise((r) => setTimeout(r, 1500));
+      }
+      if (!made) {
+        refreshMyVault(k.account);
+        throw new Error(`The vault wasn't created. Your ${NEAR.factoryDepositNear} NEAR goes back to your wallet; if it hasn't in a few minutes, the factory holds it for you to claim.`);
+      }
+      refreshMyVault(k.account, { vault, exists: true });
       k.setPlanMeta(name, planSlug);
       k.addEvent({ kind: "created", title: `Vault ${vault} created`, detail: "Kite's key can only call rebalance and settle.", tx: hash });
       return hash;
     },
-    [k, w, vault],
+    [k, w, vault, mine],
   );
 
   const depositFromWallet = useCallback(
@@ -268,6 +290,7 @@ function useRealLive() {
     if (left.length) throw new Error("Withdraw everything first. The vault refuses to close while it holds money.");
     const hash = await ownerSend([ownerCall("close_vault", { also_check: [NEAR.usdc] }, 150n)]);
     k.addEvent({ kind: "key", title: "Vault closed", detail: `${vault} was deleted and its NEAR deposit returned to you.`, tx: hash });
+    if (k.account) refreshMyVault(k.account);
     return hash;
   }, [k, ownerSend, vault, heldTokens]);
 

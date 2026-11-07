@@ -2,6 +2,18 @@ import { NEAR } from "@/lib/near/config";
 import { ONECLICK } from "@/lib/server/oneclick";
 import { SOURCES } from "@/lib/near/sources";
 import { clientIp, crossSite, refuseCrossSite, isKiteVault, isNearAccount, limited } from "@/lib/server/guards";
+import { isFactoryVault } from "@/lib/near/factory-names";
+import { JsonRpcProvider } from "near-api-js";
+
+const provider = new JsonRpcProvider({ url: NEAR.rpc });
+
+/** Refunds go to `owner`, so only quote for the owner's own vault: `kite.<owner>`, or a factory vault it owns on chain. */
+async function ownsVault(owner: string, vault: string): Promise<boolean> {
+  if (vault === `kite.${owner}`) return true;
+  if (!isFactoryVault(vault)) return false;
+  const status = (await provider.callFunction({ contractId: vault, method: "get_status", args: {} }).catch(() => null)) as { owner?: string } | null;
+  return status?.owner === owner;
+}
 
 /**
  * POST { source, amount (in source base units), vault, owner }
@@ -20,9 +32,10 @@ export async function POST(req: Request) {
   if (!b || typeof b !== "object") return Response.json({ error: "Bad request" }, { status: 400 });
   const { source, amount, vault, owner } = b as { source: string; amount: string; vault: string; owner: string };
   const src = typeof source === "string" && Object.hasOwn(SOURCES, source) ? SOURCES[source] : undefined;
-  if (!src || typeof amount !== "string" || !/^\d{1,30}$/.test(amount) || !isKiteVault(vault) || !isNearAccount(owner) || vault !== `kite.${owner}`) {
+  if (!src || typeof amount !== "string" || !/^\d{1,30}$/.test(amount) || !isKiteVault(vault) || !isNearAccount(owner)) {
     return Response.json({ error: "Bad request" }, { status: 400 });
   }
+  if (!(await ownsVault(owner, vault))) return Response.json({ error: "That vault isn't yours" }, { status: 400 });
   const body = {
     dry: false,
     swapType: "EXACT_INPUT",

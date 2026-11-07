@@ -3,7 +3,6 @@
  * vault state from chain. Mirrors contracts/vault/src/lib.rs.
  */
 import { actionCreators } from "@near-js/transactions";
-import { PublicKey } from "@near-js/crypto";
 import { JsonRpcProvider } from "near-api-js";
 import { assetById } from "@/lib/assets";
 import type { Slice } from "@/lib/mix";
@@ -57,28 +56,6 @@ export function fromContractLimits(l: ContractLimits): Guardrails {
 
 /** Gas allowance put on Kite's key when it is restored: NEAR.agentAllowanceNear in yoctoNEAR. */
 export const agentAllowanceYocto = () => yocto(NEAR.agentAllowanceNear).toString();
-
-/**
- * One transaction, signed by the owner, sent to `kite.<owner>`:
- * create the account, fund its storage, deploy the vault, initialise it, and
- * add Kite's key limited to `rebalance` and `settle`.
- */
-export async function createVaultActions(owner: string, vault: string, mix: Slice[], g: Guardrails) {
-  const code = new Uint8Array(await (await fetch(NEAR.wasmUrl)).arrayBuffer());
-  const agent = PublicKey.fromString(NEAR.agentPublicKey);
-  return [
-    actionCreators.createAccount(),
-    actionCreators.transfer(yocto(NEAR.vaultStorageNear)),
-    actionCreators.deployContract(code),
-    actionCreators.functionCall(
-      "new",
-      { owner, plan: toContractPlan(mix), limits: toContractLimits(g), agent: NEAR.agentPublicKey, intents: NEAR.intents },
-      100n * TGAS,
-      0n,
-    ),
-    actionCreators.addKey(agent, actionCreators.functionCallAccessKey(vault, ["rebalance", "settle"], yocto(NEAR.agentAllowanceNear))),
-  ];
-}
 
 /**
  * `allocate` actions, one per swap. The vault joins the transfers of one call into a single promise and NEAR

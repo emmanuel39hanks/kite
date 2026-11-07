@@ -55,7 +55,7 @@ export function StartFlow({ slug }: { slug: string }) {
     return (
       <Frame step={step} topUp={topUp}>
         <div className="mx-auto max-w-[1100px] px-4 py-10 sm:px-8">
-          <ConnectGate text={setup ? `Connect to set up “${setup.name}”. Your vault is created on your own NEAR account.` : undefined} />
+          <ConnectGate text={setup ? `Connect to set up “${setup.name}”. Your vault is created for you, owned by your NEAR account.` : undefined} />
         </div>
       </Frame>
     );
@@ -81,7 +81,7 @@ export function StartFlow({ slug }: { slug: string }) {
     );
   }
 
-  // One vault per account: kite.<you>. Setting up again would fail at CreateAccount.
+  // One vault per account here: the screens all show the wallet's one vault.
   if (!topUp && k.vaultFound && step === "vault" && !created) {
     return (
       <Frame step={step} topUp={topUp}>
@@ -281,7 +281,7 @@ function VaultStep({ name, mix, slug, onCreated, onDone }: { name: string; mix: 
       <p className="mt-2 text-[15px] leading-6 text-[#6b6b6b]">One signature sets everything up. This is exactly what it does, before your wallet asks.</p>
 
       <ul className="mt-6 space-y-2">
-        <Grant ok title={`Creates ${live.vault}`} text="A vault contract on your own account that holds your money. Only you can withdraw." />
+        <Grant ok title={`Creates ${live.vault}`} text="Kite's locked factory creates a vault that your NEAR account owns. It holds your money, and only you can withdraw." />
         <Grant ok title="Saves your plan inside it" text={`${mix.map((s) => `${assetById(s.id).ticker} ${s.weight}%`).join(", ")}. Kite can't trade anything else.`} />
         <Grant
           ok

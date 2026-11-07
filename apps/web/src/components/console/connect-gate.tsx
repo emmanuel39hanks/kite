@@ -19,7 +19,7 @@ export function ConnectGate({ title = "Connect your NEAR wallet", text }: { titl
           </div>
           <h2 className="mt-6 text-[34px] leading-[1.05] tracking-[-0.05em]">{title}</h2>
           <p className="mt-3 max-w-[46ch] text-[16px] leading-6 text-[#6b6b6b]">
-            {text ?? "Your Kite vault lives on your own NEAR account. Connect to see your portfolio, or to create your vault in one signature."}
+            {text ?? "Your Kite vault is owned by your NEAR account. Connect to see your portfolio, or to create your vault in one signature."}
           </p>
           <div className="mt-7 flex flex-wrap gap-2.5">
             <Button variant="primary" size="lg" icon="wallet" onClick={w.signIn} disabled={!w.ready} loading={!w.ready}>
