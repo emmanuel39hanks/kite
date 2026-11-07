@@ -676,7 +676,14 @@ function ProposalRow({
           <p className="mt-1 text-[13px] text-[#6b6b6b]">
             By {p.proposer} · {when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
           </p>
-          {p.description && <p className="mt-2 max-w-[80ch] text-[14px] leading-5 break-words">{p.description}</p>}
+          {p.description && (
+            <details className="group mt-2 max-w-[80ch]">
+              <summary className="cursor-pointer list-none text-[14px] leading-5 break-words [&::-webkit-details-marker]:hidden">
+                <span className="line-clamp-2 group-open:line-clamp-none">{p.description}</span>
+                <span className="mt-1 inline-block text-[12px] text-[#6b6b6b] underline underline-offset-2 group-open:hidden">Full text</span>
+              </summary>
+            </details>
+          )}
           <ul className="mt-2 space-y-1">
             {calls.map((c, i) => {
               const risk = callRisk(c.method);
