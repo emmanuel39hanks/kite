@@ -93,8 +93,8 @@ export function touchesVault(kind: DaoProposal["kind"], vault: string): boolean 
 }
 
 /** Approve a proposal. The vote that reaches the threshold runs the calls, so it carries enough gas for them. */
-export function approveAction(id: number, kind: DaoProposal["kind"]) {
-  return actionCreators.functionCall("act_proposal", { id, action: "VoteApprove", proposal: kind }, 300n * TGAS, 0n);
+export function approveAction(id: number, kind: DaoProposal["kind"], tgas = 300n) {
+  return actionCreators.functionCall("act_proposal", { id, action: "VoteApprove", proposal: kind }, tgas * TGAS, 0n);
 }
 
 /* ───────────── reads ───────────── */

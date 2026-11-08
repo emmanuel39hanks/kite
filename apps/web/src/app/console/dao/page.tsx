@@ -160,7 +160,9 @@ function DaoRequests({ account }: { account: string | null }) {
     setBusy(key);
     setNote(null);
     try {
-      await w.send(r.dao, [approveAction(r.id, r.kind as DaoProposal["kind"])]);
+      // A payment needs little gas, and wallets reserve the cost of all of it up front: ask for only what it needs.
+      const near = (r.kind as { Transfer?: { token_id: string } }).Transfer?.token_id === "";
+      await w.send(r.dao, [approveAction(r.id, r.kind as DaoProposal["kind"], near ? 50n : 100n)]);
       setNote({ tone: "ok", text: `Approved request ${r.id} on ${r.dao}. If that was the last vote needed, it has been paid.` });
       setTimeout(() => setRev((x) => x + 1), 2500);
     } catch (e) {
