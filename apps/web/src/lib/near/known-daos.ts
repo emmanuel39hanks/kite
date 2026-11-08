@@ -66,3 +66,30 @@ export async function knownDaoVaults(): Promise<{ dao: string; vault: string }[]
   }
   return out;
 }
+
+export type DaoRequest = { dao: string; id: number; kind: unknown; text: string; status: string };
+
+/**
+ * Open requests on the given DAOs that aren't about a Kite vault (payments and the like), newest first, so a member
+ * can vote on them here too. Read straight from each DAO, so they show whatever another app thinks of the balance.
+ */
+export async function openDaoRequests(daos: string[]): Promise<DaoRequest[]> {
+  const out: DaoRequest[] = [];
+  for (const dao of daos) {
+    const last = (await provider.callFunction({ contractId: dao, method: "get_last_proposal_id", args: {} }).catch(() => 0)) as number;
+    const list = (await provider.callFunction({ contractId: dao, method: "get_proposals", args: { from_index: Math.max(0, last - 20), limit: 20 } }).catch(() => [])) as {
+      id: number;
+      status: string;
+      kind: { Transfer?: { token_id: string; receiver_id: string; amount: string } };
+    }[];
+    for (const p of list) {
+      if (p.status !== "InProgress" || !p.kind.Transfer) continue;
+      const t = p.kind.Transfer;
+      const near = t.token_id === "";
+      const amount = near ? Number(BigInt(t.amount) / 10n ** 18n) / 1e6 : t.token_id === NEAR.usdcContract ? Number(t.amount) / 1e6 : Number(t.amount);
+      const to = t.receiver_id.length > 30 ? `${t.receiver_id.slice(0, 8)}…${t.receiver_id.slice(-8)}` : t.receiver_id;
+      out.push({ dao, id: p.id, kind: p.kind, status: p.status, text: `Send ${amount} ${near ? "NEAR" : t.token_id === NEAR.usdcContract ? "USDC" : t.token_id} to ${to}` });
+    }
+  }
+  return out.sort((a, b) => b.id - a.id);
+}

@@ -18,7 +18,7 @@ import { verifyAllocateProposal, verifyConvert, type CheckedSwap } from "@/lib/n
 import { accountUrl, NEAR, trezuUrl } from "@/lib/near/config";
 import { pickMyVault, refreshMyVault, useMyVault } from "@/lib/near/my-vault";
 import { closeVaultCalls, usdcInIntents, withdrawAllProposal } from "@/lib/near/dao-fund";
-import { myDaos, rememberDao, type MyDao } from "@/lib/near/known-daos";
+import { myDaos, openDaoRequests, rememberDao, type DaoRequest, type MyDao } from "@/lib/near/known-daos";
 import { addProposalAction, approveAction, describeCalls, vaultProposals, type DaoProposal } from "@/lib/near/dao";
 import {
   callRisk,
@@ -87,6 +87,7 @@ function DaoView() {
   return (
     <>
       <PageTitle actions={<Segmented options={MODES} value={mode} onChange={setPicked} label="What to do" size="md" />}>DAO treasury</PageTitle>
+      <DaoRequests account={w.preview ? null : w.accountId} />
       <YourDaos account={w.preview ? null : w.accountId} current={mode === "Open a vault" ? fromUrl : null} onPick={open} onCreate={(d) => (setCreateFor(d), setPicked("Create a vault"))} onByName={() => (setPicked("Open a vault"), setByName(true))} />
 
       {mode === "Create a vault" ? (
@@ -132,6 +133,66 @@ function DaoView() {
         </>
       )}
     </>
+  );
+}
+
+/** Payment requests waiting on your DAOs, with a vote button: approving works on the DAO's real balance. */
+function DaoRequests({ account }: { account: string | null }) {
+  const w = useWallet();
+  const [list, setList] = useState<DaoRequest[] | null>(null);
+  const [rev, setRev] = useState(0);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<Note>(null);
+  useEffect(() => {
+    if (!account) return;
+    let alive = true;
+    myDaos(account)
+      .then((d) => openDaoRequests(d.map((x) => x.dao)))
+      .then((l) => alive && setList(l))
+      .catch(() => alive && setList([]));
+    return () => {
+      alive = false;
+    };
+  }, [account, rev]);
+  if (!list?.length && !note) return null;
+  const approve = async (r: DaoRequest) => {
+    const key = `${r.dao}-${r.id}`;
+    setBusy(key);
+    setNote(null);
+    try {
+      await w.send(r.dao, [approveAction(r.id, r.kind as DaoProposal["kind"])]);
+      setNote({ tone: "ok", text: `Approved request ${r.id} on ${r.dao}. If that was the last vote needed, it has been paid.` });
+      setTimeout(() => setRev((x) => x + 1), 2500);
+    } catch (e) {
+      setNote({ tone: "err", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <Card className="mb-4 p-4">
+      <h2 className="mb-3 px-1 text-[16px] tracking-[-0.02em]">Waiting for your vote</h2>
+      <ul className="space-y-2">
+        {(list ?? []).map((r) => (
+          <li key={`${r.dao}-${r.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
+            <div className="min-w-0">
+              <div className="text-[14px]">{r.text}</div>
+              <div className="text-[12px] text-[#6b6b6b]">
+                Request {r.id} on {r.dao}
+              </div>
+            </div>
+            <Button size="sm" variant="primary" icon="check" onClick={() => approve(r)} loading={busy === `${r.dao}-${r.id}`} disabled={!w.accountId || busy !== null}>
+              Approve
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {note && (
+        <StatusNote tone={note.tone} className="mt-3">
+          {note.text}
+        </StatusNote>
+      )}
+    </Card>
   );
 }
 
