@@ -65,8 +65,8 @@ function Hero() {
           </h1>
           <p className="mt-6 max-w-[46ch] text-[18px] leading-[1.45] text-black/70 sm:text-[20px]">
             You choose what to own. Kite buys it for you, checks it every day,
-            and trades it back to your plan when prices move. Your money stays
-            in your own account the whole time.
+            and trades it back to your plan when prices move. It sits in a vault
+            that only you can take money out of.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href="/console" className="rounded-lg bg-black px-5 py-3 text-[16px] font-medium text-white hover:bg-black/80">
