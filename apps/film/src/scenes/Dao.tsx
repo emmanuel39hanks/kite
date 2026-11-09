@@ -1,4 +1,4 @@
-/** Scene 8: a group's shared money. The landing page's proposal card, with the votes coming in. */
+/** A DAO's shared money. The landing page's proposal card, with the votes coming in. */
 import { useCurrentFrame } from "remotion";
 import { Donut } from "@/components/charts";
 import { Logo, logoName } from "@/components/logo";
@@ -23,7 +23,7 @@ export function Dao() {
   return (
     <Paper>
       <Headline>
-        <Line text="Groups can use it too. Everyone votes." at={s(0.2)} out={s(4.5)} />
+        <Line text="DAOs can use it too. Members vote on every step." at={s(0.2)} out={s(4.5)} />
       </Headline>
 
       <Stage zoom={1.3}>
@@ -39,7 +39,7 @@ export function Dao() {
               </div>
               <div className="mt-4 flex items-start justify-between gap-6">
                 <div>
-                  <h3 className="text-[36px] leading-tight font-medium tracking-[-0.025em]">Create a Kite vault for our money</h3>
+                  <h3 className="text-[36px] leading-tight font-medium tracking-[-0.025em]">Create a Kite vault for our treasury</h3>
                   <p className="mt-2 text-[22px] text-black/55">Keep it half dollars, the rest in Bitcoin and staked NEAR.</p>
                 </div>
                 <Donut slices={TREASURY} size={110} />

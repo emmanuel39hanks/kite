@@ -5,8 +5,9 @@
   "description": "Kite's intro film, rendered with Remotion from Kite's real UI components.",
   "scripts": {
     "studio": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts Intro out/kite-intro.mp4 --codec h264 --crf 16",
-    "still": "remotion still src/index.ts Intro",
+    "render": "sh scripts/render-clips.sh",
+    "render:all": "remotion render src/index.ts All out/kite-film-all.mp4 --codec h264 --crf 16",
+    "still": "remotion still src/index.ts All",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

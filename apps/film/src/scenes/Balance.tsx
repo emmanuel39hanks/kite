@@ -33,9 +33,6 @@ export function Balance() {
   const settle = tween(f, s(3.1), s(3.9), CAM);
   const bars = tween(f, s(3.5), s(4.4));
 
-  // The camera leans toward Bitcoin while we talk about the risk, then comes back for the fix.
-  const lean = tween(f, s(9.6), s(11.2), CAM) * (1 - tween(f, s(15.4), s(16.4), CAM));
-
   const warn = tween(f, s(10.0), s(10.5)) * (1 - tween(f, s(16.2), s(16.5)));
   const good = tween(f, s(18.3), s(18.7));
   const chip = tween(f, s(16.4), s(18.0), CAM);
@@ -59,7 +56,7 @@ export function Balance() {
         <Line text="Keeping it even like this is called rebalancing." at={s(19.6)} out={s(22.6)} />
       </Headline>
 
-      <Camera scale={1 + 0.08 * lean} focus={[left + COL / 2, 640]}>
+      <Camera scale={1} focus={[left + COL / 2, 640]}>
         {/* The money: big in the middle at first, then the total above the bars. */}
         <div className="absolute inset-x-0 text-center" style={{ top: mix(420, 240, settle), opacity: tween(f, s(0.7), s(1.3)) }}>
           <div className="text-[30px] text-[#6b6b6b]" style={{ opacity: settle, height: 40 * settle }}>
