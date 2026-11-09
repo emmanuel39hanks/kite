@@ -35,7 +35,7 @@ export function Checks() {
               </span>
               <div>
                 <div className="text-[30px] tracking-[-0.03em]">Sell $200 of Bitcoin, buy gold</div>
-                <div className="text-[20px] text-[#6b6b6b]">Price from NEAR Intents, signed so it can&apos;t be changed</div>
+                <div className="text-[20px] text-[#6b6b6b]">Best price from traders competing on NEAR Intents, signed so it can&apos;t be changed</div>
               </div>
             </div>
 

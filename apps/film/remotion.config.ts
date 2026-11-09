@@ -5,8 +5,8 @@ import { enableTailwind } from "@remotion/tailwind-v4";
 // Kite's real components live in apps/web; the film imports them through the same `@/` alias and swaps the two
 // Next-only pieces (next/image, next/link) for plain elements that Remotion can wait on.
 Config.setPublicDir(path.join(process.cwd(), "../web/public"));
-Config.setVideoImageFormat("jpeg");
-Config.setJpegQuality(95);
+// Lossless frames: every frame is captured as PNG before encoding, so text and hairlines stay crisp.
+Config.setVideoImageFormat("png");
 Config.overrideWebpackConfig((config) => {
   const withTw = enableTailwind(config);
   return {
