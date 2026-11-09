@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { runOnce } from "@kite/keeper";
+import { view } from "@/lib/server/chain-view";
 import { NEAR } from "@/lib/near/config";
 import { allowedVaults, safeEqual } from "@/lib/server/guards";
 
@@ -48,7 +49,8 @@ export async function GET(req: Request) {
       const settleWaitMs = Math.max(0, Math.min(SETTLE_WAIT_MS, maxDuration * 1000 - SAFETY_MS - elapsed - VAULT_OVERHEAD_MS));
       const r = await runOnce({ vault, dry, settleWaitMs, log: (l) => lines.push(l) });
       results.push({ vault, listed: isListed, action: r.action, lines });
-      console.log(JSON.stringify({ cron: "vault", vault, action: r.action, dry }));
+      // The transaction hash and the vault's settle answer go in the log, so a run can be checked against the chain.
+      console.log(JSON.stringify({ cron: "vault", vault, action: r.action, dry, tx: "tx" in r ? r.tx : undefined, settle: "settle" in r ? r.settle : undefined }));
     } catch (e) {
       // Log the message only, with any URL removed: an RPC address can carry a key.
       const message = (e instanceof Error ? e.message : String(e)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 300);
@@ -70,18 +72,6 @@ function shuffle<T>(xs: T[], day: number): T[] {
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
-}
-
-async function view<T>(account: string, method: string, args: object): Promise<T> {
-  const r = await fetch(process.env.NEAR_RPC ?? NEAR.rpc, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "call_function", finality: "final", account_id: account, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString("base64") } }),
-    signal: AbortSignal.timeout(5_000),
-  });
-  const d = (await r.json()) as { result?: { result: number[] }; error?: unknown };
-  if (!d.result) throw new Error(`${method} on ${account} failed`);
-  return JSON.parse(Buffer.from(d.result.result).toString()) as T;
 }
 
 /** Vaults from Kite's factory whose agent is Kite's key, read in at most 15 seconds. Empty if the factory can't be read. */

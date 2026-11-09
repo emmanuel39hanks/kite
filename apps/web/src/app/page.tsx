@@ -61,7 +61,7 @@ function Hero() {
             Built on NEAR
           </span>
           <h1 className="mt-6 text-[46px] leading-[0.95] font-medium tracking-[var(--tracking-display)] sm:text-[68px] lg:text-[80px]">
-            Crypto, stocks and gold. One account that runs itself.
+            Crypto and gold in one vault, kept on target for you.
           </h1>
           <p className="mt-6 max-w-[46ch] text-[18px] leading-[1.45] text-black/70 sm:text-[20px]">
             You choose what to own. Kite buys it for you, checks it every day,
@@ -281,7 +281,7 @@ function Assets() {
       <div className="mx-auto max-w-[1320px]">
         <SectionTitle
           title="Everything in one place"
-          intro="Coins, stocks and gold sit side by side in one NEAR account, so moving between them is a single swap, at any hour."
+          intro="Coins, gold and dollars sit side by side in one NEAR account, so moving between them is a single swap, at any hour."
         />
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {groups.map((g) => (
@@ -439,7 +439,7 @@ function Faq() {
   const qs = [
     {
       q: "What is Kite, in one sentence?",
-      a: "An investing account that holds crypto, stocks and gold, and keeps them in the mix you chose without you doing anything.",
+      a: "A vault of your own on NEAR that holds crypto, gold and dollars, and keeps them in the mix you chose.",
     },
     {
       q: "Do you hold my money?",
@@ -451,7 +451,7 @@ function Faq() {
     },
     {
       q: "What does NEAR do here?",
-      a: "NEAR Intents lets one account hold Bitcoin, Ethereum, digital dollars, stocks and gold together, and swap between them at the best price it can find. The rules Kite has to follow are written into a contract on NEAR that anyone can read. NEAR AI Cloud runs the private plan drafts.",
+      a: "NEAR Intents lets one account hold Bitcoin, Ethereum, digital dollars and gold together, and swap between them at the best price it can find. The rules Kite has to follow are written into a contract on NEAR that anyone can read. NEAR AI Cloud runs the private plan drafts.",
     },
     {
       q: "Can a DAO use Kite?",
@@ -515,7 +515,7 @@ function Closing() {
             <a href="/console?preview=1" className="text-[15px] font-medium underline underline-offset-4 hover:text-black/70">
               Try the preview
             </a>
-            <span className="text-[15px] text-black/70">Connect a NEAR wallet. Start with a few dollars, plus a 2.6 NEAR vault deposit you get back when you close it.</span>
+            <span className="text-[15px] text-black/70">Connect a NEAR wallet. Start with about $25 (smaller vaults can&apos;t make the $1 minimum trade), plus a 2.6 NEAR vault deposit you get back when you close it.</span>
           </div>
         </div>
       </div>

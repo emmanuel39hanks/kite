@@ -1,5 +1,5 @@
 /**
- * Scene 1: what "balanced" means, for someone who has never heard the word. $1,000, half Bitcoin, half gold.
+ * Scene 1 (15s): what "balanced" means, for someone who has never heard the word. $1,000, half Bitcoin, half gold.
  * Bitcoin goes up, the split tips, the fix is to sell a little and buy a little, and that is rebalancing.
  * The same two bars stay on screen the whole time, so the viewer watches one thing change.
  */
@@ -8,9 +8,9 @@ import { useCurrentFrame } from "remotion";
 import { Logo } from "@/components/logo";
 import { Badge } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
-import { CAM, Camera, Headline, Line, Paper, mix, s, tween, usd, Sfx, Ticks } from "../motion";
+import { CAM, Camera, Headline, Line, Paper, mix, s, tween, usd } from "../motion";
 
-export const BALANCE_DUR = s(23);
+export const BALANCE_DUR = s(14.8);
 
 const BTC = "#F7931A";
 const GOLD = "#D4A537";
@@ -22,21 +22,21 @@ export function Balance() {
   const f = useCurrentFrame();
 
   // Dollars in each, over time.
-  const up = tween(f, s(6.9), s(8.9), CAM);
-  const fix = tween(f, s(16.4), s(18.2), CAM);
+  const up = tween(f, s(3.9), s(5.4), CAM);
+  const fix = tween(f, s(8.0), s(9.6), CAM);
   const btc = mix(mix(500, 900, up), 700, fix);
   const gold = mix(500, 700, fix);
   const total = btc + gold;
   const btcPct = Math.round((btc / total) * 100);
 
   // The $1,000 starts big in the middle, then shrinks into the total above the bars.
-  const settle = tween(f, s(3.1), s(3.9), CAM);
-  const bars = tween(f, s(3.5), s(4.4));
+  const settle = tween(f, s(1.0), s(1.7), CAM);
+  const bars = tween(f, s(1.3), s(2.1));
 
-  const warn = tween(f, s(10.0), s(10.5)) * (1 - tween(f, s(16.2), s(16.5)));
-  const good = tween(f, s(18.3), s(18.7));
-  const chip = tween(f, s(16.4), s(18.0), CAM);
-  const named = tween(f, s(19.8), s(20.4));
+  const warn = tween(f, s(5.6), s(6.0)) * (1 - tween(f, s(7.8), s(8.1)));
+  const good = tween(f, s(9.7), s(10.1));
+  const chip = tween(f, s(8.0), s(9.5), CAM);
+  const named = tween(f, s(11.2), s(11.8));
 
   // Bars stand on a baseline at y=820; the chip travels from Bitcoin's top to gold's.
   const BASE = 850;
@@ -47,18 +47,15 @@ export function Balance() {
   return (
     <Paper>
       <Headline>
-        <Line text="Say you have $1,000." at={s(0.3)} out={s(2.9)} />
-        <Line text="You put half in Bitcoin and half in gold." at={s(3.2)} out={s(6.3)} />
-        <Line text="Then the price of Bitcoin goes up." at={s(6.6)} out={s(9.3)} />
-        <Line text="Now most of your money is riding on Bitcoin." at={s(9.6)} out={s(12.4)} />
-        <Line text="If Bitcoin falls, you lose more than you planned." at={s(12.7)} out={s(15.4)} />
-        <Line text="The fix: sell a little Bitcoin, buy a little gold." at={s(15.7)} out={s(19.3)} />
-        <Line text="Keeping it even like this is called rebalancing." at={s(19.6)} out={s(22.6)} />
+        <Line text="Say you put $1,000 in. Half Bitcoin, half gold." at={s(0.3)} out={s(3.5)} />
+        <Line text="Bitcoin goes up. Now most of your money rides on it." at={s(3.7)} out={s(7.5)} />
+        <Line text="The fix: sell a little Bitcoin, buy a little gold." at={s(7.7)} out={s(10.9)} />
+        <Line text="That's called rebalancing." at={s(11.1)} out={s(14.4)} />
       </Headline>
 
       <Camera scale={1} focus={[left + COL / 2, 640]}>
         {/* The money: big in the middle at first, then the total above the bars. */}
-        <div className="absolute inset-x-0 text-center" style={{ top: mix(420, 240, settle), opacity: tween(f, s(0.7), s(1.3)) }}>
+        <div className="absolute inset-x-0 text-center" style={{ top: mix(420, 240, settle), opacity: tween(f, s(0.3), s(0.8)) }}>
           <div className="text-[30px] text-[#6b6b6b]" style={{ opacity: settle, height: 40 * settle }}>
             Total
           </div>
@@ -102,15 +99,6 @@ export function Balance() {
           </span>
         </div>
       </Camera>
-      <Sfx name="pop" at={s(0.7)} />
-      <Sfx name="whoosh" at={s(3.3)} volume={0.6} />
-      <Sfx name="pop" at={s(3.6)} volume={0.8} />
-      <Ticks from={6.95} to={8.8} every={0.14} volume={0.35} />
-      <Sfx name="warn" at={s(10.0)} />
-      <Sfx name="whoosh" at={s(16.3)} />
-      <Sfx name="coin" at={s(17.9)} />
-      <Sfx name="check" at={s(18.3)} volume={0.8} />
-      <Sfx name="pop" at={s(19.8)} volume={0.7} />
     </Paper>
   );
 }

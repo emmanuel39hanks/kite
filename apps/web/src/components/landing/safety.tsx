@@ -26,7 +26,7 @@ export function Safety() {
       <div className="mx-auto grid max-w-[1320px] gap-10 rounded-2xl bg-cloud p-6 sm:p-10 lg:grid-cols-[1fr_1.05fr] lg:gap-14 lg:p-14">
         <div className="flex flex-col">
           <h2 className="text-[38px] leading-[1] font-medium tracking-[var(--tracking-display)] sm:text-[52px]">
-            Your money never leaves your account.
+            Only you can take money out.
           </h2>
           <p className="mt-5 max-w-[46ch] text-[18px] leading-[1.45] text-black/60">
             Kite gets a key that opens one door: swapping inside your plan. It can&apos;t take

@@ -18,6 +18,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Claims that can be checked from the files alone
+        run: node scripts/verify.mjs --offline
       - run: npm ci
       - run: npm test
       - run: npm run typecheck
@@ -37,7 +39,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: contracts
-      - run: cargo test --manifest-path contracts/Cargo.toml -p kite-vault -p kite-factory
+      - run: cargo test --manifest-path contracts/Cargo.toml -p kite-vault -p kite-factory --lib
       - run: cargo clippy --manifest-path contracts/Cargo.toml --workspace --all-targets -- -D warnings
 
   sandbox:

@@ -156,6 +156,16 @@ const SECTIONS = ["what", "why", "worst", "watch"] as const;
 const pct = (x: number) => `${x}%`;
 const planLine = (f: PolicyFacts) => f.plan.map((p) => `${p.asset} ${p.weightPct}%`).join(", ");
 
+/**
+ * The worst-case figures assume the vault values every holding at a true price. It can check that only for the two
+ * assets in a trade (their prices come from the signed quote). With three or more holdings, the prices of the others
+ * come from Kite's key, so a stolen key could go past the figures. Voters are told so, in fixed words.
+ */
+export const boundCaveat = (f: PolicyFacts) =>
+  f.targets.length >= 3
+    ? " These figures hold for honest prices. This plan has three or more assets, and the vault can't check the prices of assets outside a trade, so a stolen key could exceed them until the DAO revokes the key or pauses the vault. It still could not send money anywhere but back to the vault."
+    : "";
+
 /** The rationale with no model. Numbers here are printed by code from the facts. */
 export function policyTemplate(f: PolicyFacts): Omit<Rationale, "fromModel"> {
   const w = f.worstCase;
@@ -166,7 +176,7 @@ export function policyTemplate(f: PolicyFacts): Omit<Rationale, "fromModel"> {
       `accepts at most ${pct(f.rules.slippageBps / 100)} in swap costs, fees included, and makes at most ${w.tradesPerDay} trades a day.` +
       (setsPlan ? ` It also sets the target mix: ${planLine(f)}.` : ""),
     why: "Small trades and a tight price limit keep the cost of each rebalance low and bound what a misused robot key could do. Every trade must carry a quote signed by NEAR Intents that pays the vault, so money can't be sent anywhere else.",
-    worst: `At worst a trade can cost about ${pct(w.perTradePct)} of the portfolio and a day about ${pct(w.perDayPct)}, until the DAO revokes Kite's key or pauses the vault.`,
+    worst: `At worst a trade can cost about ${pct(w.perTradePct)} of the portfolio and a day about ${pct(w.perDayPct)}, until the DAO revokes Kite's key or pauses the vault.` + boundCaveat(f),
     watch: "Watch the vault's activity for trades the plan didn't need, and Kite's gas allowance. Tightening the price limit or the trade size tightens the worst case.",
   };
 }
@@ -220,7 +230,7 @@ export function rationaleFrom(response: string, f: PolicyFacts): Rationale {
       const t = typeof d[k] === "string" ? (d[k] as string).replace(/\s+/g, " ").trim() : "";
       const filled = fillSection(t, figures);
       if (filled === null) throw new Error(k);
-      out[k] = filled;
+      out[k] = k === "worst" ? filled + boundCaveat(f) : filled;
     }
     return { ...out, fromModel: true };
   } catch {

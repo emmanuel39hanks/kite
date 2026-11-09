@@ -1,10 +1,54 @@
 import { Account, JsonRpcProvider, actions, teraToGas, type KeyPairString } from "near-api-js";
 import type { Limits, Target } from "./drift.ts";
 
-const RPC = process.env.NEAR_RPC ?? "https://rpc.mainnet.fastnear.com";
+/** Tried in order when a server is busy or down. NEAR_RPC, if set, goes first. All are free public mainnet servers. */
+export const RPCS = [
+  ...(process.env.NEAR_RPC ? [process.env.NEAR_RPC] : []),
+  "https://rpc.mainnet.fastnear.com",
+  "https://free.rpc.fastnear.com",
+  "https://rpc.mainnet.near.org",
+  "https://near.drpc.org",
+];
 export const INTENTS = process.env.INTENTS_CONTRACT ?? "intents.near";
 
-export const provider = new JsonRpcProvider({ url: RPC });
+/** Busy or unreachable: worth asking another server. Anything else (a contract panic, a refused key) is the chain's real answer. */
+export function isBusy(e: unknown): boolean {
+  if (e instanceof SyntaxError) return true; // an HTML error page where JSON was expected
+  const cause = (e as { cause?: unknown } | null)?.cause;
+  if (typeof cause === "number" && [408, 429, 500, 502, 503, 504].includes(cause)) return true;
+  const s = e instanceof Error ? `${e.message} ${JSON.stringify(e)}` : JSON.stringify(e ?? "");
+  return /\b429\b|rate limit|too many requests|exceeded \d+ attempts|fetch failed|failed to fetch|econn|enotfound|etimedout|timed? ?out|\b50[0234]\b|bad gateway|unavailable|internal server error/i.test(s);
+}
+
+/** One provider that moves to the next server when the current one is busy or down, and passes real answers straight through. */
+export function failoverProvider(urls: string[]): JsonRpcProvider {
+  // Few, quick retries per server: the next server is a better bet than waiting on a busy one.
+  const all = urls.map((url) => new JsonRpcProvider({ url }, { retries: 2, wait: 300 }));
+  let preferred = 0;
+  return new Proxy(all[0], {
+    get(_target, prop) {
+      const first = Reflect.get(all[0], prop);
+      if (typeof first !== "function") return first;
+      return async (...args: unknown[]) => {
+        let last: unknown;
+        for (let n = 0; n < all.length; n++) {
+          const i = (preferred + n) % all.length;
+          try {
+            const r = await (Reflect.get(all[i], prop) as (...a: unknown[]) => unknown).apply(all[i], args);
+            preferred = i;
+            return r;
+          } catch (e) {
+            if (!isBusy(e)) throw e;
+            last = e;
+          }
+        }
+        throw last;
+      };
+    },
+  });
+}
+
+export const provider = failoverProvider(RPCS);
 
 const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
   provider.callFunction({ contractId, method, args }) as Promise<T>;

@@ -2,9 +2,9 @@
 import { useCurrentFrame } from "remotion";
 import { Card, Badge, Avatar } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
-import { Headline, Line, Paper, Rise, Stage, s, tween, mix, Sfx } from "../motion";
+import { Headline, Line, Paper, Rise, Stage, s, tween, mix } from "../motion";
 
-export const CHOICES_DUR = s(6.6);
+export const CHOICES_DUR = s(6);
 
 const CHORES = [
   ["Mon", "Check prices"],
@@ -17,12 +17,12 @@ const CHORES = [
 
 export function Choices() {
   const f = useCurrentFrame();
-  const dim = tween(f, s(3.2), s(3.8));
+  const dim = tween(f, s(2.9), s(3.4));
   return (
     <Paper>
       <Headline>
-        <Line text="Doing it yourself means checking prices every day." at={s(0.2)} out={s(3.0)} size={68} />
-        <Line text="Apps that do it for you usually hold your money." at={s(3.3)} out={s(6.2)} size={68} />
+        <Line text="Doing it yourself means checking prices all the time." at={s(0.2)} out={s(2.8)} size={68} />
+        <Line text="Apps that do it for you usually hold your money." at={s(3.0)} out={s(5.7)} size={68} />
       </Headline>
 
       <Stage zoom={1.3}>
@@ -35,7 +35,7 @@ export function Choices() {
               </div>
               <ul className="mt-4 space-y-2.5">
                 {CHORES.map(([day, what], i) => (
-                  <Rise key={i} at={s(0.5 + i * 0.32)} dist={14} dur={0.4}>
+                  <Rise key={i} at={s(0.4 + i * 0.28)} dist={14} dur={0.4}>
                     <li className="flex items-center gap-4 rounded-xl bg-white px-4 py-3 text-[22px] ring-1 ring-inset ring-black/[0.06]">
                       <span className="w-14 text-[#6b6b6b]">{day}</span>
                       {what}
@@ -48,7 +48,7 @@ export function Choices() {
           </div>
 
           {/* An app that holds the money. */}
-          <Rise at={s(3.5)} dist={30}>
+          <Rise at={s(3.1)} dist={30}>
             <Card className="w-[560px] p-6">
               <div className="flex items-center gap-3 text-[24px] tracking-[-0.03em]">
                 <Avatar seed="trading-bot" size={36} /> A trading app
@@ -59,7 +59,7 @@ export function Choices() {
                   ["Can move it anywhere", "Yes"],
                   ["If it's hacked", "Your money goes too"],
                 ].map(([k, v], i) => (
-                  <Rise key={k} at={s(3.9 + i * 0.35)} dist={10} dur={0.4}>
+                  <Rise key={k} at={s(3.4 + i * 0.3)} dist={10} dur={0.4}>
                     <div className="flex items-center justify-between gap-4 rounded-xl bg-white px-4 py-3.5 ring-1 ring-inset ring-black/[0.06]">
                       <dt className="text-[#6b6b6b]">{k}</dt>
                       <dd className="[&>span]:px-3.5 [&>span]:py-1.5 [&>span]:text-[19px]">
@@ -73,13 +73,6 @@ export function Choices() {
           </Rise>
         </div>
       </Stage>
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <Sfx key={i} name="tick" at={s(0.5 + i * 0.32)} volume={0.5} />
-      ))}
-      <Sfx name="pop" at={s(3.5)} />
-      {[0, 1, 2].map((i) => (
-        <Sfx key={`r${i}`} name="tick" at={s(3.9 + i * 0.35)} volume={0.6} />
-      ))}
     </Paper>
   );
 }

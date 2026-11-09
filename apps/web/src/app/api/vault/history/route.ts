@@ -55,7 +55,7 @@ export async function GET(req: Request) {
       seen.add(t.transaction_hash);
       out.push(ev);
     }
-    return Response.json({ events: out });
+    return Response.json({ events: out }, { headers: { "cache-control": "public, s-maxage=20, stale-while-revalidate=600" } });
   } catch {
     return Response.json({ error: "NearBlocks unavailable" }, { status: 502 });
   }

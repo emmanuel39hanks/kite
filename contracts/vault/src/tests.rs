@@ -1,4 +1,4 @@
-//! Unit tests and the attack suite (plan/tasks/06). Each attack asserts the exact refusal.
+//! Unit tests and the attack suite. Each attack asserts the exact refusal.
 //!
 //! Quotes are signed here with a test key standing in for 1Click's, in exactly the
 //! format 1Click uses: ed25519 over base58(sha256(json with sorted keys)).
@@ -1129,4 +1129,84 @@ fn real_intents_token_ids_are_accepted() {
     for t in [USDC, BTC, "nep245:v2_1.omni.hot.tg:56_11111111111111111111", "nep141:sol-0xa69aa1bcb03a369e338156a8718ad60271145803.omdep.near"] {
         assert!(valid_token(t), "{t}");
     }
+}
+
+// ───────────── Known limits ─────────────
+//
+// These tests pass on today's behaviour. They pin down where the published loss bound stops holding, so the
+// docs/DESIGN.md can point at code instead of prose. None of them moves money anywhere but the vault:
+// they are about how much a stolen keeper key could waste in swap costs, not about where funds can go.
+//
+// Model: every token has 6 decimals and is worth exactly $1, so a balance is its value in micro-dollars.
+
+const E6: u128 = 1_000_000;
+const TOK_A: &str = "nep141:a.near";
+const TOK_B: &str = "nep141:b.near";
+const TOK_C: &str = "nep141:c.near";
+
+fn dollar_vault(weights: &[(&str, u16)]) -> Vault {
+    ctx(owner(), 0, NOW);
+    let plan = weights.iter().map(|(t, w)| Target { token: (*t).into(), target_bps: *w, decimals: 6, max_slippage_bps: None }).collect();
+    Vault::new(owner(), plan, limits(), None, None, None)
+}
+/// A quote at a perfectly fair price: `usd` dollars in, the same value out.
+fn fair(sell: &str, buy: &str, usd: u128) -> QuoteTerms {
+    QuoteTerms {
+        sell: sell.into(),
+        buy: buy.into(),
+        amount_in: U128(usd * E6),
+        amount_out: U128(usd * E6),
+        min_out: U128(usd * E6),
+        in_usd_e6: U128(usd * E6),
+        out_usd_e6: U128(usd * E6),
+        deposit_address: deposit_addr(),
+        quoted_ns: 1,
+    }
+}
+fn refusal(v: &Vault, balances: &[u128], q: &QuoteTerms, prices: &[Price]) -> Option<String> {
+    let hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        v.policy_check(balances, q, prices);
+    }));
+    std::panic::set_hook(hook);
+    r.err().map(|e| e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default())
+}
+fn dollar(token: &str) -> Price {
+    Price { token: token.into(), usd_e6: U128(E6) }
+}
+
+/// With two assets the rules close the loop: once a trade brings the mix back, the reverse trade is refused.
+#[test]
+fn two_assets_a_trade_cannot_be_reversed() {
+    let v = dollar_vault(&[(TOK_A, 5_000), (TOK_B, 5_000)]);
+    assert_eq!(refusal(&v, &[6_000 * E6, 4_000 * E6], &fair(TOK_A, TOK_B, 1_000), &[]), None);
+    let back = refusal(&v, &[5_000 * E6, 5_000 * E6], &fair(TOK_B, TOK_A, 1_000), &[]);
+    assert!(back.unwrap().contains(ERR_NOT_OVER_BAND));
+}
+
+/// Known limit: with three or more assets, the bought asset may end far above its own target (only the sold
+/// asset is kept from overshooting). The next trade can then sell it straight back, at honest prices, so a
+/// stolen key could keep trading every interval and pay swap costs each time. A fix needs a new vault version:
+/// refuse a buy that takes the bought asset past its target by more than the band.
+#[test]
+fn known_limit_three_assets_a_trade_can_be_reversed_by_the_next_one() {
+    let v = dollar_vault(&[(TOK_A, 6_000), (TOK_B, 2_000), (TOK_C, 2_000)]);
+    // A 4.9 points under, B 7.4 over, C 2.5 under. Selling $999 of B for C is allowed...
+    assert_eq!(refusal(&v, &[5_509 * E6, 2_740 * E6, 1_750 * E6], &fair(TOK_B, TOK_C, 999), &[dollar(TOK_A)]), None);
+    // ...and leaves C 7.5 points over target, so the opposite trade is allowed next.
+    assert_eq!(refusal(&v, &[5_509 * E6, 1_741 * E6, 2_749 * E6], &fair(TOK_C, TOK_B, 999), &[dollar(TOK_A)]), None);
+}
+
+/// Known limit: the prices of plan assets outside the trade come from the keeper, and the vault can only check
+/// that they are above zero. A false price for the third asset can make a trade pass that honest prices refuse:
+/// here, selling an asset that is already under target. The two traded assets are still priced by the signed quote.
+#[test]
+fn known_limit_a_false_third_price_can_pass_a_trade_honest_prices_refuse() {
+    let v = dollar_vault(&[(TOK_A, 6_000), (TOK_B, 2_000), (TOK_C, 2_000)]);
+    let balances = [5_600 * E6, 1_300 * E6, 3_100 * E6]; // A is 4 points under target
+    let q = fair(TOK_A, TOK_B, 850);
+    assert!(refusal(&v, &balances, &q, &[dollar(TOK_C)]).unwrap().contains(ERR_NOT_OVER_BAND));
+    let lie = Price { token: TOK_C.into(), usd_e6: U128(548_000) }; // C "worth" $0.548
+    assert_eq!(refusal(&v, &balances, &q, &[lie]), None);
 }

@@ -24,6 +24,6 @@
     ".": "./src/index.ts"
   },
   "engines": {
-    "node": ">=20.9"
+    "node": ">=22.9"
   }
 }

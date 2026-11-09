@@ -106,5 +106,5 @@ export async function GET(req: Request) {
     s.withdrawnUsd = s.withdrawals.reduce((n, w) => n + w.usd, 0);
     if (s.investedUsd > 0) s.resultUsd = s.withdrawnUsd - s.investedUsd;
   }
-  return Response.json(s);
+  return Response.json(s, { headers: { "cache-control": "public, s-maxage=20, stale-while-revalidate=600" } });
 }

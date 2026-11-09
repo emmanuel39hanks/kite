@@ -29,6 +29,14 @@ import { nearProvider } from "@/lib/near/rpc";
 const provider = nearProvider();
 const intentsBalance = async (account: string, token: string): Promise<bigint> =>
   BigInt((await provider.callFunction({ contractId: NEAR.intents, method: "mt_balance_of", args: { account_id: account, token_id: token } })) as string);
+/** Every token NEAR Intents lists for an account, with its balance. This read must succeed: closing relies on it. */
+const intentsTokens = async (account: string): Promise<{ token: string; amount: bigint }[]> => {
+  const listed = ((await provider.callFunction({ contractId: NEAR.intents, method: "mt_tokens_for_owner", args: { account_id: account } })) ?? []) as { token_id: string }[];
+  const ids = listed.map((t) => t.token_id);
+  if (!ids.length) return [];
+  const balances = (await provider.callFunction({ contractId: NEAR.intents, method: "mt_batch_balance_of", args: { account_id: account, token_ids: ids } })) as string[];
+  return ids.map((token, i) => ({ token, amount: BigInt(balances[i] ?? "0") }));
+};
 
 export function LiveSync() {
   const w = useWallet();
@@ -101,7 +109,15 @@ export function LiveSync() {
     if (!vault) return;
     let alive = true;
     const tick = async () => {
-      if (!(await vaultExists(vault))) {
+      // A failed read (network down, every RPC busy) keeps the last good state. Only the chain saying
+      // "no such vault" clears it.
+      let exists: boolean;
+      try {
+        exists = await vaultExists(vault);
+      } catch {
+        return;
+      }
+      if (!exists) {
         if (alive) setVault({ found: false });
         return;
       }
@@ -199,7 +215,7 @@ function useRealLive() {
       // The factory refunds the deposit if creation fails, and the transaction itself still succeeds, so check.
       let made = false;
       for (let i = 0; i < 12 && !made; i++) {
-        made = await vaultExists(vault);
+        made = await vaultExists(vault).catch(() => false);
         if (!made) await new Promise((r) => setTimeout(r, 1500));
       }
       if (!made) {
@@ -336,7 +352,18 @@ function useRealLive() {
   const closeVault = useCallback(async () => {
     const left = (await heldTokens()).filter((h) => h.amount > 0n);
     if (left.length) throw new Error("Withdraw everything first. The vault refuses to close while it holds money.");
-    const hash = await ownerSend([ownerCall("close_vault", { also_check: [NEAR.usdc] }, 150n)]);
+    // Closing deletes the account, and a deleted account can never reach its NEAR Intents balances again. The vault
+    // checks its plan's tokens itself; have it check everything else it holds too (a token dropped from the plan,
+    // something sent to it, a swap that landed late), and stop here if any of that is still there.
+    const all = await intentsTokens(vault);
+    const known = new Set((await heldTokens()).map((h) => h.token));
+    const stray = all.filter((t) => !known.has(t.token));
+    const strayHeld = stray.filter((t) => t.amount > 0n);
+    if (strayHeld.length) {
+      throw new Error(`The vault still holds ${strayHeld.map((t) => t.token.replace(/^nep141:/, "")).join(", ")} in NEAR Intents, outside its plan. Closing now would lose it for good. Add it to the plan and withdraw it first.`);
+    }
+    const alsoCheck = [NEAR.usdc, ...stray.map((t) => t.token)].slice(0, 8);
+    const hash = await ownerSend([ownerCall("close_vault", { also_check: alsoCheck }, 150n)]);
     k.addEvent({ kind: "key", title: "Vault closed", detail: `${vault} was deleted and its NEAR deposit returned to you.`, tx: hash });
     if (k.account) refreshMyVault(k.account);
     return hash;
@@ -344,11 +371,12 @@ function useRealLive() {
 
   const checkNow = useCallback(async () => {
     const r = await fetch("/api/vault/check", { method: "POST", body: JSON.stringify({ vault }) });
-    const d = (await r.json()) as { action?: string; dry?: boolean; lines?: string[]; error?: string };
+    const d = (await r.json()) as { action?: string; reason?: string; dry?: boolean; lines?: string[]; error?: string };
+    const skipped = d.reason === "too-small" ? "Checked: off plan, but the trade is under $1" : d.reason === "rate" ? "Checked: a trade is due, waiting for the vault's interval" : d.reason === "size" ? "Checked: a trade is due but its size is outside the limits" : "Checked: a trade is due but costs too much";
     k.addEvent({
       kind: d.error ? "blocked" : "check",
       // This is always a dry check: it shows what Kite would do. The daily run (or the keeper CLI) does the trading.
-      title: d.error ? "Check failed" : d.action === "none" ? "Checked: on plan" : d.action === "dry" ? "Checked: a trade is due" : d.action === "skipped" ? "Checked: a trade is due but costs too much" : d.action === "paused" ? "Checked: vault is paused" : `Checked: ${d.action}`,
+      title: d.error ? "Check failed" : d.action === "none" ? "Checked: on plan" : d.action === "dry" ? "Checked: a trade is due" : d.action === "skipped" ? skipped : d.action === "paused" ? "Checked: vault is paused" : `Checked: ${d.action}`,
       detail: d.error ?? (d.action === "dry" ? "Kite would trade now. The daily run does it, or run the keeper yourself." : d.lines?.slice(-1)[0]),
     });
     return d;

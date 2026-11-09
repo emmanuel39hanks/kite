@@ -91,7 +91,7 @@ function Profile({ account, preview }: { account: string; preview: boolean }) {
 
   const share = () => {
     const text = p
-      ? `My money runs on autopilot: "${p.name}" (${p.target.map((t) => `${assetById(t.id).ticker} ${t.weight}%`).join(", ")}), rebalanced by Kite on @NEARProtocol. Self-custodied, Kite can't withdraw.`
+      ? `My portfolio keeps itself on target: "${p.name}" (${p.target.map((t) => `${assetById(t.id).ticker} ${t.weight}%`).join(", ")}), rebalanced by Kite on @NEARProtocol. Self-custodied, Kite can't withdraw.`
       : "Setting up a self-custodied, auto-rebalancing portfolio on NEAR with Kite.";
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.origin)}`, "_blank", "noopener");
   };

@@ -3,4 +3,4 @@
 set -e
 cd "$(dirname "$0")/.."
 npm ci
-echo "Done. Next: npm test && npm run test:contracts"
+echo "Done. Next: node scripts/verify.mjs && npm test && npm run test:contracts"

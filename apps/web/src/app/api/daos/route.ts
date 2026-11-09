@@ -32,5 +32,5 @@ export async function GET(req: Request) {
     }),
   );
   daos.sort((a, b) => seen.indexOf(a.dao) - seen.indexOf(b.dao));
-  return Response.json({ daos });
+  return Response.json({ daos }, { headers: { "cache-control": "public, s-maxage=20, stale-while-revalidate=600" } });
 }

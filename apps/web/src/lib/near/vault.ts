@@ -98,12 +98,18 @@ export type VaultStatus = {
 
 export type VaultState = { plan: ContractTarget[]; limits: ContractLimits; status: VaultStatus; balances: bigint[] };
 
+/**
+ * True if the vault is there, false only when the chain says it isn't (no such account, or no vault code on it).
+ * A network or RPC failure throws instead: "couldn't ask" must never look like "your vault is gone".
+ */
 export async function vaultExists(vault: string): Promise<boolean> {
   try {
     await view<ContractTarget[]>(vault, "get_plan");
     return true;
-  } catch {
-    return false;
+  } catch (e) {
+    const s = e instanceof Error ? `${e.message} ${JSON.stringify(e)}` : JSON.stringify(e ?? "");
+    if (/does ?n[o']t exist|UNKNOWN_ACCOUNT|AccountDoesNotExist|CodeDoesNotExist|NO_CONTRACT_CODE|MethodNotFound|no contract/i.test(s)) return false;
+    throw e;
   }
 }
 

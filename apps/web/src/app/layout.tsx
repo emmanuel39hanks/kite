@@ -11,7 +11,7 @@ const hanken = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "Kite: a self-custodied portfolio that rebalances itself",
   description:
-    "One account for Bitcoin, Ethereum, Solana, tokenized stocks and gold. Kite rebalances on your schedule through NEAR Intents, with an agent that can trade but never withdraw.",
+    "Your own vault on NEAR for Bitcoin, Ethereum, Solana, gold and dollars. Kite keeps the mix on target through NEAR Intents, with a key that can ask for a rebalance but never withdraw.",
 };
 
 export const viewport: Viewport = {

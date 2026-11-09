@@ -34,7 +34,7 @@ export function Daos() {
         <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
           <div>
             <h2 className="text-[38px] leading-[1] font-medium tracking-[var(--tracking-display)] sm:text-[56px]">
-              A treasury that runs itself, and still answers to the vote.
+              A treasury that stays on plan, and still answers to the vote.
             </h2>
             <p className="mt-4 max-w-[46ch] text-[18px] leading-[1.45] text-black/60 sm:text-[20px]">
               A DAO on NEAR can own a Kite vault the same way a person does. The members decide what it holds; Kite does the daily trading they&apos;d
@@ -58,7 +58,7 @@ export function Daos() {
                 Set one up for your DAO
               </a>
               <span className="max-w-[40ch] text-[14px] leading-[1.4] text-black/50">
-                Works with SputnikDAO, the contract behind most DAOs on NEAR. The vault costs 2.7 NEAR from the treasury, returned when it closes.
+                Works with SputnikDAO, the contract behind most DAOs on NEAR. The vault costs 2.6 NEAR from the treasury, returned when it closes.
               </span>
             </div>
           </div>

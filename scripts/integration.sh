@@ -4,4 +4,4 @@
 set -e
 cd "$(dirname "$0")/../contracts"
 cargo near build non-reproducible-wasm --manifest-path mock-intents/Cargo.toml
-cargo test -p kite-integration-tests -- --nocapture --test-threads=1
+cargo test -p kite-integration-tests --test sandbox -- --nocapture --test-threads=1

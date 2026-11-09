@@ -19,9 +19,10 @@ export async function POST(req: Request) {
   const lines: string[] = [];
   try {
     const result = await runOnce({ vault, dry: true, log: (l) => lines.push(l) });
-    return Response.json({ action: result.action, dry: true, lines });
+    return Response.json({ action: result.action, reason: "reason" in result ? result.reason : undefined, dry: true, lines });
   } catch (e) {
-    console.error("vault check failed", vault, e);
+    // The message only, with any URL removed: an RPC address can carry a key.
+    console.error("vault check failed", vault, (e instanceof Error ? e.message : String(e)).replace(/https?:\/\/\S+/g, "[url]").slice(0, 300));
     return Response.json({ error: "The check couldn't finish. Try again in a moment.", dry: true, lines }, { status: 502 });
   }
 }

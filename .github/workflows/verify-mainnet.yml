@@ -1,0 +1,22 @@
+name: Mainnet checks
+
+# Re-reads Kite's on-chain claims from public NEAR RPC: the factory has no keys, the deployed code matches the
+# files in this repository, open vaults carry only the limited key, and the cited transactions ended as stated.
+# Read-only. Kept apart from CI so a busy public RPC can't fail a build.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/verify.mjs --strict | tee -a "$GITHUB_STEP_SUMMARY"

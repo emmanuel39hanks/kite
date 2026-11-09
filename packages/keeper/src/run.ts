@@ -49,8 +49,21 @@ export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 12
 
   const trade = nextTrade(v.plan, v.balances, prices, v.limits);
   if (!trade) {
+    const worst = Math.max(...rows.map((r) => r.driftBps));
+    if (worst >= v.limits.band_bps) {
+      // Off plan, but the trade the limits allow is under the vault's $1 minimum. Say that, not "on plan".
+      log(`Off plan by ${(worst / 100).toFixed(2)} points, but the trade allowed (at most ${v.limits.max_trade_bps / 100}% of $${navUsd.toFixed(2)}) is under the vault's $1 minimum. Nothing to do until the vault is larger.`);
+      return { action: "skipped" as const, reason: "too-small", navUsd };
+    }
     log(`On plan: nothing is ${v.limits.band_bps / 100} points off target.`);
     return { action: "none" as const, navUsd };
+  }
+  // The vault spaces trades out. Asking sooner would only burn gas on a refusal (ERR_RATE).
+  const sinceLast = Date.now() / 1000 - v.status.last_trade_ns / 1e9;
+  if (v.status.last_trade_ns > 0 && sinceLast < v.limits.min_interval_secs) {
+    const mins = Math.ceil((v.limits.min_interval_secs - sinceLast) / 60);
+    log(`A trade is due, but the vault allows one every ${Math.round(v.limits.min_interval_secs / 3600)} h. Next one in about ${mins} min.`);
+    return { action: "skipped" as const, reason: "rate" };
   }
   log(`Trade: sell $${trade.valueUsd.toFixed(2)} of ${trade.sell.token} for ${trade.buy.token}`);
 

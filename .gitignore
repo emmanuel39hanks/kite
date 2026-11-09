@@ -9,7 +9,7 @@ out
 .vercel
 
 # Local working notes (not part of the repository)
-DEMO_SCRIPT.md
+DEMO_SCRIPT*.md
 
 # Agent worktrees
 .claude/
@@ -17,3 +17,7 @@ DEMO_SCRIPT.md
 # Film renders and notes
 DEMO_FILM.md
 apps/film/sfx-audition/
+/attack
+/rebalance
+**/attack.md
+contracts/integration-tests/Cargo.lock

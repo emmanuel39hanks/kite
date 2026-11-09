@@ -6,13 +6,6 @@ import { FPS, H, SceneFade, W } from "./motion";
 import { Balance, BALANCE_DUR } from "./scenes/Balance";
 import { Choices, CHOICES_DUR } from "./scenes/Choices";
 import { Meet, MEET_DUR } from "./scenes/Meet";
-import { Vault, VAULT_DUR } from "./scenes/Vault";
-import { Key, KEY_DUR } from "./scenes/Key";
-import { Earn, EARN_DUR } from "./scenes/Earn";
-import { Checks, CHECKS_DUR } from "./scenes/Checks";
-import { Dao, DAO_DUR } from "./scenes/Dao";
-import { Attack, ATTACK_DUR } from "./scenes/Attack";
-import { Leave, LEAVE_DUR } from "./scenes/Leave";
 import { End, END_DUR } from "./scenes/End";
 
 // Kite's typeface, the same weights the site loads through next/font.
@@ -21,7 +14,8 @@ const { fontFamily } = loadFont("normal", { weights: ["400", "500", "600", "800"
 type Scene = { C: ComponentType; dur: number };
 
 /**
- * The film is cut into clips, each played just before the live recording it sets up (see DEMO_SCRIPT.md).
+ * Two clips bookend the live demo (see DEMO_SCRIPT.md): the problem before the console, the recap after it.
+ * The other scenes in ./scenes are kept but not rendered.
  * Every clip starts and ends on Kite's paper colour, so it cuts straight into or out of the console.
  */
 export const CLIPS: { id: string; scenes: Scene[] }[] = [
@@ -33,18 +27,6 @@ export const CLIPS: { id: string; scenes: Scene[] }[] = [
       { C: Meet, dur: MEET_DUR },
     ],
   },
-  {
-    id: "02-your-account",
-    scenes: [
-      { C: Vault, dur: VAULT_DUR },
-      { C: Key, dur: KEY_DUR },
-    ],
-  },
-  { id: "03-earn", scenes: [{ C: Earn, dur: EARN_DUR }] },
-  { id: "04-checks", scenes: [{ C: Checks, dur: CHECKS_DUR }] },
-  { id: "05-daos", scenes: [{ C: Dao, dur: DAO_DUR }] },
-  { id: "06-attack", scenes: [{ C: Attack, dur: ATTACK_DUR }] },
-  { id: "07-leave", scenes: [{ C: Leave, dur: LEAVE_DUR }] },
   { id: "08-end", scenes: [{ C: End, dur: END_DUR }] },
 ];
 
