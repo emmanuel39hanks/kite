@@ -1,7 +1,7 @@
 /** Scene 7: NEAR turns into Staked NEAR and starts earning. One logo, one number. */
 import { useCurrentFrame } from "remotion";
 import { Logo } from "@/components/logo";
-import { Headline, Line, Paper, Rise, Stage, mix, s, tween } from "../motion";
+import { Headline, Line, Paper, Rise, Stage, mix, s, tween, Sfx, Ticks } from "../motion";
 
 export const EARN_DUR = s(4.8);
 
@@ -44,6 +44,10 @@ export function Earn() {
           </div>
         </Rise>
       </Stage>
+      <Sfx name="pop" at={s(0.55)} />
+      <Sfx name="whoosh" at={s(1.2)} volume={0.5} />
+      <Sfx name="coin" at={s(1.7)} />
+      <Ticks from={1.8} to={2.85} every={0.1} volume={0.3} />
     </Paper>
   );
 }

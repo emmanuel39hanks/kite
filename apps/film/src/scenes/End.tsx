@@ -1,7 +1,7 @@
 /** The end card: the name, the line, where to try it. */
 import { useCurrentFrame } from "remotion";
 import { Wordmark } from "@/components/kite-mark";
-import { Line, Paper, s, tween } from "../motion";
+import { Line, Paper, s, tween, Sfx } from "../motion";
 
 export const END_DUR = s(5);
 
@@ -25,6 +25,7 @@ export function End() {
         <span className="text-[#6b6b6b]">github.com/emmanuel39hanks/kite</span>
         <span className="mt-6 text-[24px] text-[#6b6b6b]">Built at NEAR HACKATHON</span>
       </div>
+      <Sfx name="settle" at={s(0.1)} />
     </Paper>
   );
 }

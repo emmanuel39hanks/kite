@@ -4,7 +4,7 @@ import { Logo } from "@/components/logo";
 import { MixBar } from "@/components/charts";
 import { Badge, Card } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
-import { CAM, Headline, Line, Paper, Rise, Stage, mix, s, tween } from "../motion";
+import { CAM, Headline, Line, Paper, Rise, Stage, mix, s, tween, Sfx } from "../motion";
 
 export const CHECKS_DUR = s(6.2);
 
@@ -74,6 +74,12 @@ export function Checks() {
           </Card>
         </Rise>
       </Stage>
+      <Sfx name="pop" at={s(0.55)} />
+      <Sfx name="check" at={s(1.6)} volume={0.7} />
+      <Sfx name="check" at={s(2.3)} volume={0.7} />
+      <Sfx name="check" at={s(3.0)} volume={0.7} />
+      <Sfx name="whoosh" at={s(3.85)} volume={0.5} />
+      <Sfx name="coin" at={s(4.8)} volume={0.9} />
     </Paper>
   );
 }

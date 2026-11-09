@@ -6,7 +6,7 @@ import { useCurrentFrame } from "remotion";
 import { Logo } from "@/components/logo";
 import { Card } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
-import { Headline, Line, Paper, Rise, Stage, mix, s, tween, usd } from "../motion";
+import { Headline, Line, Paper, Rise, Stage, mix, s, tween, usd, Sfx } from "../motion";
 
 export const LEAVE_DUR = s(6.4);
 
@@ -67,6 +67,13 @@ export function Leave() {
           </Card>
         </Rise>
       </Stage>
+      <Sfx name="pop" at={s(0.55)} />
+      <Sfx name="whoosh" at={s(1.35)} volume={0.4} />
+      <Sfx name="tick" at={s(1.5)} volume={0.7} />
+      <Sfx name="whoosh" at={s(1.85)} volume={0.4} />
+      <Sfx name="tick" at={s(2.0)} volume={0.7} />
+      <Sfx name="coin" at={s(2.75)} />
+      <Sfx name="coin" at={s(3.35)} volume={0.8} />
     </Paper>
   );
 }

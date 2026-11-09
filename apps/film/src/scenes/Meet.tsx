@@ -1,7 +1,7 @@
 /** Scene 3: the name, then what it does in one breath. */
 import { useCurrentFrame } from "remotion";
 import { Wordmark } from "@/components/kite-mark";
-import { Line, Paper, s, tween } from "../motion";
+import { Line, Paper, s, tween, Sfx } from "../motion";
 
 export const MEET_DUR = s(4.2);
 
@@ -20,6 +20,7 @@ export function Meet() {
         <Line text="Kite does it for you." at={s(1.0)} size={72} />
         <Line text="And never holds your money." at={s(1.9)} size={72} style={{ color: "#6b6b6b" }} />
       </div>
+      <Sfx name="bloom" at={s(0.1)} volume={0.9} />
     </Paper>
   );
 }

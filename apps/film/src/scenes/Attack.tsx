@@ -1,7 +1,7 @@
 /** Lead-in to the attack recording: the key again, now in the wrong hands. Cuts to the terminal. */
 import { useCurrentFrame } from "remotion";
 import { Icon } from "@/components/console/icons";
-import { Headline, Line, Paper, Rise, Stage, mix, s, tween } from "../motion";
+import { Headline, Line, Paper, Rise, Stage, mix, s, tween, Sfx } from "../motion";
 
 export const ATTACK_DUR = s(5.4);
 
@@ -37,6 +37,9 @@ export function Attack() {
           </div>
         </Rise>
       </Stage>
+      <Sfx name="key" at={s(0.55)} />
+      <Sfx name="whoosh" at={s(2.55)} volume={0.6} />
+      <Sfx name="refuse" at={s(3.0)} volume={0.6} />
     </Paper>
   );
 }

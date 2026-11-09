@@ -8,7 +8,7 @@ import { useCurrentFrame } from "remotion";
 import { Logo } from "@/components/logo";
 import { Badge } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
-import { CAM, Camera, Headline, Line, Paper, mix, s, tween, usd } from "../motion";
+import { CAM, Camera, Headline, Line, Paper, mix, s, tween, usd, Sfx, Ticks } from "../motion";
 
 export const BALANCE_DUR = s(23);
 
@@ -102,6 +102,15 @@ export function Balance() {
           </span>
         </div>
       </Camera>
+      <Sfx name="pop" at={s(0.7)} />
+      <Sfx name="whoosh" at={s(3.3)} volume={0.6} />
+      <Sfx name="pop" at={s(3.6)} volume={0.8} />
+      <Ticks from={6.95} to={8.8} every={0.14} volume={0.35} />
+      <Sfx name="warn" at={s(10.0)} />
+      <Sfx name="whoosh" at={s(16.3)} />
+      <Sfx name="coin" at={s(17.9)} />
+      <Sfx name="check" at={s(18.3)} volume={0.8} />
+      <Sfx name="pop" at={s(19.8)} volume={0.7} />
     </Paper>
   );
 }

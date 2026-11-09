@@ -1,7 +1,7 @@
 /** Scene 4: where the money lives. The console's own "Your vault" card, tilting up into view. */
 import { useCurrentFrame } from "remotion";
 import { Avatar, Badge, Card } from "@/components/console/ui";
-import { Camera, CAM, Headline, Line, Paper, Stage, mix, s, tween } from "../motion";
+import { Camera, CAM, Headline, Line, Paper, Stage, mix, s, tween, Sfx } from "../motion";
 
 export const VAULT_DUR = s(5.6);
 
@@ -53,6 +53,9 @@ export function Vault() {
           </div>
         </Stage>
       </Camera>
+      <Sfx name="whoosh" at={s(0.2)} volume={0.5} />
+      <Sfx name="pop" at={s(1.1)} volume={0.8} />
+      <Sfx name="tick" at={s(3.35)} volume={0.8} />
     </Paper>
   );
 }

@@ -3,7 +3,17 @@
  * each frame renders the same way every time (no CSS transitions, no timers).
  */
 import type { CSSProperties, ReactNode } from "react";
-import { Easing, interpolate, useCurrentFrame } from "remotion";
+import { Audio, Easing, interpolate, Sequence, useCurrentFrame } from "remotion";
+import bloom from "./sfx/bloom.wav";
+import check from "./sfx/check.wav";
+import coin from "./sfx/coin.wav";
+import key from "./sfx/key.wav";
+import pop from "./sfx/pop.wav";
+import refuse from "./sfx/refuse.wav";
+import settle from "./sfx/settle.wav";
+import tick from "./sfx/tick.wav";
+import warn from "./sfx/warn.wav";
+import whoosh from "./sfx/whoosh.wav";
 
 export const FPS = 60;
 export const W = 1920;
@@ -158,4 +168,33 @@ export function SceneFade({
       {children}
     </div>
   );
+}
+
+/* ───────────── Sound ───────────── */
+
+/** The film's sounds, synthesised by scripts/make-sfx.py. */
+export const SFX = { bloom, check, coin, key, pop, refuse, settle, tick, warn, whoosh };
+export type SfxName = keyof typeof SFX;
+
+/**
+ * Sound effects are off: the film is meant to sit under a voiceover and a music bed added in the edit. The cues stay
+ * in the scenes, so a pack chosen by ear can be switched on here.
+ */
+export const SOUND_ON = false;
+
+/** One sound, starting exactly at frame `at` of the scene it sits in. */
+export function Sfx({ name, at, volume = 1 }: { name: SfxName; at: number; volume?: number }) {
+  if (!SOUND_ON) return null;
+  return (
+    <Sequence from={Math.max(0, at)} layout="none">
+      <Audio src={SFX[name]} volume={volume} />
+    </Sequence>
+  );
+}
+
+/** A run of ticks, e.g. under a number counting up. */
+export function Ticks({ from, to, every = 0.12, volume = 0.4 }: { from: number; to: number; every?: number; volume?: number }) {
+  const out = [];
+  for (let t = from; t <= to + 1e-6; t += every) out.push(<Sfx key={t} name="tick" at={s(t)} volume={volume} />);
+  return <>{out}</>;
 }

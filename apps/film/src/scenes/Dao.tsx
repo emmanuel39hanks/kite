@@ -3,7 +3,7 @@ import { useCurrentFrame } from "remotion";
 import { Donut } from "@/components/charts";
 import { Logo, logoName } from "@/components/logo";
 import type { Slice } from "@/lib/mix";
-import { Headline, Line, Paper, Rise, Stage, s, tween } from "../motion";
+import { Headline, Line, Paper, Rise, Stage, s, tween, Sfx } from "../motion";
 
 export const DAO_DUR = s(4.8);
 
@@ -66,6 +66,11 @@ export function Dao() {
           </div>
         </Rise>
       </Stage>
+      <Sfx name="pop" at={s(0.5)} />
+      <Sfx name="tick" at={s(1.3)} volume={0.9} />
+      <Sfx name="tick" at={s(1.8)} volume={0.9} />
+      <Sfx name="tick" at={s(2.3)} volume={0.9} />
+      <Sfx name="check" at={s(3.0)} />
     </Paper>
   );
 }

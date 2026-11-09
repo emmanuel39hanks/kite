@@ -1,7 +1,7 @@
 /** Scene 5: Kite's one key, and the four things it might try. Three refused, one allowed. */
 import { useCurrentFrame } from "remotion";
 import { Icon } from "@/components/console/icons";
-import { Headline, Line, Paper, Rise, Stage, mix, s, tween } from "../motion";
+import { Headline, Line, Paper, Rise, Stage, mix, s, tween, Sfx } from "../motion";
 
 export const KEY_DUR = s(5.8);
 
@@ -64,6 +64,14 @@ export function Key() {
           </div>
         </div>
       </Stage>
+      <Sfx name="key" at={s(0.45)} />
+      {[0, 1, 2, 3].map((i) => (
+        <Sfx key={i} name="tick" at={s(0.95 + i * 0.18)} volume={0.45} />
+      ))}
+      <Sfx name="refuse" at={s(2.9)} />
+      <Sfx name="refuse" at={s(3.35)} />
+      <Sfx name="refuse" at={s(3.8)} />
+      <Sfx name="check" at={s(4.35)} />
     </Paper>
   );
 }

@@ -2,7 +2,7 @@
 import { useCurrentFrame } from "remotion";
 import { Card, Badge, Avatar } from "@/components/console/ui";
 import { Icon } from "@/components/console/icons";
-import { Headline, Line, Paper, Rise, Stage, s, tween, mix } from "../motion";
+import { Headline, Line, Paper, Rise, Stage, s, tween, mix, Sfx } from "../motion";
 
 export const CHOICES_DUR = s(6.6);
 
@@ -73,6 +73,13 @@ export function Choices() {
           </Rise>
         </div>
       </Stage>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <Sfx key={i} name="tick" at={s(0.5 + i * 0.32)} volume={0.5} />
+      ))}
+      <Sfx name="pop" at={s(3.5)} />
+      {[0, 1, 2].map((i) => (
+        <Sfx key={`r${i}`} name="tick" at={s(3.9 + i * 0.35)} volume={0.6} />
+      ))}
     </Paper>
   );
 }
