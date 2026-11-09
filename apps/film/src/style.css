@@ -1,0 +1,4 @@
+/* Kite's own stylesheet and tokens, plus the classes used by the web components and the film's scenes. */
+@import "../../web/src/app/globals.css";
+@source "../../web/src/components";
+@source "./";
