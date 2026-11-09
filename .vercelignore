@@ -7,3 +7,7 @@ node_modules
 **/.next
 contracts/target
 .DS_Store
+
+# The intro film and its renders are not part of the website.
+apps/film
+attack.md
