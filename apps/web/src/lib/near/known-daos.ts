@@ -3,9 +3,9 @@
  * DAOs this browser has worked with (filed a vault for, or opened a vault of), so the DAO page can list their
  * vaults after a reload instead of asking for a vault name nobody remembers. Only names, in this browser.
  */
-import { JsonRpcProvider } from "near-api-js";
 import { NEAR } from "./config";
 import { factoryVaultsBy } from "./factory";
+import { nearProvider } from "@/lib/near/rpc";
 
 const KEY = "kite-daos";
 
@@ -25,7 +25,7 @@ export function rememberDao(dao: string) {
   } catch {}
 }
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 
 export type MyDao = { dao: string; roles: string[]; vaults: string[] };
 

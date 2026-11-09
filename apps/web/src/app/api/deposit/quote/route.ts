@@ -3,9 +3,9 @@ import { ONECLICK } from "@/lib/server/oneclick";
 import { SOURCES } from "@/lib/near/sources";
 import { clientIp, crossSite, refuseCrossSite, isKiteVault, isNearAccount, limited } from "@/lib/server/guards";
 import { isFactoryVault } from "@/lib/near/factory-names";
-import { JsonRpcProvider } from "near-api-js";
+import { nearProvider } from "@/lib/near/rpc";
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 
 /** Refunds go to `owner`, so only quote for the owner's own vault: `kite.<owner>`, or a factory vault it owns on chain. */
 async function ownsVault(owner: string, vault: string): Promise<boolean> {

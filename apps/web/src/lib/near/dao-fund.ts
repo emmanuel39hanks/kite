@@ -8,19 +8,19 @@
  *      lapse or the price moves past 1%, 1Click refunds the USDC to the vault and the DAO can file again.
  */
 import { actionCreators } from "@near-js/transactions";
-import { JsonRpcProvider } from "near-api-js";
 import { verifyAllocation, type Transfer } from "./allocate-check";
 import { NEAR } from "./config";
 import { addProposalAction } from "./dao";
 import { usdcText } from "./dao-view";
 import { ALLOCATE_TGAS_EACH, allocateCalls } from "./vault";
 import { convertQuotes } from "./convert";
+import { nearProvider } from "@/lib/near/rpc";
 
 const TGAS = 10n ** 12n;
 /** What the USDC contract charges to register an account (NEP-145 storage). */
 const USDC_STORAGE = 1_250_000_000_000_000_000_000n;
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
   provider.callFunction({ contractId, method, args }) as Promise<T>;
 

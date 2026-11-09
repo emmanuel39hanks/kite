@@ -3,11 +3,11 @@
  * vault state from chain. Mirrors contracts/vault/src/lib.rs.
  */
 import { actionCreators } from "@near-js/transactions";
-import { JsonRpcProvider } from "near-api-js";
 import { assetById } from "@/lib/assets";
 import type { Slice } from "@/lib/mix";
 import type { Guardrails } from "@/lib/store";
 import { NEAR } from "./config";
+import { nearProvider } from "@/lib/near/rpc";
 
 export type ContractTarget = { token: string; target_bps: number; decimals: number; max_slippage_bps?: number };
 export type ContractLimits = {
@@ -81,7 +81,7 @@ export const depositUsdcFromWallet = (vault: string, amountBase: bigint) =>
 
 /* ───────────── reads ───────────── */
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
   provider.callFunction({ contractId, method, args }) as Promise<T>;
 

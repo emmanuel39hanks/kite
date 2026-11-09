@@ -9,7 +9,6 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 import type { Action } from "@near-js/transactions";
-import { JsonRpcProvider } from "near-api-js";
 import { assetById, assetByIntentsId, usd } from "@/lib/assets";
 import { slice, type Slice } from "@/lib/mix";
 import { useKite, type Guardrails } from "@/lib/store";
@@ -25,8 +24,9 @@ import { actionCreators } from "@near-js/transactions";
 import { foreignOwner, notOwnerMessage } from "./dao-view";
 import { ALLOCATE_TGAS_EACH, agentAllowanceYocto, allocateCalls, depositUsdcFromWallet, fromContractLimits, toContractPlan, ownerCall, readVault, toContractLimits, vaultExists } from "./vault";
 import { useWallet } from "./wallet";
+import { nearProvider } from "@/lib/near/rpc";
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 const intentsBalance = async (account: string, token: string): Promise<bigint> =>
   BigInt((await provider.callFunction({ contractId: NEAR.intents, method: "mt_balance_of", args: { account_id: account, token_id: token } })) as string);
 

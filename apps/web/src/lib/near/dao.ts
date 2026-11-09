@@ -8,8 +8,8 @@
  * `kind` as stored, or v3 refuses it (ERR_WRONG_KIND).
  */
 import { actionCreators } from "@near-js/transactions";
-import { JsonRpcProvider } from "near-api-js";
 import { NEAR } from "./config";
+import { nearProvider } from "@/lib/near/rpc";
 
 const TGAS = 10n ** 12n;
 /** Gas each vault call gets when the proposal executes. Owner calls need well under this. */
@@ -99,7 +99,7 @@ export function approveAction(id: number, kind: DaoProposal["kind"], tgas = 300n
 
 /* ───────────── reads ───────────── */
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
   provider.callFunction({ contractId, method, args }) as Promise<T>;
 

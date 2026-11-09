@@ -15,6 +15,7 @@ import { approveAction, type DaoProposal } from "@/lib/near/dao";
 import { canApprove, cleanAccount, nearFromYocto, readDaoPolicy, rightsOf, type DaoPolicy } from "@/lib/near/dao-view";
 import { rememberDao } from "@/lib/near/known-daos";
 import { minToRebalance } from "@/lib/minimums";
+import { nearProvider } from "@/lib/near/rpc";
 import {
   createVaultDescription,
   createVaultKind,
@@ -33,14 +34,13 @@ import {
   type FactoryConfig,
 } from "@/lib/near/factory";
 import { useWallet } from "@/lib/near/wallet";
-import { JsonRpcProvider } from "near-api-js";
 import { PLAN_DATA } from "@/lib/plans";
 import { DEFAULT_GUARDRAILS, type Guardrails } from "@/lib/store";
 
 const field =
   "h-[42px] w-full rounded-full bg-white px-4 text-[15px] ring-1 ring-inset ring-black/[0.09] outline-none placeholder:text-black/30 focus:ring-[#8cc6f6] disabled:opacity-60";
 const PLANS = PLAN_DATA.filter((p) => !p.comingSoon);
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 /** Room above the vault's deposit for the proposal's own storage on the DAO and other proposals that spend first. */
 const MARGIN = 10n ** 23n;
 

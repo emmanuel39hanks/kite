@@ -1,9 +1,8 @@
-import { JsonRpcProvider } from "near-api-js";
-import { NEAR } from "@/lib/near/config";
 import { clientIp, isNearAccount, limited } from "@/lib/server/guards";
+import { nearProvider } from "@/lib/near/rpc";
 
 const NEARBLOCKS = "https://api.nearblocks.io/v1";
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 
 type Role = { name: string; kind: unknown };
 

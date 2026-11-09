@@ -8,13 +8,13 @@
  * factory name a new vault would get.
  */
 import { useSyncExternalStore } from "react";
-import { JsonRpcProvider } from "near-api-js";
 import { NEAR, vaultIdFor } from "./config";
 import { factoryVaultId, factoryVaultsBy, validVaultName } from "./factory";
 import type { FactoryVault } from "./factory";
 import { myDaos } from "./known-daos";
+import { nearProvider } from "@/lib/near/rpc";
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 const NO_CODE = "11111111111111111111111111111111";
 
 /**

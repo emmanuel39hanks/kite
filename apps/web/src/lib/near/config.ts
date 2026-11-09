@@ -2,6 +2,8 @@
 export const NEAR = {
   networkId: "mainnet" as const,
   rpc: process.env.NEXT_PUBLIC_NEAR_RPC ?? "https://rpc.mainnet.fastnear.com",
+  /** Tried in order when a server is busy or down (see rpc.ts). All free, all mainnet. */
+  rpcs: [process.env.NEXT_PUBLIC_NEAR_RPC ?? "https://rpc.mainnet.fastnear.com", "https://free.rpc.fastnear.com", "https://rpc.mainnet.near.org", "https://near.drpc.org"],
   intents: "intents.near",
   explorer: "https://nearblocks.io",
   /** Public half of Kite's keeper key. Each vault adds it as a rebalance-only key. */

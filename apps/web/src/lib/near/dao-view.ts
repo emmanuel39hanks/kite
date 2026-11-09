@@ -3,10 +3,10 @@
  * proposal would do in plain words, which proposals are still open, and the proposals behind each
  * owner button. Pure functions apart from readDaoPolicy, so they can be tested without a network.
  */
-import { JsonRpcProvider } from "near-api-js";
 import { assetByIntentsId } from "@/lib/assets";
 import { NEAR } from "./config";
 import { touchesVault, type DaoProposal, type ProposalKind, type VaultCall } from "./dao";
+import { nearProvider } from "@/lib/near/rpc";
 
 /* ───────────── accounts and ownership ───────────── */
 
@@ -70,7 +70,7 @@ export function rightsOf(policy: Pick<DaoPolicy, "roles">, account: string | nul
   return { roles: held.map((r) => r.name), propose: allows("AddProposal"), approve: allows("VoteApprove"), tokenWeighted };
 }
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 
 /** The DAO's full policy (roles, bond, voting period). Throws if the account isn't a SputnikDAO. */
 export async function readDaoPolicy(dao: string): Promise<DaoPolicy> {

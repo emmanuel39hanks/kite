@@ -4,12 +4,12 @@
  * no person's wallet ever holds it. The factory is locked (no keys) and deploys the same vault code as the app.
  */
 import { actionCreators } from "@near-js/transactions";
-import { JsonRpcProvider } from "near-api-js";
 import type { Slice } from "@/lib/mix";
 import type { Guardrails } from "@/lib/store";
 import { NEAR } from "./config";
 import { decodeArgs, encodeArgs, type DaoProposal, type ProposalKind } from "./dao";
 import { toContractLimits, toContractPlan } from "./vault";
+import { nearProvider } from "@/lib/near/rpc";
 
 const TGAS = 10n ** 12n;
 /** Gas for `create_vault` when the proposal runs: create, deploy ~239 KB, `new`, the key, and the callback. */
@@ -65,7 +65,7 @@ export function createVaultProposalAction(dao: string, name: string, mix: Slice[
 
 /* ───────────── reads ───────────── */
 
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 const view = <T>(contractId: string, method: string, args: Record<string, unknown> = {}) =>
   provider.callFunction({ contractId, method, args }) as Promise<T>;
 

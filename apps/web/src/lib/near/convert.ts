@@ -6,13 +6,13 @@
  *  - From the owner's own Intents balance (e.g. an earlier withdraw): the same, signed by the owner on intents.near.
  */
 import { actionCreators } from "@near-js/transactions";
-import { JsonRpcProvider } from "near-api-js";
 import { ASSETS } from "@/lib/assets";
 import { verifyConvert } from "./allocate-check";
 import { NEAR } from "./config";
+import { nearProvider } from "@/lib/near/rpc";
 
 const TGAS = 10n ** 12n;
-const provider = new JsonRpcProvider({ url: NEAR.rpc });
+const provider = nearProvider();
 
 export type Holding = { token: string; amount: bigint };
 export type ConvertTransfer = { token: string; amount: string; to: string; outUsd: number };

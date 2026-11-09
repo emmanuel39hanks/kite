@@ -71,7 +71,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const { setupModal } = modal;
       const selector = await setupWalletSelector({
         network: NEAR.networkId,
-        fallbackRpcUrls: [NEAR.rpc],
+        fallbackRpcUrls: NEAR.rpcs,
         modules: [hot.setupHotWallet(), meteor.setupMeteorWallet(), intear.setupIntearWallet(), sender.setupSender(), nightly.setupNightly(), okx.setupOKXWallet()],
       });
       selectorRef.current = selector;
