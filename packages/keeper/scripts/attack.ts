@@ -43,6 +43,8 @@ function reason(e: unknown): string {
   }
   return s.replace(/\s+/g, " ").slice(0, 140);
 }
+/** The network's own refusals for a limited access key. */
+const REFUSALS = ["MethodNameMismatch", "ReceiverMismatch", "DepositWithFunctionCall", "RequiresFullAccess", "NotEnoughAllowance"];
 const hashOf = (e: unknown) => JSON.stringify(e ?? {}).match(/"(?:hash|transaction_hash)":"([1-9A-HJ-NP-Za-km-z]{43,44})"/)?.[1];
 
 async function attempt(id: string, attack: string, layer: string, expect: string[], fn: () => Promise<unknown>) {
@@ -55,9 +57,13 @@ async function attempt(id: string, attack: string, layer: string, expect: string
     got = reason(e);
     tx = hashOf(e);
   }
-  const ok = expect.includes(got);
-  rows.push({ id, attack, layer, expect: expect.join(" or "), got, ok, tx });
-  say(`${ok ? "✓ refused" : "✗ GOT THROUGH"}  ${id}  ${attack}\n    → ${got}${tx ? `  (tx ${tx})` : ""}`);
+  // Refused by the check this attack targets (✓), or by another of the vault's or the network's checks (still
+  // refused, reported as such). Only a call that went through, or failed for some unknown reason, is a failure.
+  const refusedElsewhere = !expect.includes(got) && (REFUSALS.includes(got) || got.startsWith("ERR_"));
+  const ok = expect.includes(got) || refusedElsewhere;
+  rows.push({ id, attack, layer, expect: expect.join(" or "), got: refusedElsewhere ? `${got} (not ${expect.join("/")})` : got, ok, tx });
+  const verdict = ok ? "✓ refused" : got === "NOT REFUSED" ? "✗ GOT THROUGH" : "? UNCLEAR";
+  say(`${verdict}  ${id}  ${attack}\n    → ${got}${tx ? `  (tx ${tx})` : ""}`);
 }
 
 /** A real, signed 1Click quote that the attacker requested, with whatever recipient/refund they like. */
@@ -136,13 +142,14 @@ async function main() {
       call(vault!, "withdraw", { token: sell, amount: "1", receiver_id: ATTACKER }),
     );
     await attempt("K2", `Call intents.near mt_transfer to ${ATTACKER} directly`, "protocol (access key)", ["ReceiverMismatch"], () =>
-      call(INTENTS, "mt_transfer", { receiver_id: ATTACKER, token_id: sell, amount: "1" }, 1n),
+      // No deposit, so the network judges the key on what it is allowed to call, not on the attached yocto.
+      call(INTENTS, "mt_transfer", { receiver_id: ATTACKER, token_id: sell, amount: "1" }),
     );
     await attempt("K3", "Attach a deposit to rebalance", "protocol (access key)", ["DepositWithFunctionCall"], () =>
       call(vault!, "rebalance", { quote: honestPayload, signature: honest.signature, prices: [] }, 1n),
     );
     await attempt("K4", "Call set_limits to loosen the guardrails", "protocol (access key)", ["MethodNameMismatch"], () =>
-      call(vault!, "set_limits", { limits: { ...v.limits, max_trade_bps: 5000 } }, 1n),
+      call(vault!, "set_limits", { limits: { ...v.limits, max_trade_bps: 5000 } }),
     );
     await attempt("K5", `rebalance with the quote that pays ${ATTACKER}`, "contract", ["ERR_QUOTE_RECIPIENT"], () =>
       call(vault!, "rebalance", { quote: signedPayload(toAttacker), signature: toAttacker.signature, prices: [] }),
@@ -160,7 +167,14 @@ async function main() {
   say(`|---|---|---|---|---|`);
   for (const r of rows) say(`| ${r.id} | ${r.attack} | ${r.layer} | \`${r.got}\` ${r.ok ? "✓" : "✗"} | ${r.tx ? `[${r.tx.slice(0, 8)}…](https://nearblocks.io/txns/${r.tx})` : "–"} |`);
   say(``);
-  say(bad.length ? `${bad.length} attack(s) got through.` : `${rows.length} of ${rows.length} refused. Nothing left the vault.`);
+  const through = rows.filter((r) => r.got === "NOT REFUSED").length;
+  say(
+    through
+      ? `${through} attack(s) got through.`
+      : bad.length
+        ? `${rows.length - bad.length} of ${rows.length} refused; ${bad.length} failed for another reason (see above). Nothing left the vault.`
+        : `${rows.length} of ${rows.length} refused. Nothing left the vault.`,
+  );
   if (out) writeFileSync(out, lines.join("\n") + "\n");
   process.exit(bad.length ? 1 : 0);
 }
