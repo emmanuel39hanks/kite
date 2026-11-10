@@ -24,6 +24,13 @@ Afterwards the vault checks what arrived, and pauses itself if it is short. A DA
 
 **What that buys:** someone who steals Kite's key cannot send the money anywhere. The worst they can do is make trades the plan did not need and waste swap costs (details in [docs/DESIGN.md](docs/DESIGN.md#we-tried-to-rob-our-own-vault)). A model on NEAR AI Cloud can draft a plan and explain each trade in words. It never decides a trade and never touches a key.
 
+**Also in the product:**
+
+- **Earn while you hold.** Any holding can be swapped for its yield-bearing version inside the same vault: NEAR for staked NEAR (stNEAR, Meta Pool), ETH for wstETH (Lido), USDC for gtUSDC (Morpho), SOL for kSOL (Kamino). The vault treats them like any other asset and rebalances them under the same checks. Live rates: `curl https://www.usekite.xyz/api/yields`.
+- **Money in from other chains.** Deposits from Bitcoin, Ethereum, Solana, Base and Arbitrum arrive through NEAR Intents, with no bridge step for the user.
+- **Private plan drafting.** Describe what you want in words; a model running in a TEE on NEAR AI Cloud drafts the mix and the limits, and the page verifies the hardware attestation before sending anything.
+- **DAO treasuries.** A Sputnik DAO (for example one made in Trezu) creates a vault by proposal and owns it from the first block.
+
 **Where it stands:** live on NEAR mainnet.
 
 ## Check it yourself
@@ -70,6 +77,9 @@ Commands that are not part of checking, because they sign with Kite's keeper key
 - **Named sub-accounts** from an ownerless factory: one contract account per vault.
 - **Sputnik DAO and Trezu**: a DAO creates and owns a vault by proposal.
 - **NEAR AI Cloud**: plan drafting and trade explanations on attested hardware, and signed policy rationales a DAO voter can re-check at `/verify`.
+
+- **Chain abstraction**: BTC, ETH, SOL, XRP, DOGE, ZEC, gold and dollars from other chains are held and traded from one NEAR account, and deposits arrive from those chains without the user bridging.
+- **Meta Pool liquid staking** (stNEAR) as an earning asset inside the vault.
 
 ## Where to look
 

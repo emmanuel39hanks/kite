@@ -36,6 +36,7 @@ export function DaoFundCard({
   busy,
   send,
   onVotes,
+  onApprove,
 }: {
   vault: string;
   dao: string;
@@ -46,6 +47,8 @@ export function DaoFundCard({
   balances: bigint[];
   /** Open the proposals list, where the DAO approves. */
   onVotes?: () => void;
+  /** Approve a waiting proposal right here, without leaving the steps. */
+  onApprove?: (p: DaoProposal) => void;
   /** A swap Kite's key started and hasn't settled: investing now would confuse its settlement. */
   pending: boolean;
   rev: number;
@@ -180,7 +183,7 @@ export function DaoFundCard({
 
         <Step n={2} done={next > 2} active={step === 2} title="Vote to move it into the vault" hint="Only the DAO can take it out again." onOpen={() => setShown(2)}>
           {openMove ? (
-            <Waiting p={openMove} onVotes={onVotes} />
+            <Waiting p={openMove} onVotes={onVotes} onApprove={rights.approve ? onApprove : undefined} busy={busy !== null} />
           ) : (
             <>
               <AmountInput value={moveShown} onChange={(v) => (setMove(v), setMoveTouched(true))} disabled={off} label="USDC to move into the vault" />
@@ -202,7 +205,7 @@ export function DaoFundCard({
 
         <Step n={3} done={next > 3} active={step === 3} title="Vote to invest it" hint="Buys the plan. Every swap pays back to the vault." onOpen={() => setShown(3)}>
           {openInvest ? (
-            <Waiting p={openInvest} onVotes={onVotes} note={`Approve within ${hours} hours, while the prices hold.`} />
+            <Waiting p={openInvest} onVotes={onVotes} onApprove={rights.approve ? onApprove : undefined} busy={busy !== null} note={`Approve within ${hours} hours, while the prices hold.`} />
           ) : (
             <>
               <Button variant="primary" size="lg" className="w-full" disabled={off || !investable || pending || !rights.propose} loading={quoting || busy === "invest"} onClick={invest}>
@@ -268,18 +271,31 @@ function AmountInput({ value, onChange, disabled, label }: { value: string; onCh
   );
 }
 
-function Waiting({ p, onVotes, note }: { p: DaoProposal; onVotes?: () => void; note?: string }) {
+function Waiting({ p, onVotes, onApprove, busy, note }: { p: DaoProposal; onVotes?: () => void; onApprove?: (p: DaoProposal) => void; busy?: boolean; note?: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#f5f5f7] px-4 py-3">
       <div className="text-[14px] leading-5">
         <Badge tone="blue">Waiting for votes</Badge> <span className="ml-1">Proposal {p.id}</span>
         {note && <div className="mt-1 text-[13px] text-[#6b6b6b]">{note}</div>}
       </div>
-      {onVotes && (
-        <Button size="sm" variant="primary" onClick={onVotes}>
-          Approve it
-        </Button>
-      )}
+      <div className="flex items-center gap-2">
+        {onVotes && (
+          <button type="button" onClick={onVotes} className="cursor-pointer text-[13px] text-[#6b6b6b] underline underline-offset-2 hover:text-black">
+            Details
+          </button>
+        )}
+        {onApprove ? (
+          <Button size="sm" variant="primary" icon="check" disabled={busy} loading={busy} onClick={() => onApprove(p)}>
+            Approve
+          </Button>
+        ) : (
+          onVotes && (
+            <Button size="sm" variant="primary" onClick={onVotes}>
+              Approve it
+            </Button>
+          )
+        )}
+      </div>
     </div>
   );
 }

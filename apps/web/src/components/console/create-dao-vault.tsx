@@ -241,7 +241,7 @@ export function CreateDaoVault({ onOpen, initialDao = "" }: { onOpen: (vault: st
           <div>
             <h2 className="text-[24px] tracking-[-0.04em]">Create a vault for your DAO</h2>
             <p className="mt-1 max-w-[60ch] text-[15px] leading-[22px] text-[#6b6b6b]">
-              One vote, and the DAO has its own vault at <span className="text-black">name.{NEAR.factory}</span>. It belongs to the DAO from the first block; no one&apos;s wallet ever holds it.
+              One vote, and the DAO has its own vault at <span className="text-black">name.{NEAR.factory}</span>. The DAO owns it from the first block. Kite&apos;s key can only rebalance inside the limits below.
             </p>
           </div>
           {proposal && (
@@ -374,8 +374,7 @@ export function CreateDaoVault({ onOpen, initialDao = "" }: { onOpen: (vault: st
                   </div>
                 )}
                 <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">
-                  Every trade Kite makes is at least $1; the vault refuses smaller ones. With these rules Kite steps in on time once the vault holds about{" "}
-                  <span className="text-black">${minToRebalance(g, mix.length)}</span>. Funding it with less still invests the money; it just waits for a bigger drift, or never trades if the biggest trade is under $1.
+                  The vault refuses trades under $1, so with these rules it needs about <span className="text-black">${minToRebalance(g, mix.length)}</span> before Kite can rebalance it.
                 </p>
               </Step>
             </ol>

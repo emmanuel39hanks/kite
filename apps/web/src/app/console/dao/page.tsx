@@ -62,11 +62,6 @@ type Loaded = { state: VaultState; owner: DaoCtx | null; pending: DaoCtx | null 
 const MODES = ["Create a vault", "Open a vault"] as const;
 type Mode = (typeof MODES)[number];
 
-const HOW = [
-  { icon: "users", title: "One vote creates it", text: "A council member files one proposal. When it passes, the vault exists, owned by the DAO from the first block." },
-  { icon: "refresh", title: "Kite keeps the mix", text: "Kite's key on the vault can only rebalance and settle, inside the limits the DAO voted for." },
-  { icon: "shield", title: "The DAO stays in charge", text: "Every withdrawal, rule change, pause or key change is a proposal the DAO votes on. Kite can't move money out." },
-] as const;
 
 function DaoView() {
   const params = useSearchParams();
@@ -89,23 +84,10 @@ function DaoView() {
     <>
       <PageTitle actions={<Segmented options={MODES} value={mode} onChange={setPicked} label="What to do" size="md" />}>DAO treasury</PageTitle>
       <DaoRequests account={w.preview ? null : w.accountId} />
-      <YourDaos account={w.preview ? null : w.accountId} current={mode === "Open a vault" ? fromUrl : null} onPick={open} onCreate={(d) => (setCreateFor(d), setPicked("Create a vault"))} onByName={() => (setPicked("Open a vault"), setByName(true))} />
+      <YourDaos account={w.preview ? null : w.accountId} current={mode === "Open a vault" ? fromUrl : null} onPick={open} onCreate={(d) => (setCreateFor(d), setPicked("Create a vault"))} onByName={() => (setPicked("Open a vault"), setByName(true))} onOnly={(d) => setCreateFor((c) => c || d)} />
 
       {mode === "Create a vault" ? (
         <>
-          <ul className="mb-4 grid gap-2 sm:grid-cols-3">
-            {HOW.map((h) => (
-              <li key={h.title} className="flex gap-3 rounded-[20px] bg-[#f5f5f7] p-4 ring-1 ring-inset ring-black/[0.06]">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
-                  <Icon name={h.icon} size={17} />
-                </span>
-                <div>
-                  <div className="text-[15px] tracking-[-0.02em]">{h.title}</div>
-                  <p className="mt-0.5 text-[13px] leading-5 text-[#6b6b6b]">{h.text}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
           <CreateDaoVault key={createFor} initialDao={createFor} onOpen={open} />
           <p className="mt-4 text-[13px] text-[#6b6b6b]">
             Already have one?{" "}
@@ -206,8 +188,14 @@ function DaoRequests({ account }: { account: string | null }) {
 }
 
 /** The DAOs you're in, each with its Kite vaults (one click to open) or a way to create one. */
-function YourDaos({ account, current, onPick, onCreate, onByName }: { account: string | null; current: string | null; onPick: (v: string) => void; onCreate: (dao: string) => void; onByName: () => void }) {
+function YourDaos({ account, current, onPick, onCreate, onByName, onOnly }: { account: string | null; current: string | null; onPick: (v: string) => void; onCreate: (dao: string) => void; onByName: () => void; onOnly?: (dao: string) => void }) {
   const [list, setList] = useState<MyDao[] | null>(null);
+  // In exactly one DAO: the create form starts with it filled in.
+  const only = list?.length === 1 ? list[0].dao : null;
+  useEffect(() => {
+    if (only) onOnly?.(only);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [only]);
   useEffect(() => {
     let alive = true;
     myDaos(account).then((l) => alive && setList(l)).catch(() => alive && setList([]));
@@ -361,7 +349,9 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
       try {
         await w.send(receiver, Array.isArray(actions) ? actions : [actions]);
         setNote({ tone: "ok", text: ok });
-        setTimeout(() => setRev((r) => r + 1), 2500);
+        // The chain takes a few seconds to show a new proposal or balance. Re-read a few times so the page
+        // moves on by itself instead of waiting for a manual refresh.
+        for (const ms of [1200, 3500, 8000, 16000]) setTimeout(() => setRev((r) => r + 1), ms);
       } catch (e) {
         setNote({ tone: "err", text: e instanceof Error ? e.message : String(e) });
       } finally {
@@ -370,6 +360,11 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
     },
     [w],
   );
+  // Votes and swaps land without this page doing anything: re-read every 12 seconds while it is in view.
+  useEffect(() => {
+    const t = setInterval(() => document.visibilityState === "visible" && setRev((r) => r + 1), 12_000);
+    return () => clearInterval(t);
+  }, []);
 
   const propose = (ctx: DaoCtx, name: string, action: OwnerAction) => {
     const { description, calls, gasTgas } = ownerProposal(vault, action);
@@ -460,7 +455,7 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
             {shown === "Proposals" && open > 0 && <Badge tone="blue">{open} waiting for a vote</Badge>}
           </div>
           {shown === "Proposals" && proposalList}
-          {shown === "Add money" && <DaoFundCard vault={vault} dao={owner.dao} policy={owner.policy} proposals={owner.proposals} plan={state.plan} balances={state.balances} pending={!!state.status.pending} rev={rev} busy={busy} send={run} onVotes={() => setTab("Proposals")} />}
+          {shown === "Add money" && <DaoFundCard vault={vault} dao={owner.dao} policy={owner.policy} proposals={owner.proposals} plan={state.plan} balances={state.balances} pending={!!state.status.pending} rev={rev} busy={busy} send={run} onVotes={() => setTab("Proposals")} onApprove={(p) => run(`approve-${owner.dao}-${p.id}`, owner.dao, approveAction(p.id, p.kind), `Vote recorded on proposal ${p.id}.`)} />}
           {shown === "Change" && <OwnerActions key={JSON.stringify([state.limits, state.plan])} vault={vault} state={state} ctx={owner} account={w.accountId} busy={busy} onPropose={(name, a) => propose(owner, name, a)} />}
         </div>
       ) : (
