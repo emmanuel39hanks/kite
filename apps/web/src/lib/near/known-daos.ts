@@ -87,8 +87,9 @@ export async function openDaoRequests(daos: string[]): Promise<DaoRequest[]> {
       const t = p.kind.Transfer;
       const near = t.token_id === "";
       const amount = near ? Number(BigInt(t.amount) / 10n ** 18n) / 1e6 : t.token_id === NEAR.usdcContract ? Number(t.amount) / 1e6 : Number(t.amount);
-      const to = t.receiver_id.length > 30 ? `${t.receiver_id.slice(0, 8)}…${t.receiver_id.slice(-8)}` : t.receiver_id;
-      out.push({ dao, id: p.id, kind: p.kind, status: p.status, text: `Send ${amount} ${near ? "NEAR" : t.token_id === NEAR.usdcContract ? "USDC" : t.token_id} to ${to}` });
+      // The whole receiver, never shortened: a vote should show exactly who gets paid.
+      const unit = near ? "NEAR" : t.token_id === NEAR.usdcContract ? "USDC" : `units of ${t.token_id}`;
+      out.push({ dao, id: p.id, kind: p.kind, status: p.status, text: `Send ${amount} ${unit} to ${t.receiver_id}` });
     }
   }
   return out.sort((a, b) => b.id - a.id);

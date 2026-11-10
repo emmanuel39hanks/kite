@@ -1,4 +1,4 @@
-/** Re-checks plan/tasks/00: every MVP asset is listed and quotes against USDC. */
+/** Checks that the five core assets are listed on 1Click and quote against USDC. */
 import { quote, tokens } from "../src/oneclick.ts";
 
 const USDC = "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";

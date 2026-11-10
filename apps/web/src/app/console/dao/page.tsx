@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { CreateDaoVault } from "@/components/console/create-dao-vault";
 import { DaoFundCard } from "@/components/console/dao-fund-card";
+import { DaoPayout } from "@/components/console/dao-payout";
 import { GuardSliders } from "@/components/console/guard-sliders";
 import { MixSliders } from "@/components/console/mix-sliders";
 import { TreasuryPolicy } from "@/components/console/treasury-policy";
@@ -127,7 +128,7 @@ function DaoView() {
             <VaultDao key={vault} vault={vault} own={!fromUrl} onCreate={() => setPicked("Create a vault")} initialTab={TAB_PARAM[params.get("tab") ?? ""]} />
           ) : (
             <Card className="mt-3">
-              <Empty title="Pick a vault" text="Enter a Kite vault, like treasury.kitevaults.near, to see who owns it and what its DAO is voting on." />
+              <Empty title="Pick a vault" text="Enter a Kite vault, like yourdao.kitevaults.near, to see who owns it and what its DAO is voting on." />
             </Card>
           )}
         </>
@@ -154,6 +155,11 @@ function DaoRequests({ account }: { account: string | null }) {
       alive = false;
     };
   }, [account, rev]);
+  useEffect(() => {
+    const again = () => setRev((x) => x + 1);
+    window.addEventListener("kite-dao-requests", again);
+    return () => window.removeEventListener("kite-dao-requests", again);
+  }, []);
   if (!list?.length && !note) return null;
   const approve = async (r: DaoRequest) => {
     const key = `${r.dao}-${r.id}`;
@@ -173,14 +179,15 @@ function DaoRequests({ account }: { account: string | null }) {
   };
   return (
     <Card className="mb-4 p-4">
-      <h2 className="mb-3 px-1 text-[16px] tracking-[-0.02em]">Waiting for your vote</h2>
+      <h2 className="px-1 text-[16px] tracking-[-0.02em]">Waiting for your vote</h2>
+      <p className="mb-3 px-1 text-[12px] text-[#6b6b6b]">Payments your DAOs have been asked to make. Your wallet shows the full details before you sign.</p>
       <ul className="space-y-2">
         {(list ?? []).map((r) => (
           <li key={`${r.dao}-${r.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
             <div className="min-w-0">
-              <div className="text-[14px]">{r.text}</div>
+              <div className="text-[14px] break-all">{r.text}</div>
               <div className="text-[12px] text-[#6b6b6b]">
-                Request {r.id} on {r.dao}
+                {r.dao.replace(".sputnik-dao.near", "")} · request {r.id}
               </div>
             </div>
             <Button size="sm" variant="primary" icon="check" onClick={() => approve(r)} loading={busy === `${r.dao}-${r.id}`} disabled={!w.accountId || busy !== null}>
@@ -262,6 +269,7 @@ function YourDaos({ account, current, onPick, onCreate, onByName }: { account: s
                 {d.vaults.length ? "Another vault" : "Create a vault"}
               </button>
             </div>
+            <DaoPayout dao={d.dao} onFiled={() => window.dispatchEvent(new Event("kite-dao-requests"))} />
           </li>
         ))}
       </ul>
@@ -283,7 +291,7 @@ function VaultPicker({ current, onPick }: { current: string | null; onPick: (v: 
       <input
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="treasury.kitevaults.near"
+        placeholder="yourdao.kitevaults.near"
         aria-label="Vault account"
         spellCheck={false}
         autoCapitalize="off"

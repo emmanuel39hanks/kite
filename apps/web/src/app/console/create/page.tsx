@@ -427,7 +427,13 @@ function ReviewStep({ name, setName, mix, rules }: { name: string; setName: (v: 
           ["Kite steps in", `When a holding is ${rules.driftBand} pts off its share`],
           ["Biggest trade", `${rules.maxTradePct}% of your money`],
           ["Worst price", `Swaps may cost up to ${(rules.slippageBps / 100).toFixed(2)}%, fees included${mix.some((s) => assetById(s.id).earn) ? " (2% for earning versions)" : ""}`],
-          ["Trades per day", `Up to ${rules.tradesPerDay}`],
+          ["Trades per day", `At most ${rules.tradesPerDay} (Kite checks once a day)`],
+          [
+            "If Kite's key were stolen",
+            mix.length <= 2
+              ? `It couldn't take money out. Needless trades could cost up to about ${(2 * (Math.max(rules.slippageBps, mix.some((s) => assetById(s.id).earn) ? 200 : 0) / 100) * (rules.maxTradePct / 100) * rules.tradesPerDay).toFixed(1)}% a day until you switch the key off`
+              : "It couldn't take money out. With three or more assets the cost of needless trades has no worked-out daily cap, so switch the key off if you see trades you didn't expect. Two-asset plans have a cap",
+          ],
         ].map(([l, v]) => (
           <div key={l} className="flex justify-between gap-4 py-3">
             <dt className="text-[#6b6b6b]">{l}</dt>
