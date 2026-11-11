@@ -110,7 +110,7 @@ First users: DAO treasuries on Sputnik and Trezu, where one vote on a mandate re
 ## Hackathon disclosure
 
 - **Build window.** Work started on Nov 2, 2026 and was first committed on Nov 3. Nothing was written before the hackathon.
-- **Third-party code and data.** near-sdk, near-workspaces, near-api-js, NEAR Wallet Selector, `@nearai/inference-sdk`, Next.js, Tailwind, Radix, Remotion. `contracts/integration-tests/res/sputnikdao2_v3_2.wasm` is SputnikDAO's own contract, fetched from mainnet for the sandbox tests. Prices and history from 1Click, NearBlocks, Kraken and CoinGecko; yields from Meta Pool, Lido, Morpho and Kamino. Media credits are in [docs/DESIGN.md](docs/DESIGN.md#credits-and-notes).
+- **Third-party code, tools and data.** near-sdk, near-workspaces, near-api-js, NEAR Wallet Selector, `@nearai/inference-sdk`, Next.js, Tailwind, Radix, Remotion. Built with AI coding tools, as the rules allow (Q-005). `contracts/integration-tests/res/sputnikdao2_v3_2.wasm` is SputnikDAO's own contract, fetched from mainnet for the sandbox tests. Prices and history from 1Click, NearBlocks, Kraken and CoinGecko; yields from Meta Pool, Lido, Morpho and Kamino. Media credits are in [docs/DESIGN.md](docs/DESIGN.md#credits-and-notes).
 - **Other entries.** This team has no other project in NEAR HACKATHON.
 
 Kite is not financial advice.
