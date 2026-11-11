@@ -13,7 +13,7 @@ import { reviewStats } from "@/lib/ai/review";
 import { verifyPolicy, type Check } from "@/lib/ai/verify-policy";
 import { useHistory, useYields } from "@/lib/market/use-market";
 import type { Slice } from "@/lib/mix";
-import { addProposalAction, readDao, vaultProposalKind } from "@/lib/near/dao";
+import { proposeActions, readDao, vaultProposalKind } from "@/lib/near/dao";
 import { toContractLimits, toContractPlan, type Timing } from "@/lib/near/vault";
 import { useWallet } from "@/lib/near/wallet";
 import type { Guardrails } from "@/lib/store";
@@ -114,8 +114,10 @@ export function TreasuryPolicy({
     setErr(null);
     try {
       const info = await readDao(dao);
-      setBusy(`Sending, with a ${yoctoToNear(info.bond)} NEAR bond…`);
-      const hash = await w.send(dao, [addProposalAction(vault, res.p.description, res.p.calls, info.bond)]);
+      const { actions, topUp } = await proposeActions(dao, vault, res.p.description, res.p.calls, info.bond);
+      // A long proposal can need more storage than a small DAO has spare; the difference goes along as a transfer.
+      setBusy(topUp > 0n ? `Sending, with ${yoctoToNear(topUp).toFixed(3)} NEAR added for the DAO's storage…` : `Sending, with a ${yoctoToNear(info.bond)} NEAR bond…`);
+      const hash = await w.send(dao, actions);
       setSent(hash);
       onProposal?.({ ...res.p, txHash: hash });
     } catch (e) {

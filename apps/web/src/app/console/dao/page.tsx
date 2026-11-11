@@ -20,7 +20,7 @@ import { accountUrl, NEAR, trezuUrl } from "@/lib/near/config";
 import { pickMyVault, refreshMyVault, useMyVault } from "@/lib/near/my-vault";
 import { closeVaultCalls, usdcInIntents, withdrawAllProposal } from "@/lib/near/dao-fund";
 import { myDaos, openDaoRequests, rememberDao, type DaoRequest, type MyDao } from "@/lib/near/known-daos";
-import { addProposalAction, approveAction, describeCalls, vaultProposals, type DaoProposal } from "@/lib/near/dao";
+import { approveAction, describeCalls, proposeActions, vaultProposals, type DaoProposal } from "@/lib/near/dao";
 import {
   callRisk,
   canApprove,
@@ -379,9 +379,11 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
     };
   }, [waiting]);
 
-  const propose = (ctx: DaoCtx, name: string, action: OwnerAction) => {
+  const propose = async (ctx: DaoCtx, name: string, action: OwnerAction) => {
     const { description, calls, gasTgas } = ownerProposal(vault, action);
-    return run(name, ctx.dao, addProposalAction(vault, description, calls, BigInt(ctx.policy.proposal_bond), gasTgas), `Proposal sent to ${ctx.dao}. It runs once the DAO approves it.`);
+    const { actions, topUp } = await proposeActions(ctx.dao, vault, description, calls, BigInt(ctx.policy.proposal_bond), gasTgas);
+    const added = topUp > 0n ? ` ${(Number(topUp / 10n ** 18n) / 1e6).toFixed(3)} NEAR went along for the DAO's storage.` : "";
+    return run(name, ctx.dao, actions, `Proposal sent to ${ctx.dao}.${added} It runs once the DAO approves it.`);
   };
   const approve = (ctx: DaoCtx, p: DaoProposal) =>
     run(`approve-${ctx.dao}-${p.id}`, ctx.dao, approveAction(p.id, p.kind), `Vote recorded on proposal ${p.id}. If it reached the DAO's threshold, the DAO tried the calls; the list below shows whether they ran.`);

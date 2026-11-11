@@ -75,6 +75,31 @@ export function addProposalAction(receiver: string, description: string, calls: 
   );
 }
 
+/** NEAR charges an account this much for each byte it stores. */
+const YOCTO_PER_BYTE = 10n ** 19n;
+
+/**
+ * The actions that file a proposal. A DAO stores each proposal out of its own balance, and NEAR refuses the whole
+ * call when it can't ("wouldn't have enough balance to cover storage"): a long proposal on a nearly empty DAO runs
+ * into that. When the DAO is short, a plain transfer of the difference goes first in the same transaction, so the
+ * wallet shows it before anything is signed and the money stays in the DAO. `add_proposal` still carries exactly the bond.
+ */
+export async function proposeActions(dao: string, receiver: string, description: string, calls: VaultCall[], bond: bigint, gasTgas = 100) {
+  const add = addProposalAction(receiver, description, calls, bond, gasTgas);
+  const stored = new TextEncoder().encode(JSON.stringify({ description, kind: vaultProposalKind(receiver, calls, gasTgas) })).length;
+  // The proposal as stored, with room for its keys, its proposer and the votes that follow.
+  const need = BigInt(Math.ceil(stored * 1.2) + 1_000) * YOCTO_PER_BYTE;
+  let topUp = 0n;
+  try {
+    const a = await provider.viewAccount({ accountId: dao });
+    const free = BigInt(a.amount) - BigInt(a.storage_usage) * YOCTO_PER_BYTE;
+    if (free < need) topUp = need - free;
+  } catch {
+    // The DAO's balance couldn't be read: file the proposal as it is, and the wallet shows NEAR's own answer.
+  }
+  return { actions: topUp > 0n ? [actionCreators.transfer(topUp), add] : [add], topUp };
+}
+
 /**
  * Whether a proposal acts on this vault: it calls the vault itself, or it moves the DAO's USDC into the vault
  * (a call on the USDC contract whose `ft_transfer_call` names the vault).
