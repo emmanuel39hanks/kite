@@ -313,7 +313,7 @@ function AmountStep({ mix, setMix }: { mix: Slice[]; setMix: (m: Slice[]) => voi
 type RuleDef = { key: keyof Guardrails; label: string; help: (v: number) => string; show: (v: number) => string };
 const RULE_DEFS: RuleDef[] = [
   { key: "driftBand", label: "When Kite steps in", help: (v) => `Say Bitcoin should be 50%. Kite waits until it's below ${50 - v}% or above ${50 + v}% before trading.`, show: (v) => `${v} pts off` },
-  { key: "maxTradePct", label: "Biggest single trade", help: (v) => `No one swap moves more than ${v}% of your money. Bigger fixes happen over several days.`, show: (v) => `${v}%` },
+  { key: "maxTradePct", label: "Biggest single trade", help: (v) => `No one swap moves more than ${v}% of your money. Bigger fixes happen over several trades.`, show: (v) => `${v}%` },
   { key: "slippageBps", label: "Worst price accepted", help: (v) => `If a swap would hand back less than ${(100 - v / 100).toFixed(2)}% of what goes in, fees included, the vault refuses it.`, show: (v) => `${(v / 100).toFixed(2)}%` },
   { key: "tradesPerDay", label: "Trades per day", help: (v) => `At most ${v} trade${v === 1 ? "" : "s"} a day, however wild the market gets.`, show: (v) => `${v}` },
 ];
@@ -423,11 +423,11 @@ function ReviewStep({ name, setName, mix, rules }: { name: string; setName: (v: 
 
       <dl className="mt-6 divide-y divide-black/[0.06] rounded-2xl bg-[#f5f5f7] px-4 text-[14px]">
         {[
-          ["Checked", "Every day at 00:00 UTC"],
+          ["Checked", "Every hour"],
           ["Kite steps in", `When a holding is ${rules.driftBand} pts off its share`],
           ["Biggest trade", `${rules.maxTradePct}% of your money`],
           ["Worst price", `Swaps may cost up to ${(rules.slippageBps / 100).toFixed(2)}%, fees included${mix.some((s) => assetById(s.id).earn) ? " (2% for earning versions)" : ""}`],
-          ["Trades per day", `At most ${rules.tradesPerDay} (Kite checks once a day)`],
+          ["Trades per day", `At most ${rules.tradesPerDay}, at least 4 hours apart`],
           [
             "If Kite's key were stolen",
             mix.length <= 2

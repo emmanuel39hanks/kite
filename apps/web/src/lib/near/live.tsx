@@ -375,9 +375,9 @@ function useRealLive() {
     const skipped = d.reason === "too-small" ? "Checked: off plan, but the trade is under $1" : d.reason === "rate" ? "Checked: a trade is due, waiting for the vault's interval" : d.reason === "size" ? "Checked: a trade is due but its size is outside the limits" : "Checked: a trade is due but costs too much";
     k.addEvent({
       kind: d.error ? "blocked" : "check",
-      // This is always a dry check: it shows what Kite would do. The daily run (or the keeper CLI) does the trading.
+      // This is always a dry check: it shows what Kite would do. The hourly run (or the keeper CLI) does the trading.
       title: d.error ? "Check failed" : d.action === "none" ? "Checked: on plan" : d.action === "dry" ? "Checked: a trade is due" : d.action === "skipped" ? skipped : d.action === "paused" ? "Checked: vault is paused" : `Checked: ${d.action}`,
-      detail: d.error ?? (d.action === "dry" ? "Kite would trade now. The daily run does it, or run the keeper yourself." : d.lines?.slice(-1)[0]),
+      detail: d.error ?? (d.action === "dry" ? "Kite would trade now. The hourly run does it, or run the keeper yourself." : d.lines?.slice(-1)[0]),
     });
     return d;
   }, [k, vault]);

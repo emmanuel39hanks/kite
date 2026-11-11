@@ -164,7 +164,7 @@ function PlanDialog({ plan, onClose }: { plan: Plan | null; onClose: () => void 
                 <h4 className="text-[13px] font-medium text-black/45">How Kite looks after it</h4>
                 <DriftArt color={plan.mix[0].color} />
                 <p className="mt-2 text-[14px] leading-[1.4] text-black/60">
-                  Checked every day. If a part drifts 5 points from its target, Kite trades it back.
+                  Checked every hour. If a part drifts 5 points from its target, Kite trades it back.
                 </p>
               </div>
               <div className="rounded-xl bg-cloud p-4">

@@ -44,6 +44,22 @@ export function holdings(plan: Target[], balances: bigint[], prices: Record<stri
   return { rows, navUsd };
 }
 
+/**
+ * The vault's own pacing, checked before a trade is sent: at most `max_trades_per_day` in a UTC day and at least
+ * `min_interval_secs` between two trades. Returns why a trade must wait, or null if it may go now. The vault
+ * refuses either case with ERR_RATE, and a refused call still costs the vault gas.
+ */
+export function rateWait(
+  status: { trades_today: number; last_trade_ns: number },
+  limits: Pick<Limits, "max_trades_per_day" | "min_interval_secs">,
+  nowSecs: number,
+): { reason: "day"; waitSecs: number } | { reason: "gap"; waitSecs: number } | null {
+  if (status.trades_today >= limits.max_trades_per_day) return { reason: "day", waitSecs: 86_400 - (Math.floor(nowSecs) % 86_400) };
+  const since = nowSecs - status.last_trade_ns / 1e9;
+  if (status.last_trade_ns > 0 && since < limits.min_interval_secs) return { reason: "gap", waitSecs: Math.ceil(limits.min_interval_secs - since) };
+  return null;
+}
+
 /** The smallest rebalance trade the vault accepts: it refuses anything under $1 (ERR_TOO_SMALL), so dust can't burn the daily trade count. */
 export const MIN_TRADE_USD = 1;
 /** Sized 2% above the floor: the vault judges the signed quote's USD figure, which can come in a little under ours. */

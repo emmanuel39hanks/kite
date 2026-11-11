@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fairOut, holdings, nextTrade, type Limits, type Target } from "../src/drift.ts";
+import { fairOut, holdings, nextTrade, rateWait, type Limits, type Target } from "../src/drift.ts";
 
 const BTC = "nep141:nbtc.bridge.near";
 const XAUT = "nep141:xaut";
@@ -58,4 +58,18 @@ test("a small vault rebalances only once the trade reaches the vault's $1 minimu
   assert.ok(t && t.valueUsd >= 1 && t.valueUsd < 1.2 && t.sell.token === "nep141:usdc");
   // $3 vault at 70/30: only $0.60 over, under the vault's $1 floor.
   assert.equal(nextTrade(plan2, [2_100_000n, 900n], px, lim), null);
+});
+
+test("the keeper holds a trade the vault would refuse for its pacing", () => {
+  const pace = { max_trades_per_day: 4, min_interval_secs: 14_400 };
+  const noon = 1_800_000_000 - (1_800_000_000 % 86_400) + 12 * 3600; // 12:00 UTC on some day
+  const ns = (secs: number) => secs * 1e9;
+  // Never traded: free to go.
+  assert.equal(rateWait({ trades_today: 0, last_trade_ns: 0 }, pace, noon), null);
+  // Traded an hour ago: wait out the rest of the four-hour gap.
+  assert.deepEqual(rateWait({ trades_today: 1, last_trade_ns: ns(noon - 3600) }, pace, noon), { reason: "gap", waitSecs: 10_800 });
+  // The gap has passed: free to go.
+  assert.equal(rateWait({ trades_today: 1, last_trade_ns: ns(noon - 14_400) }, pace, noon), null);
+  // Today's trades are used up, even though the gap has passed: wait for the next UTC day.
+  assert.deepEqual(rateWait({ trades_today: 4, last_trade_ns: ns(noon - 20_000) }, pace, noon), { reason: "day", waitSecs: 43_200 });
 });

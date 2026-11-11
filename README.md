@@ -41,7 +41,7 @@ No wallet, keys or funds are needed for anything in this section.
 |---|---|---|
 | `node scripts/verify.mjs` | A PASS line per claim and a last line `PASS 20 · FAIL 0 · SKIP 0` while the live vault is open (one line fewer for each vault that closes). Checks the wasm hashes, 1Click's signature scheme on a real quote, that the factory has no keys and runs this repository's code, every open vault's code and keys, and 10 mainnet transactions. | Node 22.9+. Works before `npm ci`. Offline it prints `SKIP` for the mainnet checks; `--offline` runs only the 5 file checks. Reads public NEAR RPC, nothing else. |
 | `npm ci` | Installs the web app, the keeper and the explainer-clip sources (`apps/film`, not part of the product). | npm registry. About 1 minute. |
-| `npm test` | Two summaries, both with `fail 0`: web `tests 82`, then keeper `tests 11`. | Nothing. Seconds. |
+| `npm test` | Two summaries, both with `fail 0`: web `tests 82`, then keeper `tests 12`. | Nothing. Seconds. |
 | `npm run test:contracts` | `test result: ok. 17 passed` (factory) and `test result: ok. 95 passed` (vault). 42 of the vault tests are named `attack_…`: each tries one way to misuse the key and asserts the exact refusal. | Rust 1.95+, crates.io. About 2 minutes the first time. |
 | `npm run test:integration` | `test result: ok. 8 passed` on a local NEAR node, running the shipped wasm with real keys, and a real SputnikDAO v3.2 that takes over a vault by vote. NEAR Intents has no testnet, so a stand-in contract plays its part in this local test; on mainnet the vault uses the real NEAR Intents. | Rust with `rustup target add wasm32-unknown-unknown`, `cargo-near` 0.22, a 70 MB sandbox download. Linux or Apple-silicon macOS. About 5 minutes the first time. |
 | `npm run typecheck && npm run lint && npm run build` | All three finish without errors. | The build downloads fonts from Google. |
@@ -89,7 +89,7 @@ Commands that are not part of checking, because they sign with Kite's keeper key
 | The attacks | `contracts/vault/src/tests.rs` (`attack_…`, `known_limit_…`), `packages/keeper/scripts/attack.ts` |
 | The factory | `contracts/factory/src/lib.rs` |
 | The keeper | `packages/keeper/src/run.ts` (one check of one vault), `oneclick.ts`, `near.ts` |
-| The daily run | `apps/web/src/app/api/cron/route.ts`, `apps/web/vercel.json` |
+| The hourly run | `apps/web/src/app/api/cron/route.ts`, `apps/web/vercel.json` |
 | What the browser checks before you sign | `apps/web/src/lib/near/allocate-check.ts` |
 | Sandbox tests | `contracts/integration-tests/tests/sandbox.rs` |
 
@@ -97,7 +97,7 @@ Commands that are not part of checking, because they sign with Kite's keeper key
 flowchart LR
   Owner -- "owner calls (full signature)" --> Vault["Vault: name.kitevaults.near"]
   Factory["Factory: kitevaults.near (no keys)"] -- creates --> Vault
-  Keeper["Kite's keeper (daily cron)"] -- "rebalance / settle only" --> Vault
+  Keeper["Kite's keeper (hourly cron)"] -- "rebalance / settle only" --> Vault
   Keeper -- asks for a signed quote --> OneClick["1Click"]
   Vault -- "checks the quote, then moves the sold asset" --> Intents["NEAR Intents: balances in the vault's name"]
   OneClick -- "swap output back to the vault" --> Intents

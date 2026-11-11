@@ -16,7 +16,7 @@ const SAFETY_MS = 20_000;
 const VAULT_OVERHEAD_MS = 70_000;
 
 /**
- * Daily check for every vault in KITE_VAULTS (comma-separated), then vaults Kite's factory made that carry
+ * Hourly check for every vault in KITE_VAULTS (comma-separated), then vaults Kite's factory made that carry
  * Kite's key. Vercel Cron calls this with `Authorization: Bearer $CRON_SECRET`; without CRON_SECRET nobody can.
  *
  * Anyone can make a factory vault with Kite's public key, so those come second and in a different order each

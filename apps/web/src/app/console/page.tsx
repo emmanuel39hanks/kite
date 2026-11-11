@@ -324,7 +324,7 @@ function Live({ p }: { p: Portfolio }) {
                 </a>
               </p>
             ) : null}
-            {live.preview && <p className="mt-1 text-[12px] leading-4 text-[#6b6b6b]">Preview has no daily job. Press Check now to run it.</p>}
+            {live.preview && <p className="mt-1 text-[12px] leading-4 text-[#6b6b6b]">Preview has no hourly job. Press Check now to run it.</p>}
           </Stat>
         </div>
       </div>
@@ -473,14 +473,12 @@ function Countdown() {
     return () => clearInterval(t);
   }, []);
   const next = new Date(now);
-  next.setUTCHours(24, 0, 0, 0);
+  next.setUTCMinutes(60, 0, 0); // the keeper runs on the hour
   const mins = Math.max(0, Math.round((next.getTime() - now) / 60_000));
   return (
     <>
-      <span className="text-[28px] leading-9 tracking-[-0.05em] tabular-nums">
-        {Math.floor(mins / 60)}h {mins % 60}m
-      </span>
-      <span className="text-[14px] text-[#6b6b6b]"> at 00:00 UTC</span>
+      <span className="text-[28px] leading-9 tracking-[-0.05em] tabular-nums">{mins}m</span>
+      <span className="text-[14px] text-[#6b6b6b]"> every hour, on the hour</span>
     </>
   );
 }

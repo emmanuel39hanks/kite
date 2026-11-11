@@ -64,7 +64,7 @@ function Hero() {
             Crypto and gold in one vault, kept on target for you.
           </h1>
           <p className="mt-6 max-w-[46ch] text-[18px] leading-[1.45] text-black/70 sm:text-[20px]">
-            You choose what to own. Kite buys it for you, checks it every day,
+            You choose what to own. Kite buys it for you, checks it every hour,
             and trades it back to your plan when prices move. It sits in a vault
             that only you can take money out of.
           </p>

@@ -102,7 +102,7 @@ export function PlanDetail({ slug }: { slug: string }) {
         <Card className="p-2">
           <dl className="rounded-2xl bg-white px-4 shadow-[0_2px_2px_rgba(0,0,0,0.04)]">
             <Row label="Ups and downs" value={SWINGS[plan.swings - 1]} />
-            <Row label="Checked" value="Every day" />
+            <Row label="Checked" value="Every hour" />
             <Row label="Steps in at" value={`${k.guardrails.driftBand} pts off target`} />
             <Row label="Kite fee" value="None" />
             <Row label="Swap cost" value="About 0.3–0.7%" />

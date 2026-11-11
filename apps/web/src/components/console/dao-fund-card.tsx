@@ -228,7 +228,7 @@ export function DaoFundCard({
           <span className="grid h-5 w-5 place-items-center rounded-full bg-[#05a800] text-white">
             <Icon name="check" size={11} stroke={2.4} />
           </span>
-          All invested. Kite keeps it on plan every day.
+          All invested. Kite checks it every hour and keeps it on plan.
         </p>
       )}
       {bal && "error" in bal && <p className="px-3 pt-3 pb-1.5 text-[13px] text-rose-600">Couldn&apos;t read the balances from NEAR. Refresh to try again.</p>}

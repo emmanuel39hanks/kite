@@ -37,7 +37,7 @@ export function ConnectGate({ title = "Connect your NEAR wallet", text }: { titl
           {[
             ["shield", "Your vault, your keys", "Only you can withdraw. Kite gets one key that can only rebalance."],
             ["explore", "Crypto and gold in one place", "Bitcoin, Ethereum, Solana, NEAR and Tether Gold, held through NEAR Intents."],
-            ["refresh", "Kept on target", "Checked daily. Kite trades only when a holding drifts past your limit."],
+            ["refresh", "Kept on target", "Checked every hour. Kite trades only when a holding drifts past your limit."],
           ].map(([icon, t, d]) => (
             <li key={t} className="flex gap-3 rounded-2xl bg-white p-4 shadow-[0_0_6px_rgba(0,0,0,0.02),0_2px_2px_rgba(0,0,0,0.04)]">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black/[0.04]">

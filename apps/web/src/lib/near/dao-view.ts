@@ -217,7 +217,7 @@ export function ownerProposal(vault: string, a: OwnerAction): { description: str
       };
     case "plan":
       return {
-        description: `Change the target mix of Kite vault ${vault} to ${a.text}. Kite trades toward it at its next daily check, inside the vault's guardrails. If a swap is in flight when this passes, the vault refuses and the DAO votes again.`,
+        description: `Change the target mix of Kite vault ${vault} to ${a.text}. Kite trades toward it at its next hourly check, inside the vault's guardrails. If a swap is in flight when this passes, the vault refuses and the DAO votes again.`,
         calls: [{ method: "set_plan", args: { plan: a.plan } }],
       };
   }

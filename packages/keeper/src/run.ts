@@ -1,4 +1,4 @@
-import { holdings, MIN_TRADE_USD, nextTrade, toUsdE6, tradeSlippageBps } from "./drift.ts";
+import { holdings, MIN_TRADE_USD, nextTrade, rateWait, toUsdE6, tradeSlippageBps } from "./drift.ts";
 import { MIN_GAS_YOCTO, callRebalance, callSettle, readGasLeft, readVault } from "./near.ts";
 import { prices as livePrices, quoteFull, signedPayload, status as swapStatus, submitDeposit, verifyPayload } from "./oneclick.ts";
 
@@ -58,11 +58,15 @@ export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 12
     log(`On plan: nothing is ${v.limits.band_bps / 100} points off target.`);
     return { action: "none" as const, navUsd };
   }
-  // The vault spaces trades out. Asking sooner would only burn gas on a refusal (ERR_RATE).
-  const sinceLast = Date.now() / 1000 - v.status.last_trade_ns / 1e9;
-  if (v.status.last_trade_ns > 0 && sinceLast < v.limits.min_interval_secs) {
-    const mins = Math.ceil((v.limits.min_interval_secs - sinceLast) / 60);
-    log(`A trade is due, but the vault allows one every ${Math.round(v.limits.min_interval_secs / 3600)} h. Next one in about ${mins} min.`);
+  // The vault paces its trades: so many a day, so far apart. Asking sooner would only burn gas on a refusal (ERR_RATE).
+  const wait = rateWait(v.status, v.limits, Date.now() / 1000);
+  if (wait) {
+    const mins = Math.ceil(wait.waitSecs / 60);
+    log(
+      wait.reason === "day"
+        ? `A trade is due, but the vault has made its ${v.limits.max_trades_per_day} trades for today. Next one after 00:00 UTC, in about ${mins} min.`
+        : `A trade is due, but the vault allows one every ${+(v.limits.min_interval_secs / 3600).toFixed(1)} h. Next one in about ${mins} min.`,
+    );
     return { action: "skipped" as const, reason: "rate" };
   }
   log(`Trade: sell $${trade.valueUsd.toFixed(2)} of ${trade.sell.token} for ${trade.buy.token}`);
@@ -100,7 +104,7 @@ export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 12
     return { action: "skipped" as const, reason: "price" };
   }
   // The vault sizes the trade by the quote's own USD figure. If that falls under $1 or over the per-trade cap, it
-  // refuses the call, nothing changes, and tomorrow's run would try the same thing and burn gas again. Skip instead.
+  // refuses the call, nothing changes, and the next run would try the same thing and burn gas again. Skip instead.
   if (inUsd < MIN_TRADE_USD) {
     log(`Quoted at $${inUsd.toFixed(2)}, under the vault's $1 minimum. Skipping.`);
     return { action: "skipped" as const, reason: "size" };
@@ -126,7 +130,7 @@ export async function runOnce({ vault, dry, log = console.log, settleWaitMs = 12
   if (hash) await submitDeposit(hash, q.depositAddress).catch((e) => log(`Couldn't notify 1Click of the deposit (${(e as Error).message}). The swap still runs.`));
   log(`Sent. tx ${hash}. 1Click deposit ${q.depositAddress}.`);
 
-  // Wait for the swap to land, then settle in the same run, so one daily run is a whole rebalance.
+  // Wait for the swap to land, then settle in the same run, so one run is a whole rebalance.
   // If it hasn't landed in time, the vault stays pending and the next run settles it.
   const final = await waitForSwap(q.depositAddress, settleWaitMs, log);
   if (final) {

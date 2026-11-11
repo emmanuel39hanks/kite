@@ -6,7 +6,7 @@ import { ChainError, view } from "@/lib/server/chain-view";
  * every field comes from the factory's vault list and each vault's `get_status`, so anyone can re-read it over RPC.
  *
  * For each open vault that carries Kite's key: when it last traded, how many trades it made today, whether a swap
- * is in flight, and whether it is paused. The keeper runs once a day from a cron (apps/web/vercel.json, "0 0 * * *").
+ * is in flight, and whether it is paused. The keeper runs every hour from a cron (apps/web/vercel.json, "0 * * * *").
  */
 export async function GET() {
   const kite = NEAR.agentPublicKey;
@@ -36,7 +36,7 @@ export async function GET() {
       {
         source: "NEAR mainnet, read at request time",
         factory: NEAR.factory,
-        keeper_schedule: "daily, 00:00 UTC (may start up to an hour late)",
+        keeper_schedule: "hourly, on the hour (UTC)",
         read_at: new Date().toISOString(),
         vaults_ever_made: listed.length,
         vaults: rows,

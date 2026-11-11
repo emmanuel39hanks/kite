@@ -25,7 +25,7 @@ export function Daos() {
     },
     {
       title: "Kite keeps it balanced",
-      text: "Every day Kite trades the vault back to its mix, inside the limits the DAO voted for. Changing the mix, pausing Kite or taking money out is always another vote.",
+      text: "Every hour Kite checks the vault and trades it back to its mix, inside the limits the DAO voted for. Changing the mix, pausing Kite or taking money out is always another vote.",
     },
   ];
   return (
@@ -37,7 +37,7 @@ export function Daos() {
               A treasury that stays on plan, and still answers to the vote.
             </h2>
             <p className="mt-4 max-w-[46ch] text-[18px] leading-[1.45] text-black/60 sm:text-[20px]">
-              A DAO on NEAR can own a Kite vault the same way a person does. The members decide what it holds; Kite does the daily trading they&apos;d
+              A DAO on NEAR can own a Kite vault the same way a person does. The members decide what it holds; Kite does the routine trading they&apos;d
               otherwise argue about.
             </p>
 

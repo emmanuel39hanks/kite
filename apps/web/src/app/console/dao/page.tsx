@@ -643,7 +643,7 @@ function OwnerActions({
         {planKnown && (
           <Card className="flex flex-col p-5">
             <h3 className="text-[17px] tracking-[-0.03em]">Target mix</h3>
-            <p className="mt-0.5 mb-4 text-[13px] text-[#6b6b6b]">Kite trades toward it at its next daily check.</p>
+            <p className="mt-0.5 mb-4 text-[13px] text-[#6b6b6b]">Kite trades toward it at its next hourly check.</p>
             <MixSliders mix={mix} onChange={setMix} disabled={off} />
             <div className="mt-auto flex flex-wrap items-center gap-2 pt-4">
               <Button variant="primary" size="sm" onClick={proposeMix} loading={busy === "plan"} disabled={off || !mixChanged || !mixValid(mix) || !!state.status.pending}>

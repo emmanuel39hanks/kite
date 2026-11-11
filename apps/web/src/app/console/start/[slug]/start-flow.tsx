@@ -206,7 +206,7 @@ function Summary({ name, mix, rules }: { name: string; mix: Slice[]; rules: Guar
       </div>
       <div className="mt-6 grid grid-cols-3 gap-2">
         {[
-          ["Checked", "Daily"],
+          ["Checked", "Every hour"],
           ["Steps in at", `${rules.driftBand} pts off`],
           ["Withdraw", "Only you"],
         ].map(([l, v]) => (
@@ -469,7 +469,7 @@ function MoneyStep({ mix, rules, onDone }: { mix: Slice[]; rules: Guardrails; on
           <div className="mt-5 rounded-2xl bg-[#f5f5f7] p-4">
             <div className="text-[14px] tracking-[-0.02em]">Or see how it would have gone</div>
             <p className="mt-0.5 text-[13px] leading-5 text-[#6b6b6b]">
-              Start as if you&apos;d invested earlier. Kite&apos;s daily check is replayed on real closing prices with your guardrails, so you see real rebalances and real profit and loss.
+              Start as if you&apos;d invested earlier. Kite&apos;s check is replayed on real daily closing prices with your guardrails, so you see real rebalances and real profit and loss.
             </p>
             <div className="mt-3 grid grid-cols-3 gap-2">
               {(
@@ -664,11 +664,11 @@ function LiveStep({ mix, investing }: { mix: Slice[]; investing: number }) {
         <h2 className="mt-5 text-[44px] leading-none tracking-[-0.05em]">You&apos;re live</h2>
         <p className="mx-auto mt-3 max-w-[40ch] text-[15px] leading-6 text-[#6b6b6b]">
           {investing > 0 && (k.portfolio?.value ?? 0) < investing * 0.97
-            ? `Investing ${usd(investing)}. The swaps land in about a minute, and Home updates as they do. Kite checks your vault every day and only trades when something drifts too far.`
+            ? `Investing ${usd(investing)}. The swaps land in about a minute, and Home updates as they do. Kite checks your vault every hour and only trades when something drifts too far.`
             : k.portfolio && k.portfolio.value >= 1
-            ? `${usd(k.portfolio.value)} is in your vault. Kite checks it every day and only trades when something drifts too far.`
+            ? `${usd(k.portfolio.value)} is in your vault. Kite checks it every hour and only trades when something drifts too far.`
             : "Your vault is ready. Swaps settle in about a minute; Home updates as they land."}
-          {live.preview && " In preview there's no daily job: press Check now on Home to run Kite's check against live prices."}
+          {live.preview && " In preview there's no hourly job: press Check now on Home to run Kite's check against live prices."}
         </p>
         <div className="mx-auto mt-7 max-w-[300px] rounded-2xl bg-[#f5f5f7] px-5 py-4">
           <div className="text-[13px] text-[#6b6b6b]">Next check in</div>

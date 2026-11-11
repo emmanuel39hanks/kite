@@ -4,7 +4,7 @@ import { clientIp, crossSite, refuseCrossSite, isKiteVault, limited } from "@/li
 /**
  * POST { vault } → what Kite would do for this vault right now: real balances and a real quote, nothing sent.
  * Always a dry run. This route is public, and a real run spends the agent key's gas allowance, so real
- * rebalances come only from the daily cron (which needs CRON_SECRET) or the keeper CLI.
+ * rebalances come only from the hourly cron (which needs CRON_SECRET) or the keeper CLI.
  */
 export async function POST(req: Request) {
   if (crossSite(req)) return refuseCrossSite();

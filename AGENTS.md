@@ -10,7 +10,7 @@ Kite is an npm-workspaces monorepo plus a Rust workspace. What it is and what it
 | `contracts/factory` | Creates vaults; embeds the vault wasm. |
 | `contracts/integration-tests` | Sandbox tests (near-workspaces) against the shipped wasm. `contracts/mock-intents` stands in for NEAR Intents there. |
 | `packages/keeper` | The keeper: drift check, 1Click quotes, `rebalance` / `settle` calls. CLI in `src/cli.ts`; attack demo in `scripts/attack.ts`. |
-| `apps/web` | Next.js app (console, landing page, API routes, daily cron route). |
+| `apps/web` | Next.js app (console, landing page, API routes, hourly cron route). |
 | `apps/film` | Remotion sources for explainer clips. Not part of the product. |
 | `apps/web/public/vault/*.wasm` | The shipped contract binaries. Do not rebuild or replace them: the mainnet factory has no keys and embeds this exact vault file. |
 
