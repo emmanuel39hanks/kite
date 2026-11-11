@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/emmanuel39hanks/kite/actions/workflows/ci.yml/badge.svg)](https://github.com/emmanuel39hanks/kite/actions/workflows/ci.yml)
 
-**A vault of your own on NEAR that keeps a crypto portfolio on its target mix.** Live at https://www.usekite.xyz, factory `kitevaults.near` on NEAR mainnet. Live vault: [`kite-dao-2.kitevaults.near`](https://nearblocks.io/address/kite-dao-2.kitevaults.near), owned by a DAO and holding gold, Bitcoin and NEAR. Built at NEAR HACKATHON 2026. Tracks: `defi` (main), `social`, `security`. MIT.
+**A vault of your own on NEAR that keeps a crypto portfolio on its target mix.** Live at https://www.usekite.xyz, with a [preview mode](https://www.usekite.xyz/console?preview=1) that needs no wallet. Factory `kitevaults.near` on NEAR mainnet. Live vault: [`kite-dao-2.kitevaults.near`](https://nearblocks.io/address/kite-dao-2.kitevaults.near), owned by a DAO and holding gold, Bitcoin and NEAR. Built at NEAR HACKATHON 2026. Tracks: `defi` (main), `social`, `security`. MIT.
 
 (Not related to Kite AI or to other hackathon projects named Kite. This one is usekite.xyz and `kitevaults.near`.)
 
@@ -31,7 +31,7 @@ Afterwards the vault checks what arrived, and pauses itself if it is short. A DA
 - **Private plan drafting.** Describe what you want in words; a model running in a TEE on NEAR AI Cloud drafts the mix and the limits, and the page verifies the hardware attestation before sending anything.
 - **DAO treasuries.** A Sputnik DAO (for example one made in Trezu) creates a vault by proposal and owns it from the first block.
 
-**Where it stands:** live on NEAR mainnet.
+**Where it stands:** live on NEAR mainnet. Anyone can try the whole app without a wallet or funds in preview mode: https://www.usekite.xyz/console?preview=1
 
 ## Check it yourself
 
