@@ -33,6 +33,8 @@ const TXS = [
   { what: "personal vault created", hash: "AV6EWVgcgg4bnRVkaUE5Z3od7a7eKPUWruoFaV7xAV8N", signer: "emmanuelhaanks.near", ok: true },
   { what: "Kite's key rebalanced (signed 1Click quote checked by the vault)", hash: "EWkADR59cwwnYLspLUAmrjbqQaWKFvWSV79oHJfCc8f7", signer: "emmanuelhaanks.kitevaults.near", ok: true },
   { what: "Kite's key settled the swap", hash: "4RbnhSFQSBwueYMagQGfKyxvPNg1dgbMm9EeSYtzGP2n", signer: "emmanuelhaanks.kitevaults.near", ok: true },
+  { what: "the hourly keeper rebalanced the live DAO vault, unattended", hash: "Ck1NVbN6R12bpr4r4sppsE2MFXb7fMJ6rvNGUPpkukC", signer: "kite-dao-2.kitevaults.near", ok: true },
+  { what: "the same run settled that swap", hash: "7BGF6rfhjbdW9BQmttAqKM3BQjeiuYJaduRxaRDArQBt", signer: "kite-dao-2.kitevaults.near", ok: true },
   { what: "personal vault closed", hash: "7cPBbUvrhn1RA9UF1VQdw5BpPRtHThjdGNRMDnnEgzJM", signer: "emmanuelhaanks.near", ok: true },
   { what: "DAO vault created by vote", hash: "Af3Wqkj4djSeD63wt98MJod3QsyfkqFYNtAZqpy41Wdj", signer: "emmanuelhaanks.near", ok: true },
   { what: "DAO vault closed by vote", hash: "GRoLMGDxAL46PdzUGb4Dk4v7J5L5ZC2W9QTqMcrncDiT", signer: "emmanuelhaanks.near", ok: true },
