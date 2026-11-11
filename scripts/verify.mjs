@@ -50,6 +50,7 @@ const TXS = [
   { what: "DAO vault closed by vote (relayed by Trezu)", hash: "GRoLMGDxAL46PdzUGb4Dk4v7J5L5ZC2W9QTqMcrncDiT", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", ok: true },
   { what: "the live DAO vault created by vote (relayed by Trezu)", hash: "7Q7Ar2Em6acP3iZmKEwFKrUABG3fo2nHSbsGR148BwuN", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", ok: true },
   { what: "the live DAO vault invested by vote", hash: "A6HuJFgJcBC9nbgM7Dza2KUWECCWkXgkD9e3q8H5Dppk", signer: "emmanuelhaanks.near", call: "act_proposal", ok: true },
+  { what: "a treasury policy written by NEAR AI, approved by vote (proposal 24, checkable at /verify)", hash: "B4wdWx2vVuYdQZj4wQ9MyFcwFBUGeirZ7iVHtkGqtn3y", signer: "emmanuelhaanks.near", call: "act_proposal", ok: true },
   { what: "stolen-key attack: quote paying attacker.near", hash: "9vR2bufkfotztJpuP8Rzdm935YkkPBjzPNBL3a6Ri2vR", signer: "emmanuelhaanks-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: false, error: "ERR_QUOTE_RECIPIENT" },
   { what: "stolen-key attack: edited quote", hash: "5Q1dQEXK58Jbn3hjteko2sgaMqcrzvJjuSEnDeH5pdcp", signer: "emmanuelhaanks-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: false, error: "ERR_QUOTE_SIG" },
 ];
