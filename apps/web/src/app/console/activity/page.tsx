@@ -5,7 +5,7 @@ import type { ChainEvent } from "@/app/api/vault/history/route";
 import { assetById, units } from "@/lib/assets";
 import { ActivityList } from "@/components/console/activity-list";
 import { ConnectGate } from "@/components/console/connect-gate";
-import { Button, Card, Empty, PageTitle, Segmented } from "@/components/console/ui";
+import { Button, Card, Empty, PageTitle, Pager, Segmented, usePaged } from "@/components/console/ui";
 import { accountUrl } from "@/lib/near/config";
 import { useWallet } from "@/lib/near/wallet";
 import { useKite, type ActivityEvent } from "@/lib/store";
@@ -71,6 +71,9 @@ export default function ActivityPage() {
   const w = useWallet();
   const [filter, setFilter] = useState<Filter>("All");
   const chain = useChainEvents(k.portfolio?.vault, !w.preview);
+  const seen = new Set(k.activity.map((e) => e.tx).filter(Boolean));
+  const events = [...k.activity, ...chain.filter((e) => !seen.has(e.tx))].sort((a, b) => b.at - a.at).filter(MATCH[filter]);
+  const paged = usePaged(events, 10);
   if (!k.ready || !w.ready) return null;
   if (!w.accountId)
     return (
@@ -79,8 +82,6 @@ export default function ActivityPage() {
         <ConnectGate />
       </>
     );
-  const seen = new Set(k.activity.map((e) => e.tx).filter(Boolean));
-  const events = [...k.activity, ...chain.filter((e) => !seen.has(e.tx))].sort((a, b) => b.at - a.at).filter(MATCH[filter]);
   return (
     <>
       <PageTitle
@@ -95,12 +96,21 @@ export default function ActivityPage() {
         Activity
       </PageTitle>
       <div className="mb-4 overflow-x-auto">
-        <Segmented options={FILTERS} value={filter} onChange={setFilter} label="Filter activity" />
+        <Segmented
+          options={FILTERS}
+          value={filter}
+          onChange={(f) => {
+            setFilter(f);
+            paged.setPage(0);
+          }}
+          label="Filter activity"
+        />
       </div>
       <Card className="overflow-hidden">
         {events.length ? (
           <div className="bg-white">
-            <ActivityList events={events} vault={k.portfolio?.vault} />
+            <ActivityList events={paged.rows} vault={k.portfolio?.vault} />
+            <Pager {...paged} label="Activity pages" />
           </div>
         ) : (
           <Empty

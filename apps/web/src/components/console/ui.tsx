@@ -254,6 +254,37 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
 
 /* ───────────── Empty & gate states ───────────── */
 
+/**
+ * A long list, one page at a time. The page stays inside the list when it shrinks (a filter, a re-read),
+ * so a caller only has to send it back to 0 when the list means something new.
+ */
+export function usePaged<T>(items: T[], size: number) {
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(items.length / size));
+  const at = Math.min(page, pages - 1);
+  return { rows: items.slice(at * size, (at + 1) * size), page: at, pages, total: items.length, size, setPage };
+}
+
+/** The foot of a paged list: which rows are showing, and the way to the newer and older ones. Hidden when everything fits. */
+export function Pager({ page, pages, total, size, setPage, label }: { page: number; pages: number; total: number; size: number; setPage: (p: number) => void; label: string }) {
+  if (pages <= 1) return null;
+  return (
+    <nav aria-label={label} className="flex items-center justify-between gap-3 border-t border-black/[0.06] bg-white px-4 py-3">
+      <span className="text-[13px] text-[#6b6b6b] tabular-nums">
+        {page * size + 1}–{Math.min(total, (page + 1) * size)} of {total}
+      </span>
+      <div className="flex items-center gap-2">
+        <Button size="sm" icon="arrow-left" onClick={() => setPage(page - 1)} disabled={page === 0}>
+          Newer
+        </Button>
+        <Button size="sm" iconRight="arrow-right" onClick={() => setPage(page + 1)} disabled={page >= pages - 1}>
+          Older
+        </Button>
+      </div>
+    </nav>
+  );
+}
+
 export function Empty({ title, text, action }: { title: string; text: string; action?: ReactNode }) {
   return (
     <div className="px-6 py-14 text-center">

@@ -10,7 +10,7 @@ import { GuardSliders } from "@/components/console/guard-sliders";
 import { MixSliders } from "@/components/console/mix-sliders";
 import { TreasuryPolicy } from "@/components/console/treasury-policy";
 import { Icon } from "@/components/console/icons";
-import { Badge, Button, Card, Disclosure, Empty, PageTitle, Segmented, StatusNote } from "@/components/console/ui";
+import { Badge, Button, Card, Disclosure, Empty, PageTitle, Pager, Segmented, StatusNote, usePaged } from "@/components/console/ui";
 import { Donut } from "@/components/charts";
 import { Logo } from "@/components/logo";
 import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
@@ -349,22 +349,35 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
       try {
         await w.send(receiver, Array.isArray(actions) ? actions : [actions]);
         setNote({ tone: "ok", text: ok });
+      } catch (e) {
+        // A wallet can report "cancelled" for a transaction it did send (its window was closed before it answered).
+        // The chain is the judge: say what the wallet said, then re-read below like any other outcome.
+        const said = e instanceof Error ? e.message : String(e);
+        setNote({ tone: "err", text: /cancel|closed|reject/i.test(said) ? `${said}. If you did approve it in your wallet, it shows below in a few seconds.` : said });
+      } finally {
+        setBusy(null);
         // The chain takes a few seconds to show a new proposal or balance. Re-read a few times so the page
         // moves on by itself instead of waiting for a manual refresh.
         for (const ms of [1200, 3500, 8000, 16000]) setTimeout(() => setRev((r) => r + 1), ms);
-      } catch (e) {
-        setNote({ tone: "err", text: e instanceof Error ? e.message : String(e) });
-      } finally {
-        setBusy(null);
       }
     },
     [w],
   );
-  // Votes and swaps land without this page doing anything: re-read every 12 seconds while it is in view.
+  // Votes and swaps land without this page doing anything (a vote cast in Trezu, Kite's hourly trade). Re-read while
+  // the page is in view: every 5 seconds while a proposal is waiting for votes, every 12 otherwise, and at once when
+  // someone comes back to this tab.
+  const waiting = !!data && !("error" in data) && [data.owner, data.pending].some((c) => c?.proposals.some((p) => isOpen(p, c.policy.proposal_period)));
   useEffect(() => {
-    const t = setInterval(() => document.visibilityState === "visible" && setRev((r) => r + 1), 12_000);
-    return () => clearInterval(t);
-  }, []);
+    const reread = () => document.visibilityState === "visible" && setRev((r) => r + 1);
+    const t = setInterval(reread, waiting ? 5_000 : 12_000);
+    document.addEventListener("visibilitychange", reread);
+    window.addEventListener("focus", reread);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", reread);
+      window.removeEventListener("focus", reread);
+    };
+  }, [waiting]);
 
   const propose = (ctx: DaoCtx, name: string, action: OwnerAction) => {
     const { description, calls, gasTgas } = ownerProposal(vault, action);
@@ -399,18 +412,9 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
   const open = owner ? owner.proposals.filter((p) => isOpen(p, owner.policy.proposal_period)).length : 0;
   const empty = state.balances.every((b) => b === 0n);
   const shown: Tab = tab ?? (open ? "Proposals" : empty ? "Add money" : "Proposals");
+  const planTokens = state.plan.map((t) => t.token);
   const proposalList = daos.map((ctx) => (
-    <Card key={ctx.dao} className="overflow-hidden">
-      {ctx.proposals.length ? (
-        <ul className="divide-y divide-black/[0.05] bg-white">
-          {ctx.proposals.map((p) => (
-            <ProposalRow key={p.id} p={p} dao={ctx.dao} vault={vault} planTokens={state.plan.map((t) => t.token)} period={ctx.policy.proposal_period} connected={connected} busy={busy} onApprove={() => approve(ctx, p)} busyKey={`approve-${ctx.dao}-${p.id}`} />
-          ))}
-        </ul>
-      ) : (
-        <Empty title="No votes yet" text="Proposals about this vault show here, with a button to approve them." />
-      )}
-    </Card>
+    <ProposalsCard key={ctx.dao} ctx={ctx} vault={vault} planTokens={planTokens} connected={connected} busy={busy} onApprove={(p) => approve(ctx, p)} />
   ));
 
   return (
@@ -804,6 +808,27 @@ function TakeOut({ vault, state, ctx, off, busy, onPropose }: { vault: string; s
 }
 
 const STATUS_TONE: Record<string, "neutral" | "green" | "amber" | "red" | "blue"> = { InProgress: "blue", Approved: "green", Rejected: "red", Removed: "red", Failed: "red" };
+
+/** One DAO's proposals about this vault, newest first, five to a page. */
+function ProposalsCard({ ctx, vault, planTokens, connected, busy, onApprove }: { ctx: DaoCtx; vault: string; planTokens: string[]; connected: boolean; busy: string | null; onApprove: (p: DaoProposal) => void }) {
+  const paged = usePaged(ctx.proposals, 5);
+  return (
+    <Card className="overflow-hidden">
+      {ctx.proposals.length ? (
+        <>
+          <ul className="divide-y divide-black/[0.05] bg-white">
+            {paged.rows.map((p) => (
+              <ProposalRow key={p.id} p={p} dao={ctx.dao} vault={vault} planTokens={planTokens} period={ctx.policy.proposal_period} connected={connected} busy={busy} onApprove={() => onApprove(p)} busyKey={`approve-${ctx.dao}-${p.id}`} />
+            ))}
+          </ul>
+          <Pager {...paged} label="Proposal pages" />
+        </>
+      ) : (
+        <Empty title="No votes yet" text="Proposals about this vault show here, with a button to approve them." />
+      )}
+    </Card>
+  );
+}
 
 function ProposalRow({
   p,
