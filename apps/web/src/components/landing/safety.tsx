@@ -17,9 +17,9 @@ const TOKENS: { id: LogoId; x: number; y: number }[] = [
 export function Safety() {
   const rules = [
     { ok: true, title: "Swap inside your plan", text: "Trade one thing you picked for another, at the sizes you set." },
-    { ok: false, title: "Move money out", text: "Not to anyone, and not to us. Only you can withdraw." },
+    { ok: false, title: "Move money out", text: "Kite's key can't withdraw, and a swap can only pay back into your vault. Only you can withdraw." },
     { ok: false, title: "Buy something new", text: "Anything outside your plan is refused by the contract." },
-    { ok: false, title: "Trade past your limits", text: "How often and how much are capped, and you set the caps." },
+    { ok: false, title: "Trade past your limits", text: "How often, how much and at what price are capped, and you set the caps." },
   ];
   return (
     <section id="safety" className="scroll-mt-24 px-5 pb-20 sm:px-10 sm:pb-28">

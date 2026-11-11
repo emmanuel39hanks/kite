@@ -146,7 +146,7 @@ function PickStep({ mix, setMix, onDraft }: { mix: Slice[]; setMix: (m: Slice[])
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
         <span className="text-[13px] text-[#6b6b6b]">Or start from:</span>
-        {PLAN_DATA.filter((p) => !p.comingSoon).map((p) => (
+        {PLAN_DATA.map((p) => (
           <button
             key={p.slug}
             type="button"

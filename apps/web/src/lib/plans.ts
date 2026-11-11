@@ -12,8 +12,6 @@ export type PlanData = {
   why: Partial<Record<LogoId, string>>;
   swings: 1 | 2 | 3;
   goodFor: string;
-  /** Uses assets NEAR Intents can't route yet. Viewable, not startable. */
-  comingSoon?: boolean;
 };
 
 export const PLAN_DATA: PlanData[] = [
@@ -32,21 +30,19 @@ export const PLAN_DATA: PlanData[] = [
     goodFor: "People who believe in Bitcoin long term and can sit through big drops.",
   },
   {
-    slug: "tech-and-crypto",
-    name: "Tech and Crypto",
-    who: "Big tech stocks next to the biggest coins.",
-    mix: [slice("btc", 30), slice("eth", 20), slice("nvidia", 25), slice("apple", 15), slice("tesla", 10)],
-    idea: "Two engines. Half in the biggest coins, half in the companies building the future.",
+    slug: "earn-and-grow",
+    name: "Earn and Grow",
+    who: "Half growth, half steady, and two of the four parts earn.",
+    mix: [slice("btc", 30), slice("stnear", 20), slice("xaut", 25), slice("gtusdc", 25)],
+    idea: "Two halves. Bitcoin and staked NEAR do the growing; gold and dollars keep it level. The NEAR and the dollars earn while they sit.",
     why: {
-      btc: "The largest coin, the anchor of the crypto half.",
-      eth: "The network most apps are built on.",
-      nvidia: "Makes the chips that AI runs on.",
-      apple: "Steady earnings, the calmest of the three stocks.",
-      tesla: "A smaller, bolder slice.",
+      btc: "The largest coin, the anchor of the growth half.",
+      stnear: "NEAR held as staked NEAR (Meta Pool), so it earns staking rewards while you hold it.",
+      xaut: "Tether Gold, a token backed by real gold. Tends to hold up when crypto falls.",
+      gtusdc: "Digital dollars that earn interest (USDC lent through Gauntlet on Morpho). Doesn't swing.",
     },
     swings: 2,
-    goodFor: "People who want growth but not everything in crypto.",
-    comingSoon: true,
+    goodFor: "People who want growth but not everything riding on crypto.",
   },
   {
     slug: "steady",

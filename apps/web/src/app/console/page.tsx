@@ -97,7 +97,7 @@ function NoVault() {
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         {PLAN_DATA.map((p) => {
-          const series = h && !p.comingSoon ? backtest(h, p.mix) : [];
+          const series = h ? backtest(h, p.mix) : [];
           const ret = series.length > 1 ? (series[series.length - 1] / series[0] - 1) * 100 : null;
           return (
             <Link key={p.slug} href={`/console/explore/${p.slug}`} className="group rounded-[20px] outline-offset-4">
@@ -108,14 +108,10 @@ function NoVault() {
                       <Logo key={s.id} id={s.id} size={32} className="ring-2 ring-[#f5f5f7]" />
                     ))}
                   </div>
-                  {p.comingSoon ? (
-                    <Badge>Coming soon</Badge>
-                  ) : (
-                    <div className="text-right">
-                      <Change value={ret} className="text-[15px]" />
-                      <div className="text-[12px] text-[#6b6b6b]">past year</div>
-                    </div>
-                  )}
+                  <div className="text-right">
+                    <Change value={ret} className="text-[15px]" />
+                    <div className="text-[12px] text-[#6b6b6b]">past year</div>
+                  </div>
                 </div>
                 <h3 className="mt-6 text-[22px] tracking-[-0.04em]">{p.name}</h3>
                 <p className="mt-1 text-[14px] text-[#6b6b6b]">{p.who}</p>

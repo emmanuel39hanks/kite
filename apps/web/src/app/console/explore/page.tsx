@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { MixBar } from "@/components/charts";
 import { Ticker } from "@/components/console/ticker";
-import { Badge, Button, Card, Change, PageTitle, SectionTitle } from "@/components/console/ui";
+import { Button, Card, Change, PageTitle, SectionTitle } from "@/components/console/ui";
 import { ValueChart } from "@/components/console/value-chart";
 import { Logo } from "@/components/logo";
 import { ASSETS, price as fmtPrice } from "@/lib/assets";
@@ -24,7 +23,7 @@ export default function ExplorePage() {
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {PLAN_DATA.map((p) => {
-          const series = h && !p.comingSoon ? backtest(h, p.mix) : [];
+          const series = h ? backtest(h, p.mix) : [];
           const ret = series.length > 1 ? (series[series.length - 1] / series[0] - 1) * 100 : null;
           return (
             <Link key={p.slug} href={`/console/explore/${p.slug}`} className="group rounded-[20px] outline-offset-4">
@@ -35,28 +34,17 @@ export default function ExplorePage() {
                       <Logo key={s.id} id={s.id} size={32} className="ring-2 ring-[#f5f5f7]" />
                     ))}
                   </div>
-                  {p.comingSoon ? (
-                    <Badge>Coming soon</Badge>
-                  ) : (
-                    <div className="text-right">
-                      <Change value={ret} className="text-[18px] tracking-[-0.03em]" />
-                      <div className="text-[12px] text-[#6b6b6b]">past year</div>
-                    </div>
-                  )}
+                  <div className="text-right">
+                    <Change value={ret} className="text-[18px] tracking-[-0.03em]" />
+                    <div className="text-[12px] text-[#6b6b6b]">past year</div>
+                  </div>
                 </div>
                 <div className="px-5 pt-5">
                   <h3 className="text-[22px] tracking-[-0.04em]">{p.name}</h3>
                   <p className="mt-1 text-[14px] text-[#6b6b6b]">{p.who}</p>
                 </div>
                 <div className="mt-auto pt-4">
-                  {p.comingSoon ? (
-                    <div className="px-5 pb-5">
-                      <MixBar slices={p.mix} className="h-1.5" />
-                      <p className="mt-3 text-[12px] text-[#6b6b6b]">Holds stocks, which NEAR Intents can&apos;t route yet.</p>
-                    </div>
-                  ) : (
-                    <ValueChart data={series} dates={h?.dates} height={90} />
-                  )}
+                  <ValueChart data={series} dates={h?.dates} height={90} />
                 </div>
               </Card>
             </Link>
@@ -81,14 +69,8 @@ export default function ExplorePage() {
                 <p className="truncate text-[13px] text-[#6b6b6b]">{a.blurb}</p>
               </div>
               <div className="shrink-0 text-right">
-                {a.live ? (
-                  <>
-                    <div className="text-[15px] tabular-nums">{fmtPrice(q.price)}</div>
-                    <Change value={q.change24h} className="text-[13px]" />
-                  </>
-                ) : (
-                  <Badge>Coming soon</Badge>
-                )}
+                <div className="text-[15px] tabular-nums">{fmtPrice(q.price)}</div>
+                <Change value={q.change24h} className="text-[13px]" />
               </div>
             </Card>
           );

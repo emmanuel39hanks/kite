@@ -48,7 +48,7 @@ export function StartFlow({ slug }: { slug: string }) {
   const setup = useMemo(() => {
     if (topUp) return k.portfolio ? { name: k.portfolio.name, mix: k.portfolio.target, slug: k.portfolio.planSlug } : null;
     if (slug === "custom") return k.draft ? { name: k.draft.name, mix: k.draft.mix, slug: "custom" } : null;
-    return plan && !plan.comingSoon ? { name: plan.name, mix: plan.mix, slug: plan.slug } : null;
+    return plan ? { name: plan.name, mix: plan.mix, slug: plan.slug } : null;
   }, [topUp, slug, plan, k.draft, k.portfolio]);
   // Before the vault exists these are the saved rules from Create or Guardrails; after, the vault's own limits.
   const rules = k.guardrails;

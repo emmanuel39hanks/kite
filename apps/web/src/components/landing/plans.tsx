@@ -9,7 +9,7 @@ type Plan = PlanData & { art: ReactNode };
 
 const ART: Record<string, ReactNode> = {
   "bitcoin-plus": <KiteArt />,
-  "tech-and-crypto": <EnginesArt />,
+  "earn-and-grow": <HalvesArt />,
   steady: <ScaleArt />,
 };
 
@@ -78,18 +78,12 @@ export function Plans() {
                 </div>
               </button>
               <div className="p-5 pt-4">
-                {p.comingSoon ? (
-                  <span className="block rounded-lg bg-black/[0.06] px-4 py-2.5 text-center text-[15px] font-medium text-black/50">
-                    Stocks coming soon
-                  </span>
-                ) : (
-                  <a
-                    href={`/console/start/${p.slug}`}
-                    className="block rounded-lg bg-black px-4 py-2.5 text-center text-[15px] font-medium text-white hover:bg-black/80"
-                  >
-                    Use this plan
-                  </a>
-                )}
+                <a
+                  href={`/console/start/${p.slug}`}
+                  className="block rounded-lg bg-black px-4 py-2.5 text-center text-[15px] font-medium text-white hover:bg-black/80"
+                >
+                  Use this plan
+                </a>
               </div>
             </article>
           ))}
@@ -175,17 +169,13 @@ function PlanDialog({ plan, onClose }: { plan: Plan | null; onClose: () => void 
             </div>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              {plan.comingSoon ? (
-                <span className="rounded-lg bg-black/[0.06] px-5 py-2.5 text-[15px] font-medium text-black/50">Stocks coming soon</span>
-              ) : (
-                <a
-                  href={`/console/start/${plan.slug}`}
-                  onClick={onClose}
-                  className="rounded-lg bg-black px-5 py-2.5 text-[15px] font-medium text-white hover:bg-black/80"
-                >
-                  Use this plan
-                </a>
-              )}
+              <a
+                href={`/console/start/${plan.slug}`}
+                onClick={onClose}
+                className="rounded-lg bg-black px-5 py-2.5 text-[15px] font-medium text-white hover:bg-black/80"
+              >
+                Use this plan
+              </a>
               <span className="text-[13px] text-black/45">You can change any number before you start.</span>
             </div>
           </div>
@@ -290,34 +280,39 @@ function KiteArt() {
   );
 }
 
-/** Tech and Crypto: two engines, chips and coins, feeding one plan. */
-function EnginesArt() {
+/** Earn and Grow: a growth half and a steady half feeding one plan, with a small "earns" mark on two of them. */
+function HalvesArt() {
+  const earns = (cx: number, cy: number) => (
+    <g>
+      <circle cx={cx} cy={cy} r="9" fill="#05a800" stroke="#fff" strokeWidth="2" />
+      <path d={`M${cx - 4} ${cy + 2} l4 -4 4 4`} fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  );
   return (
-    <ArtFrame label="Two engines, stocks and crypto, feeding one plan">
-      {/* chip */}
-      <g transform="translate(70 30)">
-        <rect x="14" y="14" width="92" height="92" rx="14" fill="#fff" stroke={INK} strokeWidth="1.6" />
-        <rect x="38" y="38" width="44" height="44" rx="8" fill="#76B900" />
-        {[30, 50, 70, 90].map((p) => (
-          <g key={p} stroke={INK} strokeWidth="1.6" strokeLinecap="round">
-            <path d={`M${p} 0 v14 M${p} 106 v14 M0 ${p} h14 M106 ${p} h14`} />
-          </g>
-        ))}
+    <ArtFrame label="Bitcoin and staked NEAR on one side, gold and earning dollars on the other, feeding one plan">
+      {/* growth half: Bitcoin and staked NEAR */}
+      <g transform="translate(70 34)">
+        <circle cx="42" cy="58" r="38" fill="#F7931A" />
+        <text x="42" y="70" fontSize="34" fontWeight="700" fill="#fff" textAnchor="middle">₿</text>
+        <circle cx="100" cy="32" r="26" fill="#00C08B" />
+        <text x="100" y="41" fontSize="24" fontWeight="700" fill="#fff" textAnchor="middle">N</text>
+        {earns(120, 50)}
       </g>
-      {/* coins */}
-      <g transform="translate(400 40)">
-        <circle cx="40" cy="58" r="38" fill="#F7931A" />
-        <text x="40" y="70" fontSize="34" fontWeight="700" fill="#fff" textAnchor="middle">₿</text>
-        <circle cx="96" cy="30" r="26" fill="#627EEA" />
-        <path d="M96 12 l11 19 -11 6 -11 -6 z M96 40 l11 -6 -11 15 -11 -15 z" fill="#fff" />
+      {/* steady half: gold and earning dollars */}
+      <g transform="translate(380 34)">
+        <path d="M0 96 l10 -24 h56 l10 24 z" fill="#D4A537" />
+        <path d="M10 72 h56 l-4 8 h-48 z" fill="#E7C463" />
+        <circle cx="104" cy="44" r="28" fill="#2775CA" />
+        <text x="104" y="54" fontSize="28" fontWeight="700" fill="#fff" textAnchor="middle">$</text>
+        {earns(126, 64)}
       </g>
       {/* both feed the centre */}
-      <path d="M196 90 C 230 90, 240 100, 268 100" fill="none" stroke={INK} strokeWidth="1.4" />
-      <path d="M394 100 C 360 100, 330 100, 292 100" fill="none" stroke={INK} strokeWidth="1.4" />
+      <path d="M206 96 C 236 96, 244 100, 268 100" fill="none" stroke={INK} strokeWidth="1.4" />
+      <path d="M374 104 C 350 102, 322 100, 292 100" fill="none" stroke={INK} strokeWidth="1.4" />
       <circle cx="280" cy="100" r="22" fill={INK} />
       <path d="M280 88 l9 12 -9 12 -9 -12 z" fill="#FFB020" />
-      <Label x={58} y={160} text="Stocks: Nvidia, Apple, Tesla" />
-      <Label x={380} y={160} text="Crypto: Bitcoin, Ethereum" />
+      <Label x={52} y={160} text="Growth: Bitcoin, staked NEAR" />
+      <Label x={352} y={160} text="Steady: gold, earning dollars" />
     </ArtFrame>
   );
 }

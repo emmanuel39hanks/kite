@@ -129,7 +129,7 @@ We played an attacker who stole Kite's key and tried everything we could think o
 - **Plans with two assets: the cost has a number.** Each trade can lose at most your price limit (default 1%) of the amount traded (default at most 10% of the portfolio). The vault checks two things, the quote's output value and its guaranteed minimum, so a fill at the minimum can cost close to twice that. At the defaults that is up to about 0.2% of the portfolio per trade and at most 4 trades a day, so **up to about 0.8% a day**, until you revoke Kite's key or pause the vault. With two assets a trade also can't be undone by the next one: once the mix is back inside the band, the reverse trade is refused (test `two_assets_a_trade_cannot_be_reversed`).
 - **Plans with three or more assets.** Each trade is still bound by the price limit on the signed quote, and nothing can be sent anywhere but the vault. The per-day figure above is worked out for two-asset plans; the multi-asset cases are recorded by the `known_limit_…` tests, and the next vault version extends the same bound to them.
 
-An app fee on a quote comes out of the swap, so it has to fit inside your price limit too. Tightening the band, trade size, price limit and trades a day tightens all of the above.
+1Click's signature does not cover a quote's app fee, so a thief's key could ask for a quote that pays a fee to the thief. The fee comes out of the swap, so it has to fit inside your price limit: it is part of the cost above, not on top of it. Tightening the band, trade size, price limit and trades a day tightens all of the above.
 
 **Defaults:** a holding must drift 5 points before Kite acts, one trade moves at most 10% of the portfolio, a swap may cost at most 1% fees included, at most 4 trades a day (the four-hour gap between trades allows at most 6), and a swap that hasn't landed after 30 minutes pauses the vault. You can change all of these.
 
@@ -304,4 +304,4 @@ Things we ran into while taking Kite to mainnet, what caused them, and what we d
 
 Libraries: near-sdk, near-workspaces, near-api-js, NEAR Wallet Selector, `@nearai/inference-sdk`, Next.js, Tailwind, Radix, Remotion (explainer clips, `apps/film`). `contracts/integration-tests/res/sputnikdao2_v3_2.wasm` is SputnikDAO's own contract, fetched from mainnet for the sandbox tests. Data: 1Click, NearBlocks, Kraken, CoinGecko, Meta Pool, Lido, Morpho, Kamino. Sky footage from Mixkit. Closing-banner photo from Unsplash (photo id 1753114767610-75bc913c8423, hotlinked, not committed). Token logos from web3icons; company logos from Simple Icons.
 
-Kite is not financial advice. Tokenized stocks, when they arrive, are not available to US persons. Automated trading for others may be regulated where you live.
+Kite is not financial advice. Automated trading for others may be regulated where you live.

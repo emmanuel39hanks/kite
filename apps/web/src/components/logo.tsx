@@ -12,9 +12,6 @@ const NAMES: Record<LogoId, string> = {
   xaut: "Tether Gold",
   base: "Base",
   arbitrum: "Arbitrum",
-  nvidia: "Nvidia",
-  apple: "Apple",
-  tesla: "Tesla",
   stnear: "Staked NEAR",
   wsteth: "Staked ETH",
   gtusdc: "Earning USDC",
@@ -36,10 +33,7 @@ const NAMES: Record<LogoId, string> = {
 /** Earning versions wear their base asset's mark with a small badge. */
 const EARN_BASE: Partial<Record<LogoId, LogoId>> = { stnear: "near", wsteth: "eth", gtusdc: "usdc", ksol: "sol" };
 
-// Token and network marks ship as full-bleed squares; stock marks are bare glyphs.
-const GLYPHS = new Set<LogoId>(["nvidia", "apple", "tesla"]);
-
-/** Brand logo as a disc: full-bleed for tokens, glyph on white for stocks. */
+/** Brand logo as a disc. Token and network marks ship as full-bleed squares. */
 export function Logo({
   id,
   size = 28,
@@ -67,33 +61,16 @@ export function Logo({
       </span>
     );
   }
-  if (!GLYPHS.has(id)) {
-    return (
-      <Image
-        src={`/logos/${id}.svg`}
-        alt={NAMES[id]}
-        width={size}
-        height={size}
-        unoptimized
-        className={`shrink-0 rounded-full ${className}`}
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  const inner = Math.round(size * 0.56);
   return (
-    <span
-      className={`inline-grid shrink-0 place-items-center rounded-full bg-white ring-1 ring-black/[0.06] ${className}`}
+    <Image
+      src={`/logos/${id}.svg`}
+      alt={NAMES[id]}
+      width={size}
+      height={size}
+      unoptimized
+      className={`shrink-0 rounded-full ${className}`}
       style={{ width: size, height: size }}
-    >
-      <Image
-        src={`/logos/${id}.svg`}
-        alt={NAMES[id]}
-        width={inner}
-        height={inner}
-        unoptimized
-      />
-    </span>
+    />
   );
 }
 

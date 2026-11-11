@@ -273,7 +273,7 @@ function Bar({ pct, color, logo }: { pct: number; color: string; logo: LogoId })
 function Assets() {
   const groups: { title: string; ids: LogoId[] }[] = [
     { title: `Crypto: ${ASSETS.filter((a) => a.live && a.kind === "Crypto" && !a.earn).length} coins, including`, ids: ["btc", "eth", "sol", "near", "xrp", "doge", "link", "zec"] },
-    { title: "Stocks (coming soon)", ids: ["nvidia", "apple", "tesla"] },
+    { title: "Versions that earn", ids: ["stnear", "wsteth", "gtusdc", "ksol"] },
     { title: "Gold and digital dollars", ids: ["xaut", "usdc", "usdt"] },
   ];
   return (
@@ -298,9 +298,6 @@ function Assets() {
             </div>
           ))}
         </div>
-        <p className="mt-5 text-[14px] text-black/50">
-          Stocks are coming soon, through Ondo, wherever Ondo serves your region.
-        </p>
       </div>
     </section>
   );
@@ -467,7 +464,7 @@ function Faq() {
     },
     {
       q: "Can I use it where I live?",
-      a: "Crypto and gold, almost anywhere. Stocks are coming soon through Ondo, which doesn't serve the US and limits some other countries; Kite will show what's available to you.",
+      a: "Crypto, gold and digital dollars are available almost anywhere. Kite runs on NEAR, so all you need is a NEAR wallet.",
     },
   ];
   return (

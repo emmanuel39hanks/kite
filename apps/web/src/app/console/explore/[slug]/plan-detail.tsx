@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { MixBar } from "@/components/charts";
 import { Icon } from "@/components/console/icons";
-import { Badge, Button, Card, Change, Money, Segmented } from "@/components/console/ui";
+import { Button, Card, Change, Money, Segmented } from "@/components/console/ui";
 import { ValueChart } from "@/components/console/value-chart";
 import { Logo } from "@/components/logo";
 import { assetById, price as fmtPrice } from "@/lib/assets";
@@ -25,7 +25,7 @@ export function PlanDetail({ slug }: { slug: string }) {
   const { quote } = useMarket();
   const [range, setRange] = useState<Range>("1Y");
   const h = useHistory(DAYS[range]);
-  const series = useMemo(() => (h && !plan.comingSoon ? backtest(h, plan.mix) : []), [h, plan]);
+  const series = useMemo(() => (h ? backtest(h, plan.mix) : []), [h, plan]);
   const end = series.length ? series[series.length - 1] : 1000;
   const change = series.length > 1 ? (end / series[0] - 1) * 100 : null;
 
@@ -55,11 +55,7 @@ export function PlanDetail({ slug }: { slug: string }) {
           <Button onClick={customise} icon="notepad">
             Change the mix
           </Button>
-          {plan.comingSoon ? (
-            <Button variant="primary" disabled>
-              Coming soon
-            </Button>
-          ) : k.vaultFound ? (
+          {k.vaultFound ? (
             <Button variant="primary" href="/console" iconRight="arrow-right">
               You already have a vault
             </Button>
@@ -71,22 +67,12 @@ export function PlanDetail({ slug }: { slug: string }) {
         </div>
       </div>
 
-      {plan.comingSoon && (
-        <div className="mb-4 rounded-2xl bg-white px-5 py-4 text-[14px] ring-1 ring-inset ring-black/[0.06] shadow-[0_0_6px_rgba(0,0,0,0.02),0_2px_2px_rgba(0,0,0,0.04)]">
-          This plan holds tokenised stocks, which NEAR Intents can&apos;t route yet. You can look around; starting it opens once they&apos;re live.
-        </div>
-      )}
-
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Card className="flex min-h-[340px] flex-col overflow-hidden pt-6">
           <div className="flex flex-wrap items-start justify-between gap-4 px-6">
             <div>
               <div className="text-[16px] tracking-[-0.02em] text-[#6b6b6b]">$1,000 in this plan, rebalanced daily</div>
-              {plan.comingSoon ? (
-                <div className="text-[48px] leading-[56px] tracking-[-0.04em] text-black/25">–</div>
-              ) : (
-                <Money value={end} className="text-[48px] leading-[56px] tracking-[-0.04em]" />
-              )}
+              <Money value={end} className="text-[48px] leading-[56px] tracking-[-0.04em]" />
               <div className="text-[14px]">
                 <Change value={change} /> <span className="text-[#6b6b6b]">past {range === "1Y" ? "year" : range === "3M" ? "3 months" : "month"}</span>
               </div>
@@ -129,7 +115,6 @@ export function PlanDetail({ slug }: { slug: string }) {
                   <div className="flex items-center gap-2">
                     <span className="text-[16px] tracking-[-0.02em]">{a.name}</span>
                     <span className="text-[13px] text-[#6b6b6b]">{a.ticker}</span>
-                    {!a.live && <Badge>Coming soon</Badge>}
                   </div>
                   <p className="text-[14px] text-[#6b6b6b]">{plan.why[s.id]}</p>
                 </div>

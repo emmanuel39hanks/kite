@@ -137,14 +137,14 @@ function SearchDialog({ onClose }: { onClose: () => void }) {
     const plans = PLAN_DATA.filter((p) => !t || p.name.toLowerCase().includes(t) || p.who.toLowerCase().includes(t)).map((p) => ({
       key: p.slug,
       label: p.name,
-      sub: p.comingSoon ? "Plan · coming soon" : "Plan",
+      sub: "Plan",
       href: `/console/explore/${p.slug}`,
       logo: p.mix[0].id,
     }));
     const assets = ASSETS.filter((a) => !t || a.name.toLowerCase().includes(t) || a.ticker.toLowerCase().includes(t)).map((a) => ({
       key: a.id,
       label: a.name,
-      sub: a.live ? `${a.ticker} · ${a.kind}` : `${a.ticker} · coming soon`,
+      sub: `${a.ticker} · ${a.kind}`,
       href: `/console/explore#assets`,
       logo: a.id,
     }));

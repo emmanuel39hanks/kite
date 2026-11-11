@@ -7,9 +7,6 @@ export type LogoId =
   | "xaut"
   | "base"
   | "arbitrum"
-  | "nvidia"
-  | "apple"
-  | "tesla"
   | "stnear"
   | "wsteth"
   | "gtusdc"
@@ -27,7 +24,7 @@ export type LogoId =
   | "uni"
   | "usdt";
 
-type AssetKind = "Crypto" | "Stock" | "Gold" | "Digital dollar";
+type AssetKind = "Crypto" | "Gold" | "Digital dollar";
 
 export type Asset = {
   id: LogoId;
@@ -75,9 +72,6 @@ export const ASSETS: Asset[] = [
   { id: "wsteth", name: "Staked ETH", ticker: "wstETH", kind: "Crypto", color: "#627EEA", intentsId: "nep141:eth-0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0.omft.near", decimals: 18, live: true, price: 2804, blurb: "ETH staked with Lido. Earns Ethereum staking rewards.", earn: { base: "eth", issuer: "Lido", how: "Ethereum staking rewards", url: "https://lido.fi" }, slippageBps: 200 },
   { id: "gtusdc", name: "Earning USDC", ticker: "gtUSDCp", kind: "Digital dollar", color: "#2775CA", intentsId: "nep141:base-0x0bb69b79bc829e1cfcc34a740110886d98d2bd14.omft.near", decimals: 18, live: true, price: 0.0000011162, blurb: "USDC lent out through Gauntlet USDC Prime on Morpho. Earns interest from borrowers.", earn: { base: "usdc", issuer: "Gauntlet on Morpho", how: "interest from Morpho borrowers", url: "https://app.morpho.org/base/vault/0xee8f4ec5672f09119b96ab6fb59c27e1b7e44b61" }, slippageBps: 200 },
   { id: "ksol", name: "Earning SOL", ticker: "kV-gtSOLb", kind: "Crypto", color: "#9945FF", intentsId: "nep141:sol-0xa69aa1bcb03a369e338156a8718ad60271145803.omdep.near", decimals: 9, live: true, price: 96.96, blurb: "SOL lent out through a Kamino vault curated by Gauntlet. Earns interest.", earn: { base: "sol", issuer: "Kamino (Gauntlet)", how: "interest from Kamino borrowers", url: "https://app.kamino.finance" }, slippageBps: 200 },
-  { id: "nvidia", name: "Nvidia", ticker: "NVDAon", kind: "Stock", color: "#76B900", intentsId: null, decimals: 18, live: false, price: 206.74, blurb: "Makes the chips AI runs on." },
-  { id: "apple", name: "Apple", ticker: "AAPLon", kind: "Stock", color: "#8E8E93", intentsId: null, decimals: 18, live: false, price: 338.16, blurb: "Phones, laptops, steady earnings." },
-  { id: "tesla", name: "Tesla", ticker: "TSLAon", kind: "Stock", color: "#CC0000", intentsId: null, decimals: 18, live: false, price: 441.3, blurb: "Electric cars and batteries." },
 ];
 
 export const assetById = (id: LogoId) => {
