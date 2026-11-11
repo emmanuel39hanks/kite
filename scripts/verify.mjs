@@ -9,8 +9,9 @@
  * Read-only: no keys, no wallet, no funds, no transactions, no files written. It needs only Node (built-ins
  * only, so it runs before `npm ci`). Network checks are JSON-RPC reads against public NEAR servers.
  *
- * Each line is PASS, FAIL or SKIP. SKIP means the network could not be reached, never that an answer was
- * wrong: a wrong answer is always FAIL. The exit code is 1 only if something failed.
+ * Each check is PASS, FAIL or SKIP. SKIP means the network could not be reached, never that an answer was
+ * wrong: a wrong answer is always FAIL. Lines marked INFO state a fact the checks below use and are not counted.
+ * The exit code is 1 only if something failed.
  */
 import { createHash, createPublicKey, verify as edVerify } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -26,20 +27,31 @@ const RPCS = ["https://rpc.mainnet.fastnear.com", "https://free.rpc.fastnear.com
 // Ordinary servers forget transactions after a few days; archival ones keep them all.
 const ARCHIVAL = ["https://archival-rpc.mainnet.fastnear.com", "https://archival-rpc.mainnet.near.org"];
 
-/** Mainnet transactions the README cites: who signed, and how it must have ended. */
+/** Kite's keeper key: on every vault it is a function-call key for `rebalance` and `settle` on that vault only. */
+const KITE_KEY = "ed25519:F6zW7JjCL5skGpge4HkpoVwGsidC9qeUaNP2mwRpZ766";
+
+/**
+ * Mainnet transactions the README cites. Each is re-read from an archival node and compared with what is written
+ * here: the account that signed it, the key it was signed with (`key`), its first action (`call`: a method name,
+ * or the action's kind), the member a relayed vote came from (`by`), and how it ended.
+ */
 const TXS = [
-  { what: "factory deployed", hash: "4WX2i7p4oAx86AmkrEX5QNX8xJ89nY2y2MqWYgsFn4hJ", signer: "kitevaults.near", ok: true },
-  { what: "factory's only key deleted", hash: "JrAZuKDyaTppVTjjG3eVBCUJw1yFmPDS6g9MfGASTAm", signer: "kitevaults.near", ok: true },
-  { what: "personal vault created", hash: "AV6EWVgcgg4bnRVkaUE5Z3od7a7eKPUWruoFaV7xAV8N", signer: "emmanuelhaanks.near", ok: true },
-  { what: "Kite's key rebalanced (signed 1Click quote checked by the vault)", hash: "EWkADR59cwwnYLspLUAmrjbqQaWKFvWSV79oHJfCc8f7", signer: "emmanuelhaanks.kitevaults.near", ok: true },
-  { what: "Kite's key settled the swap", hash: "4RbnhSFQSBwueYMagQGfKyxvPNg1dgbMm9EeSYtzGP2n", signer: "emmanuelhaanks.kitevaults.near", ok: true },
-  { what: "the hourly keeper rebalanced the live DAO vault, unattended", hash: "Ck1NVbN6R12bpr4r4sppsE2MFXb7fMJ6rvNGUPpkukC", signer: "kite-dao-2.kitevaults.near", ok: true },
-  { what: "the same run settled that swap", hash: "7BGF6rfhjbdW9BQmttAqKM3BQjeiuYJaduRxaRDArQBt", signer: "kite-dao-2.kitevaults.near", ok: true },
-  { what: "personal vault closed", hash: "7cPBbUvrhn1RA9UF1VQdw5BpPRtHThjdGNRMDnnEgzJM", signer: "emmanuelhaanks.near", ok: true },
-  { what: "DAO vault created by vote", hash: "Af3Wqkj4djSeD63wt98MJod3QsyfkqFYNtAZqpy41Wdj", signer: "emmanuelhaanks.near", ok: true },
-  { what: "DAO vault closed by vote", hash: "GRoLMGDxAL46PdzUGb4Dk4v7J5L5ZC2W9QTqMcrncDiT", signer: "emmanuelhaanks.near", ok: true },
-  { what: "stolen-key attack: quote paying attacker.near", hash: "9vR2bufkfotztJpuP8Rzdm935YkkPBjzPNBL3a6Ri2vR", signer: "emmanuelhaanks-2.kitevaults.near", ok: false, error: "ERR_QUOTE_RECIPIENT" },
-  { what: "stolen-key attack: edited quote", hash: "5Q1dQEXK58Jbn3hjteko2sgaMqcrzvJjuSEnDeH5pdcp", signer: "emmanuelhaanks-2.kitevaults.near", ok: false, error: "ERR_QUOTE_SIG" },
+  { what: "factory deployed", hash: "4WX2i7p4oAx86AmkrEX5QNX8xJ89nY2y2MqWYgsFn4hJ", signer: "kitevaults.near", call: "DeployContract", ok: true },
+  { what: "factory's only key deleted", hash: "JrAZuKDyaTppVTjjG3eVBCUJw1yFmPDS6g9MfGASTAm", signer: "kitevaults.near", call: "DeleteKey", ok: true },
+  { what: "personal vault created", hash: "AV6EWVgcgg4bnRVkaUE5Z3od7a7eKPUWruoFaV7xAV8N", signer: "emmanuelhaanks.near", call: "create_vault", ok: true },
+  { what: "Kite's key rebalanced (signed 1Click quote checked by the vault)", hash: "EWkADR59cwwnYLspLUAmrjbqQaWKFvWSV79oHJfCc8f7", signer: "emmanuelhaanks.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: true },
+  { what: "Kite's key settled the swap", hash: "4RbnhSFQSBwueYMagQGfKyxvPNg1dgbMm9EeSYtzGP2n", signer: "emmanuelhaanks.kitevaults.near", key: KITE_KEY, call: "settle", ok: true },
+  { what: "Kite's key rebalanced a vault holding staked NEAR (stNEAR sold for BTC)", hash: "GWapkJTMWKD42BS4gNvsj6g8iaPTkWBQoKJWMrH9othH", signer: "emmanuelhaanks-3.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: true },
+  { what: "and settled that swap", hash: "HuonLqVG1fT1x7XuoKYms6T3RZif64LB8fu918tUWAjk", signer: "emmanuelhaanks-3.kitevaults.near", key: KITE_KEY, call: "settle", ok: true },
+  { what: "the hourly keeper rebalanced the live DAO vault with Kite's key", hash: "Ck1NVbN6R12bpr4r4sppsE2MFXb7fMJ6rvNGUPpkukC", signer: "kite-dao-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: true },
+  { what: "the same run settled that swap", hash: "7BGF6rfhjbdW9BQmttAqKM3BQjeiuYJaduRxaRDArQBt", signer: "kite-dao-2.kitevaults.near", key: KITE_KEY, call: "settle", ok: true },
+  { what: "personal vault closed", hash: "7cPBbUvrhn1RA9UF1VQdw5BpPRtHThjdGNRMDnnEgzJM", signer: "emmanuelhaanks.near", call: "close_vault", ok: true },
+  { what: "DAO vault created by vote (relayed by Trezu)", hash: "Af3Wqkj4djSeD63wt98MJod3QsyfkqFYNtAZqpy41Wdj", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", ok: true },
+  { what: "DAO vault closed by vote (relayed by Trezu)", hash: "GRoLMGDxAL46PdzUGb4Dk4v7J5L5ZC2W9QTqMcrncDiT", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", ok: true },
+  { what: "the live DAO vault created by vote (relayed by Trezu)", hash: "7Q7Ar2Em6acP3iZmKEwFKrUABG3fo2nHSbsGR148BwuN", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", ok: true },
+  { what: "the live DAO vault invested by vote", hash: "A6HuJFgJcBC9nbgM7Dza2KUWECCWkXgkD9e3q8H5Dppk", signer: "emmanuelhaanks.near", call: "act_proposal", ok: true },
+  { what: "stolen-key attack: quote paying attacker.near", hash: "9vR2bufkfotztJpuP8Rzdm935YkkPBjzPNBL3a6Ri2vR", signer: "emmanuelhaanks-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: false, error: "ERR_QUOTE_RECIPIENT" },
+  { what: "stolen-key attack: edited quote", hash: "5Q1dQEXK58Jbn3hjteko2sgaMqcrzvJjuSEnDeH5pdcp", signer: "emmanuelhaanks-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: false, error: "ERR_QUOTE_SIG" },
 ];
 
 const tally = { PASS: 0, FAIL: 0, SKIP: 0 };
@@ -124,8 +136,9 @@ console.log("From the files in this repository");
 const wasm = (name) => readFileSync(join(root, "apps/web/public/vault", name));
 const vaultHash = createHash("sha256").update(wasm("kite_vault.wasm")).digest();
 const factoryHash = createHash("sha256").update(wasm("kite_factory.wasm")).digest();
-say("PASS", `vault wasm     sha256 ${vaultHash.toString("hex")}`, `as NEAR shows it: ${b58encode(vaultHash)}  (${wasm("kite_vault.wasm").length} bytes)`);
-say("PASS", `factory wasm   sha256 ${factoryHash.toString("hex")}`, `as NEAR shows it: ${b58encode(factoryHash)}`);
+// Not checks: the two hashes the mainnet checks below compare the chain against.
+console.log(`INFO  vault wasm     sha256 ${vaultHash.toString("hex")}\n      as NEAR shows it: ${b58encode(vaultHash)}  (${wasm("kite_vault.wasm").length} bytes)`);
+console.log(`INFO  factory wasm   sha256 ${factoryHash.toString("hex")}\n      as NEAR shows it: ${b58encode(factoryHash)}`);
 
 // The signature scheme the vault checks on chain (contracts/vault/src/lib.rs, verify_quote): ed25519 over
 // base58(sha256(the quote JSON)), by 1Click's key. Here it is run on a real 1Click answer, with Node's own crypto.
@@ -203,8 +216,21 @@ for (const t of TXS) {
     if (!d.result) return { ok: false, detail: `not found: ${JSON.stringify(d.error).slice(0, 200)}` };
     const all = JSON.stringify([d.result.status, ...(d.result.receipts_outcome ?? []).map((r) => r.outcome?.status)]);
     const failed = all.includes('"Failure"');
-    const ok = t.ok ? !failed : failed && all.includes(t.error);
-    return { ok, detail: `signer ${t.signer}; full hash ${t.hash}${ok ? "" : `; status ${all.slice(0, 300)}`}` };
+    // Who signed, with which key, and what the first action was: read from the chain, then compared with the table.
+    const tx = d.result.transaction ?? {};
+    const first = tx.actions?.[0];
+    const kind = typeof first === "string" ? first : Object.keys(first ?? {})[0];
+    const call = kind === "FunctionCall" ? first.FunctionCall.method_name : kind;
+    const by = first?.Delegate?.delegate_action?.sender_id;
+    const wrong = [
+      tx.signer_id !== t.signer && `signed by ${tx.signer_id}, expected ${t.signer}`,
+      t.key && tx.public_key !== t.key && `signed with ${tx.public_key}, expected Kite's key`,
+      t.call && call !== t.call && `first action ${call}, expected ${t.call}`,
+      t.by && by !== t.by && `relayed for ${by}, expected ${t.by}`,
+      t.ok ? failed && "it failed" : !(failed && all.includes(t.error)) && `it did not fail with ${t.error}`,
+    ].filter(Boolean);
+    const seen = `signed by ${tx.signer_id}${t.key ? " with Kite's limited key" : ""}${by ? ` for ${by}` : ""}; ${call}`;
+    return { ok: wrong.length === 0, detail: `${seen}; full hash ${t.hash}${wrong.length ? `; WRONG: ${wrong.join("; ")}; status ${all.slice(0, 200)}` : ""}` };
   });
 }
 

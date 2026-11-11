@@ -315,7 +315,7 @@ function Live({ p }: { p: Portfolio }) {
             )}
           </Stat>
           <Stat label="Next check" aside={k.keyActive ? <Badge tone="green">Kite&apos;s key on</Badge> : <Badge>Key revoked</Badge>}>
-            <Countdown />
+            {live.preview ? <span className="text-[28px] leading-9 tracking-[-0.05em]">On demand</span> : <Countdown />}
             {!live.preview && p.lastTradeMs ? (
               <p className="mt-1 text-[12px] leading-4 text-[#6b6b6b]">
                 Kite last traded <Ago ms={p.lastTradeMs} />.{" "}

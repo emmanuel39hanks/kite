@@ -215,7 +215,7 @@ export type ReplayEvent = { at: number; kind: "trade" | "check" | "deposit"; tit
  */
 export function replay(v: PreviewVault, h: History): ReplayEvent[] {
   const n = h.dates.length;
-  const at = (i: number) => h.dates[i] + 9 * 3600_000; // checks run once a day; stamp them mid-morning UTC
+  const at = (i: number) => h.dates[i] + 9 * 3600_000; // the replay steps through daily closing prices; stamp each step mid-morning UTC
   const priceAt = (i: number) => (id: string) => h.prices[id]?.[i] ?? 1;
   const events: ReplayEvent[] = [];
   const amount = v.cash;

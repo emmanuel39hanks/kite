@@ -194,7 +194,7 @@ function YourDaos({ account, current, onPick, onCreate, onByName, onOnly }: { ac
   const only = list?.length === 1 ? list[0].dao : null;
   useEffect(() => {
     if (only) onOnly?.(only);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tell the parent when the one DAO changes, not when its callback does
   }, [only]);
   useEffect(() => {
     let alive = true;

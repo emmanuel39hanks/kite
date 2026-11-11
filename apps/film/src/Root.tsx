@@ -14,7 +14,7 @@ const { fontFamily } = loadFont("normal", { weights: ["400", "500", "600", "800"
 type Scene = { C: ComponentType; dur: number };
 
 /**
- * Two clips bookend the live demo (see DEMO_SCRIPT.md): the problem before the console, the recap after it.
+ * Two clips bookend the live demo: the problem before the console, the recap after it.
  * The other scenes in ./scenes are kept but not rendered.
  * Every clip starts and ends on Kite's paper colour, so it cuts straight into or out of the console.
  */

@@ -50,7 +50,7 @@ export function LiveSync() {
 
   useEffect(() => {
     if (w.ready) k.switchAccount(w.accountId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- switch stores when the wallet's account changes, not when the store object does
   }, [w.ready, w.accountId]);
 
   const mine = useMyVault(k.account && !w.preview ? k.account : null);

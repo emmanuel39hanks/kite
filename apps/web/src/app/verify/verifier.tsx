@@ -69,7 +69,7 @@ export function Verifier() {
     const i = sp.get("id");
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one check on arrival from a shared link
     if (d && i) void run("From a DAO", d, i);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, on arrival; `auto` guards a second run
   }, []);
 
   const fails = res?.checks.filter((c) => c.state === "fail").length ?? 0;

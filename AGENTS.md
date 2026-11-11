@@ -34,6 +34,6 @@ These sign mainnet transactions with the keeper key (`KITE_AGENT_KEY`) or deploy
 
 ## Conventions
 
-- Env files (`.env*`) are never committed; examples are in `apps/web/.env.example` and `packages/keeper/.env.example`.
+- Env files (`.env*`) are never committed; the example is `apps/web/.env.example`; the keeper reads the same names (table in `docs/DESIGN.md`, Environment).
 - TypeScript is strict; no `any`. Rust passes `cargo clippy -- -D warnings`.
 - Contract source changes don't reach deployed vaults (no upgrade path), so behaviour notes about mainnet belong in docs and tests, not in `contracts/vault/src/lib.rs`.
