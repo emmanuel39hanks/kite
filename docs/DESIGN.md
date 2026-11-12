@@ -151,7 +151,7 @@ Checked against [docs.near.org/smart-contracts/security/checklist](https://docs.
 | Another method may run before the callback | Tested for `settle` racing the transfer (`a26`, `a28`) and for a replayed quote |
 | Gas sized for callbacks | Static gas per callback. Measured in the sandbox: rebalance 10.6 Tgas, settle 5.7 Tgas, against 200 and 150 attached. On mainnet the keeper transactions cited in the README burnt 14.7 to 14.9 Tgas (rebalance) and 7.3 to 7.5 Tgas (settle). |
 | Contract keeps enough liquid balance | 2.6 NEAR covers storage for about 239 KB, with about 0.20 left for gas. The keeper refuses to trade under 0.05 NEAR. |
-| Reproducible artifacts and a verified code hash | The build command strips local paths. The sandbox test asserts that the code hash equals the sha256 of the shipped file. Not done: a Docker reproducible build (`cargo near build reproducible-wasm`) and SourceScan verification. |
+| Reproducible artifacts and a verified code hash | The build command strips local paths. The sandbox test asserts that the code hash equals the sha256 of the shipped file. CI rebuilds both contracts on macOS arm64 with the pinned toolchain on every push and compares them with the shipped files (`.github/workflows/wasm.yml`). Next: a Docker reproducible build (`cargo near build reproducible-wasm`), so any host gives the same bytes, and SourceScan verification. |
 | Monitoring and a response plan | Vault events (listed below), a cron that fails loudly, a breaker, and the response plan below |
 | Upgrade path | None by design. There is no full-access key and no upgrade method; to change code you close the vault and create a new one. |
 
@@ -263,7 +263,7 @@ scripts/                     setup.sh, integration.sh, deploy-factory.sh (mainne
 | One check, dry | `npm run keeper -- --vault <name>.kitevaults.near --dry` |
 | Live attack demo | `npm run attack -- --vault <name>.kitevaults.near` |
 | Check routes | `npm run routes -w packages/keeper` (live 1Click routes for the five core assets) |
-| Build the vault | `cd contracts && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml --env "RUSTFLAGS=-C link-arg=-s --remap-path-prefix=$HOME/.cargo/registry=~/.cargo/registry --remap-path-prefix=$HOME/.rustup=/rustup --remap-path-prefix=$PWD=/src"` → copy `target/near/kite_vault/kite_vault.wasm` to `apps/web/public/vault/`. The remaps keep local paths out of the binary. With exactly Rust 1.97.0 and cargo-near 0.22.0 this rebuilds the shipped file byte for byte (sha256 `484f929b…`, checked on macOS arm64); the factory builds the same way from `factory/Cargo.toml` (sha256 `cb670574…`). Other toolchain versions give a different hash. |
+| Build the vault | `cd contracts && cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml --env "RUSTFLAGS=-C link-arg=-s --remap-path-prefix=$HOME/.cargo/registry=~/.cargo/registry --remap-path-prefix=$HOME/.rustup=/rustup --remap-path-prefix=$PWD=/src"` → copy `target/near/kite_vault/kite_vault.wasm` to `apps/web/public/vault/`. The remaps keep local paths out of the binary. With exactly Rust 1.97.0 and cargo-near 0.22.0 this rebuilds the shipped file byte for byte (sha256 `484f929b…`, checked on macOS arm64); the factory builds the same way from `factory/Cargo.toml` (sha256 `cb670574…`). Other toolchain versions give a different hash, and so does a Linux host. CI repeats this build on every push. |
 
 ### Environment (`apps/web/.env.local`, never committed)
 

@@ -1,0 +1,41 @@
+name: Contract rebuild
+
+# Rebuilds the vault and the factory from source with the pinned toolchain and the command in docs/DESIGN.md,
+# and fails unless both come out byte for byte equal to the files this repository ships (and mainnet runs).
+# It runs on macOS arm64, the host the shipped files were built on: a Linux host produces different bytes.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    name: Shipped wasm equals a fresh build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.0
+          targets: wasm32-unknown-unknown
+      - name: Install cargo-near 0.22.0
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.22.0/cargo-near-installer.sh | sh
+      - name: Build both contracts
+        working-directory: contracts
+        run: |
+          FLAGS="RUSTFLAGS=-C link-arg=-s --remap-path-prefix=$HOME/.cargo/registry=~/.cargo/registry --remap-path-prefix=$HOME/.rustup=/rustup --remap-path-prefix=$PWD=/src"
+          cargo near build non-reproducible-wasm --manifest-path vault/Cargo.toml --env "$FLAGS"
+          cargo near build non-reproducible-wasm --manifest-path factory/Cargo.toml --env "$FLAGS"
+      - name: Compare with the shipped files
+        run: |
+          status=0
+          for name in kite_vault kite_factory; do
+            built=$(shasum -a 256 "contracts/target/near/$name/$name.wasm" | cut -d' ' -f1)
+            shipped=$(shasum -a 256 "apps/web/public/vault/$name.wasm" | cut -d' ' -f1)
+            echo "$name: built $built, shipped $shipped"
+            [ "$built" = "$shipped" ] || status=1
+          done
+          exit $status
