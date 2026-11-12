@@ -9,6 +9,7 @@
     "routes": "node --env-file-if-exists=.env.local --import tsx scripts/routes.ts",
     "attack": "node --env-file-if-exists=.env.local --import tsx scripts/attack.ts",
     "test": "node --import tsx --test test/*.test.ts",
+    "lint": "eslint src test scripts",
     "typecheck": "tsc --noEmit"
   },
   "license": "MIT",
@@ -17,8 +18,10 @@
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
+    "eslint": "^9",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "typescript-eslint": "^8"
   },
   "exports": {
     ".": "./src/index.ts"

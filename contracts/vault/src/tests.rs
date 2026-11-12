@@ -1210,3 +1210,37 @@ fn known_limit_a_false_third_price_can_pass_a_trade_honest_prices_refuse() {
     let lie = Price { token: TOK_C.into(), usd_e6: U128(548_000) }; // C "worth" $0.548
     assert_eq!(refusal(&v, &balances, &q, &[lie]), None);
 }
+
+/// What a false price for an untraded asset cannot do: make a trade bigger than the per-trade limit. The sold
+/// asset has to look over its band, so the vault's own total can't be more than (sold holding) / (target + band).
+/// While that holding is really inside its band, this is at most the vault's real value, whatever price is given.
+#[test]
+fn three_assets_a_false_price_cannot_raise_the_size_of_a_trade() {
+    let v = dollar_vault(&[(TOK_A, 6_000), (TOK_B, 2_000), (TOK_C, 2_000)]);
+    let balances = [6_200 * E6, 2_100 * E6, 1_700 * E6]; // $10,000, every holding inside its 5-point band
+    let cap = 1_000; // the 10% per-trade limit, in dollars of the real value
+
+    // A lie does get a trade through here that honest prices refuse: with B "worth" $0.50, A looks 9 points over.
+    assert!(refusal(&v, &balances, &fair(TOK_A, TOK_C, 895), &[dollar(TOK_B)]).unwrap().contains(ERR_NOT_OVER_BAND));
+    let lie = [Price { token: TOK_B.into(), usd_e6: U128(500_000) }];
+    assert_eq!(refusal(&v, &balances, &fair(TOK_A, TOK_C, 895), &lie), None);
+    // But the lie made the vault look smaller ($8,950), so the limit bites sooner than at honest prices, not later.
+    assert!(refusal(&v, &balances, &fair(TOK_A, TOK_C, 896), &lie).unwrap().contains(ERR_TOO_BIG));
+
+    // No price for the third asset, from $0.000001 to $5,000,000, lets any pair trade more than the limit.
+    let tokens = [TOK_A, TOK_B, TOK_C];
+    for sell in tokens {
+        for buy in tokens.into_iter().filter(|t| *t != sell) {
+            let third = tokens.into_iter().find(|t| *t != sell && *t != buy).unwrap();
+            for exp in 0..=12u32 {
+                for mult in [1u128, 2, 5] {
+                    let price = [Price { token: third.into(), usd_e6: U128(mult * 10u128.pow(exp)) }];
+                    for usd in [cap + 1, 2 * cap, 5 * cap] {
+                        let r = refusal(&v, &balances, &fair(sell, buy, usd), &price);
+                        assert!(r.is_some(), "{sell} -> {buy} for ${usd} passed with {third} at {} micro-dollars", price[0].usd_e6.0);
+                    }
+                }
+            }
+        }
+    }
+}

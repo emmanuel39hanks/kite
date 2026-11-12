@@ -191,13 +191,16 @@ async fn kites_key_is_limited_by_near_itself() -> anyhow::Result<()> {
     };
     assert_eq!(on_chain.0, <[u8; 32]>::from(Sha256::digest(&e.wasm)), "code hash = sha256(kite_vault.wasm)");
 
-    // Kite's key can't withdraw, can't move funds in intents directly, can't loosen limits.
+    // Kite's key can't withdraw, can't move funds in intents directly, can't loosen limits. NEAR turns each of
+    // these away before any contract code runs, and says why.
+    let r = e.agent.call(&e.vault, "withdraw").args_json(json!({ "token": BTC, "amount": "1", "receiver_id": "thief.test.near" })).transact().await;
+    assert!(failed_with(&r, "MethodNameMismatch"), "withdraw with Kite's key: {r:?}");
     let r = e.agent.call(&e.vault, "withdraw").args_json(json!({ "token": BTC, "amount": "1", "receiver_id": "thief.test.near" })).deposit(NearToken::from_yoctonear(1)).transact().await;
-    assert!(r.as_ref().map(|x| !x.is_success()).unwrap_or(true), "withdraw with Kite's key must fail");
-    let r = e.agent.call(e.intents.id(), "mt_transfer").args_json(json!({ "receiver_id": "thief.test.near", "token_id": BTC, "amount": "1" })).deposit(NearToken::from_yoctonear(1)).transact().await;
-    assert!(r.as_ref().map(|x| !x.is_success()).unwrap_or(true), "a direct intents transfer with Kite's key must fail");
+    assert!(failed_with(&r, "DepositWithFunctionCall"), "withdraw with Kite's key and the 1 yocto an owner call needs: {r:?}");
+    let r = e.agent.call(e.intents.id(), "mt_transfer").args_json(json!({ "receiver_id": "thief.test.near", "token_id": BTC, "amount": "1" })).transact().await;
+    assert!(failed_with(&r, "ReceiverMismatch"), "a direct intents transfer with Kite's key: {r:?}");
     let r = e.agent.call(&e.vault, "set_limits").args_json(json!({ "limits": {} })).transact().await;
-    assert!(r.as_ref().map(|x| !x.is_success()).unwrap_or(true), "set_limits with Kite's key must fail");
+    assert!(failed_with(&r, "MethodNameMismatch"), "set_limits with Kite's key: {r:?}");
     assert_eq!(balance(&e, BTC).await?, 8_750_000, "nothing moved");
 
     // Owner methods need a full-access signature (1 yoctoNEAR attached), so a stray function-call key can't use them.

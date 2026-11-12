@@ -25,8 +25,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
-      - name: No critical advisories in production dependencies
-        run: npm audit --omit=dev --audit-level=critical
+      - name: No critical advisory, and no high one outside the Meteor wallet adapter
+        run: node scripts/audit.mjs
 
   contracts:
     name: Vault contract

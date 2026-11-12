@@ -23,7 +23,8 @@ Kite is an npm-workspaces monorepo plus a Rust workspace. What it is and what it
 | `npm test` | – | Web tests, then keeper tests (Node's test runner). |
 | `npm run test:contracts` | Rust 1.95+ | Unit tests for vault and factory. |
 | `npm run test:integration` | wasm32 target, cargo-near 0.22, downloads the NEAR sandbox (about 70 MB) | Linux or Apple-silicon macOS. About 5 minutes cold. Builds into `contracts/target`. |
-| `npm run typecheck`, `npm run lint`, `npm run build` | The build fetches Google Fonts | |
+| `npm run typecheck`, `npm run lint`, `npm run build` | The build fetches Google Fonts | Lint covers the web app and the keeper. |
+| `node scripts/audit.mjs` | `npm ci`; npm registry | Read-only. Fails on a critical advisory, or a high one outside the wallet adapter listed in the script. |
 | `npm run dev` | – | http://localhost:3000; `/console?preview=1` runs without a wallet. |
 | `npm run keeper -- --vault <vault> --dry` | NEAR RPC, 1Click | Reads a vault and prints what the keeper would do. Runs dry when `KITE_AGENT_KEY` is unset. |
 | `npm run attack -- --vault <vault>` | NEAR RPC, 1Click | View calls only. Requests unfunded 1Click quotes, some naming `attacker.near`; they expire unused. |
