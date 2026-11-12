@@ -228,6 +228,23 @@ if (!offline && openVaults.length) {
   });
 }
 
+// The demo DAO's own rules, and how the policy proposal the README cites was passed.
+await online(`${DAO}: a call or a transfer needs two approvals, and proposal 27 got both members' votes`, async () => {
+  const policy = await view(DAO, "get_policy");
+  const prop = await view(DAO, "get_proposal", { id: 27 });
+  if (!policy.value || !prop.value) return { ok: false, detail: policy.error ?? prop.error };
+  const approver = policy.value.roles.find((r) => r.permissions.includes("call:VoteApprove"));
+  const members = approver?.kind?.Group ?? [];
+  const need = { call: approver?.vote_policy?.call?.threshold, transfer: approver?.vote_policy?.transfer?.threshold };
+  const votes = prop.value.votes ?? {};
+  const call = prop.value.kind?.FunctionCall;
+  const ok =
+    need.call === "2" && need.transfer === "2" && members.length === 2 &&
+    prop.value.status === "Approved" && members.every((m) => votes[m] === "Approve") &&
+    call?.actions?.[0]?.method_name === "set_limits";
+  return { ok, detail: `approvers ${members.join(", ")}; approvals needed: call ${need.call}, transfer ${need.transfer}; proposal 27 (${call?.actions?.[0]?.method_name} on ${call?.receiver_id}) is ${prop.value.status}, votes ${JSON.stringify(votes)}` };
+});
+
 for (const t of TXS) {
   await online(`tx ${t.hash.slice(0, 8)}… ${t.what}: ${t.ok ? "succeeded" : `refused with ${t.error}`}`, async () => {
     const d = await rpc("EXPERIMENTAL_tx_status", { tx_hash: t.hash, sender_account_id: t.signer, wait_until: "FINAL" }, ARCHIVAL);

@@ -97,7 +97,7 @@ export function reviewStats(h: History, plan: Slice[], currentWeights: Record<st
     safeSharePct: r1(plan.filter((s) => SAFE.has(s.id)).reduce((a, s) => a + s.weight, 0)),
     driftNowPts: r1(Math.max(0, ...drifts)),
     rebalancesPerYear: r1(events / yrs),
-    yearlyCostPct: r1((turnover / yrs) * 0.3 * 10) / 10,
+    yearlyCostPct: Math.round((turnover / yrs) * 0.3 * 100) / 100,
     earnYieldPct: r1(earnYield),
   };
 }

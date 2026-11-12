@@ -1244,3 +1244,37 @@ fn three_assets_a_false_price_cannot_raise_the_size_of_a_trade() {
         }
     }
 }
+
+/// Known limit: with three or more assets the per-trade limit holds only while the sold holding is really inside
+/// its band. One trade let through by a false price can push the bought holding out of its band; after that the
+/// vault's own total can be overstated, and a later trade can be bigger than the limit. Here, from a $10,000 vault
+/// with a $1,000 limit, five trades pass that honest prices refuse: four of them add up to $4,070 (the limit
+/// allows $4,000 a day), and the fifth is $1,460. Each still loses at most the price limit on what it moves.
+#[test]
+fn known_limit_three_assets_false_prices_over_several_trades_can_exceed_the_size_limit() {
+    let v = dollar_vault(&[(TOK_A, 6_000), (TOK_B, 2_000), (TOK_C, 2_000)]);
+    let tokens = [TOK_A, TOK_B, TOK_C];
+    let mut balances = [6_200 * E6, 2_100 * E6, 1_700 * E6]; // every holding inside its band
+    let trades = [(0usize, 2usize, 950u128), (2, 1, 1_055), (0, 2, 805), (1, 2, 1_260), (2, 0, 1_460)];
+
+    for (sell, buy, usd) in trades {
+        let third = 3 - sell - buy;
+        let q = fair(tokens[sell], tokens[buy], usd);
+        assert!(refusal(&v, &balances, &q, &[dollar(tokens[third])]).is_some(), "honest prices allow ${usd}");
+        // Some price for the third asset, between $0.001 and $1,000, lets it through.
+        let mut micro = 1_000u128;
+        let passed = loop {
+            let lie = [Price { token: tokens[third].into(), usd_e6: U128(micro) }];
+            if refusal(&v, &balances, &q, &lie).is_none() {
+                break true;
+            }
+            micro += micro / 1_000 + 1;
+            if micro > 1_000_000_000 {
+                break false;
+            }
+        };
+        assert!(passed, "no false price lets ${usd} of {} through", tokens[sell]);
+        balances[sell] -= usd * E6;
+        balances[buy] += usd * E6;
+    }
+}
