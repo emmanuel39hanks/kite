@@ -381,7 +381,7 @@ function PrivatePlanner() {
   const checks = [
     { title: "Locked on your device", text: "Your words are encrypted before they leave your browser." },
     { title: "Opened only in sealed hardware", text: "Only a model inside NEAR AI Cloud's secure chips can open them. Kite's server only passes the locked message along." },
-    { title: "Signed and checked", text: "The answer comes back signed by that hardware, and your browser checks the signature." },
+    { title: "Signed and checked", text: "The answer comes back signed by NEAR AI, by the model's own hardware when it offers that, and your browser checks the signature." },
   ];
   return (
     <section id="ai" className="scroll-mt-24 px-5 pb-20 sm:px-10 sm:pb-28">
@@ -444,7 +444,7 @@ function Faq() {
     },
     {
       q: "How do I get my money out?",
-      a: "You withdraw it yourself, any time, to any wallet. Kite isn't part of that step at all.",
+      a: "You withdraw it yourself, any time: only your wallet can sign a withdrawal. The app turns your holdings back into USDC through NEAR Intents and sends them to your wallet.",
     },
     {
       q: "What does NEAR do here?",
@@ -464,7 +464,7 @@ function Faq() {
     },
     {
       q: "Can I use it where I live?",
-      a: "Crypto, gold and digital dollars are available almost anywhere. Kite runs on NEAR, so all you need is a NEAR wallet.",
+      a: "Kite runs on NEAR, so all you need is a NEAR wallet. Rules on automated trading differ by country, so check the ones where you live.",
     },
   ];
   return (

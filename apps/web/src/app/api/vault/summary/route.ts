@@ -73,6 +73,12 @@ export async function GET(req: Request) {
           const x = assetByIntentsId(p.token);
           return x ? [{ id: x.id, weight: p.target_bps / 100 }] : [];
         });
+      } else if (a.method === "set_plan" && Array.isArray(args?.plan)) {
+        // Transactions come oldest first, so the last successful `set_plan` is the plan in force.
+        s.plan = (args.plan as { token: string; target_bps: number }[]).flatMap((p) => {
+          const x = assetByIntentsId(p.token);
+          return x ? [{ id: x.id, weight: p.target_bps / 100 }] : [];
+        });
       } else if (a.method === "allocate" && args && t.predecessor_account_id !== vault) {
         for (const tr of args.transfers ?? []) if (tr.token === NEAR.usdc) s.investedUsd += Number(tr.amount) / 1e6;
       } else if (a.method === "rebalance" && t.predecessor_account_id === vault && args?.quote) {

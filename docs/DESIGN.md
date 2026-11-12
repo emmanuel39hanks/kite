@@ -144,7 +144,7 @@ Checked against [docs.near.org/smart-contracts/security/checklist](https://docs.
 | Every public method is meant to be public | Owner methods call `assert_owner`. `rebalance` calls `assert_agent` (the vault itself, signed by Kite's key). `settle` is public on purpose. The rest are views. |
 | Callbacks are `#[private]` | `on_rebalance_balances`, `on_rebalance_sent`, `on_settle_balances`, `on_close_balances` |
 | Admin changes need a deposit-capable key | Every owner method requires 1 yoctoNEAR (sandbox test: `pause` without it fails) |
-| Inputs have bounds | Plan 2 to 8 assets, no duplicates. Allocate at most 8 transfers. Quote at most 4 KB, signature at most 128 characters. At most one reported price per plan asset, no repeats (`a29`, `a30`). Limits validated. |
+| Inputs have bounds | Plan 2 to 8 assets, no duplicates. Allocate at most 8 transfers by the contract's bound; in practice one per call, several calls in one transaction (see [What we found building on NEAR](#what-we-found-building-on-near)). Quote at most 4 KB, signature at most 128 characters. At most one reported price per plan asset, no repeats (`a29`, `a30`). Limits validated. |
 | Overflow checks in release | `overflow-checks = true` in `contracts/Cargo.toml` |
 | Funds locked before a transfer is scheduled | `pending` is set before `mt_transfer`. While a swap is pending, `withdraw` of either token and new trades are refused. |
 | Callbacks handle failure and keep state consistent | A failed transfer clears `pending` (unit test and sandbox test). A late or stale balance read can't judge a swap (`a26`, `a28`). An unconfirmed swap is still judged after the window. |

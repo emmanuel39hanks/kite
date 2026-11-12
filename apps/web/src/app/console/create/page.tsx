@@ -283,7 +283,7 @@ function AmountStep({ mix, setMix }: { mix: Slice[]; setMix: (m: Slice[]) => voi
       {earning.length > 0 && (
         <p className="mt-3 text-[13px] leading-5 text-[#6b6b6b]">
           <span className="text-black">About {blended.toFixed(2)}% a year from yield across the plan</span>, on top of price moves. Earning versions cost
-          about 1–2% to switch in and back out, so they pay off when you hold for a few months. Yields change daily; each comes from the protocol&apos;s own API.
+          about 1–2% to switch in and back out, so they pay off when you hold for a few months. Staked ETH and earning USDC need swaps of about $25 or more, earning SOL about $10. Yields change daily; each comes from the protocol&apos;s own API.
         </p>
       )}
 
