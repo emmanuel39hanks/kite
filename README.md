@@ -33,7 +33,7 @@ Afterwards the vault checks what arrived, and pauses itself if it is short. A DA
 - **Private plan drafting.** Describe what you want in words; a model running in a TEE on NEAR AI Cloud drafts the mix and the limits, and the page verifies the hardware attestation before sending anything.
 - **DAO treasuries.** A Sputnik DAO (for example one made in Trezu) creates a vault by proposal and owns it from the first block.
 
-**Where it stands:** live on NEAR mainnet. Anyone can try the whole app without a wallet or funds in preview mode: https://www.usekite.xyz/console?preview=1
+**Where it stands:** live on NEAR mainnet. Every vault so far was made by us or by our demo DAO, at $3 to $25; there are no outside users yet. Not audited. Anyone can try the whole app without a wallet or funds in preview mode: https://www.usekite.xyz/console?preview=1
 
 ## Check it yourself
 
@@ -49,6 +49,7 @@ No wallet, keys or funds are needed for anything in this section.
 | `npm run typecheck && npm run lint && npm run build` | All three finish without errors. | The build downloads fonts from Google. |
 | Open https://www.usekite.xyz/console?preview=1 | The whole app on a simulated vault with live prices and real 1Click quotes (`dry: true`). Nothing is signed. To see a rebalance: start a plan, add money, invest, then change the target mix on Guardrails and press **Check now**. | A browser with JavaScript. |
 | `curl https://www.usekite.xyz/api/status` | JSON read from the chain at request time: every vault the factory made, which are open, and when each last traded. | — |
+| Open https://www.usekite.xyz/console/dao?vault=kite-dao-2.kitevaults.near | The live DAO vault's page, read from the chain with no wallet: what it holds, its rules, and every proposal about it with its status. | A browser with JavaScript. |
 | `npm run attack -- --vault kite-dao-2.kitevaults.near` (the live vault; any open vault from `/api/status` works) | Six hostile quotes (two pay or refund `attacker.near`, one is edited, one is signed by the wrong key, one is dry, one buys an asset outside the plan) are handed to the vault's `check_quote` view. Row `Q0`, the honest quote, is accepted; the six are refused, each with its `ERR_…`. Last line: `6 of 6 refused`. | `npm ci`; NEAR RPC and 1Click. It asks 1Click for unfunded quotes that expire unused. No transactions. |
 
 Commands that are not part of checking, because they sign with Kite's keeper key: `npm run attack -- … --send`, `npm run keeper` without `--dry`, `scripts/deploy-factory.sh`, and the `/api/cron` route.
@@ -114,8 +115,8 @@ First users: DAO treasuries on Sputnik and Trezu, where one vote on a mandate re
 ## Hackathon disclosure
 
 - **Build window.** Work started on Nov 2, 2026 and was first committed on Nov 3. Nothing was written before the hackathon.
-- **History.** The history was rewritten on Nov 10 and 11, 2026, around the time the repository became public: private working notes were removed, and documentation and commit messages were edited. No code was changed by it apart from one comment in a test file, and commit dates are as they were.
-- **Third-party code, tools and data.** near-sdk, near-workspaces, near-api-js, NEAR Wallet Selector, `@nearai/inference-sdk`, Next.js, Tailwind, Radix, Remotion. Built with AI coding tools, as the rules allow (Q-005). `contracts/integration-tests/res/sputnikdao2_v3_2.wasm` is SputnikDAO's own contract, fetched from mainnet for the sandbox tests. Prices and history from 1Click, NearBlocks, Kraken and CoinGecko; yields from Meta Pool, Lido, Morpho and Kamino. Media credits are in [docs/DESIGN.md](docs/DESIGN.md#credits-and-notes).
+- **History.** The history was rewritten on Nov 10 and 11, 2026, around the time the repository became public: private working notes were removed, some documentation sections were reworded or removed, and `Co-Authored-By: Claude` footers were taken out of commit messages. No code was changed by it apart from one comment in a test file, and commit dates are as they were. GitHub still serves the earlier commits through old CI runs.
+- **Third-party code, tools and data.** near-sdk, near-workspaces, near-api-js, NEAR Wallet Selector, `@nearai/inference-sdk`, Next.js, Tailwind, Radix, Remotion. AI coding tool: Claude Code (Anthropic), as the rules allow (Q-005). `contracts/integration-tests/res/sputnikdao2_v3_2.wasm` is SputnikDAO's own contract, fetched from mainnet for the sandbox tests. Prices and history from 1Click, NearBlocks, Kraken and CoinGecko; yields from Meta Pool, Lido, Morpho and Kamino. Media credits are in [docs/DESIGN.md](docs/DESIGN.md#credits-and-notes).
 - **Other entries.** This team has no other project in NEAR HACKATHON.
 
 Kite is not financial advice.
