@@ -54,19 +54,6 @@ export async function myDaos(account: string | null): Promise<MyDao[]> {
   return out;
 }
 
-/** The open Kite vaults each known DAO made with the factory and still owns. */
-export async function knownDaoVaults(): Promise<{ dao: string; vault: string }[]> {
-  const out: { dao: string; vault: string }[] = [];
-  for (const dao of knownDaos()) {
-    const made = await factoryVaultsBy(dao).catch(() => []);
-    for (const v of [...made].reverse()) {
-      const status = (await provider.callFunction({ contractId: v.vault, method: "get_status", args: {} }).catch(() => null)) as { owner?: string } | null;
-      if (status?.owner === dao) out.push({ dao, vault: v.vault });
-    }
-  }
-  return out;
-}
-
 export type DaoRequest = { dao: string; id: number; kind: unknown; text: string; status: string };
 
 /**

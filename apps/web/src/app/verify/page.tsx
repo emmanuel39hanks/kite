@@ -6,7 +6,7 @@ import { Verifier } from "./verifier";
 
 export const metadata: Metadata = {
   title: "Check a Kite policy proposal",
-  description: "Check, in your own browser, that a DAO proposal's rationale came from NEAR AI's attested model unedited, and that its vault calls are the ones the analysis was about.",
+  description: "Check, in your own browser, that a DAO proposal's rationale came from NEAR AI unedited, and that its vault calls are the ones the analysis was about.",
 };
 
 export default function VerifyPage() {

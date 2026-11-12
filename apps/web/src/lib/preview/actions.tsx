@@ -199,7 +199,7 @@ export function usePreviewActions() {
     return "";
   }, [addEvent]);
 
-  /** Kite's daily check, now: live prices, the contract's rules, and a real 1Click dry quote for the trade. */
+  /** Kite's check, now: live prices, the contract's rules, and a real 1Click dry quote for the trade. */
   const checkNow = useCallback(async (): Promise<CheckResult> => {
     const lines: string[] = [];
     const done = (action: string, kind: "check" | "trade" | "blocked", title: string, detail: string) => {

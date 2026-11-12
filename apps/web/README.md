@@ -1,7 +1,7 @@
 # Kite web app
 
 Next.js 16 app: the landing page, the `/console` product, and the server routes.
-Setup, commands, environment variables and the full documentation are in the [repository README](../README.md).
+Setup, commands, environment variables and the full documentation are in the [repository README](../../README.md).
 
 ```
 src/app/           pages and API routes (app/api/*)

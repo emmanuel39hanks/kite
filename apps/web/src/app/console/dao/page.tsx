@@ -42,6 +42,7 @@ import { agentAllowanceYocto, fromContractLimits, readVault, toContractLimits, t
 import { useWallet } from "@/lib/near/wallet";
 import type { Guardrails } from "@/lib/store";
 import { mixValid, slice, type Slice } from "@/lib/mix";
+import { rebalanceWarning } from "@/lib/minimums";
 
 /**
  * A Kite vault owned by a SputnikDAO: who owns it, what it holds, and the DAO's proposals that call it.
@@ -616,6 +617,13 @@ function OwnerActions({
 }) {
   const current = fromContractLimits(state.limits);
   const [g, setG] = useState<Guardrails>(current);
+  // What the vault holds, in dollars: the vault refuses trades under $1, so its size decides which rules can trade at all.
+  const { quote } = useMarket();
+  const vaultUsd = state.plan.reduce((sum, t, i) => {
+    const a = assetByIntentsId(t.token);
+    return a ? sum + (Number(state.balances[i] ?? 0n) / 10 ** t.decimals) * quote(a.id).price : sum;
+  }, 0);
+  const sizeWarning = vaultUsd > 0 ? rebalanceWarning(vaultUsd, g, state.plan.length) : null;
   const changed = JSON.stringify(g) !== JSON.stringify(current);
   const bond = nearFromYocto(BigInt(ctx.policy.proposal_bond));
   const off = !account || busy !== null;
@@ -703,7 +711,7 @@ function OwnerActions({
 
       {(editRules || changed) && (
         <Card className="p-2">
-          <GuardSliders value={g} onChange={setG} vaultUsd={undefined} />
+          <GuardSliders value={g} onChange={setG} vaultUsd={vaultUsd || undefined} assets={state.plan.length} />
         </Card>
       )}
 
@@ -736,6 +744,11 @@ function OwnerActions({
       <TakeOut vault={vault} state={state} ctx={ctx} off={off} busy={busy} onPropose={onPropose} />
 
       <Disclosure title="Verified treasury policy, written by NEAR AI">
+        {sizeWarning && (
+          <StatusNote tone="warn" className="mb-2">
+            {sizeWarning}
+          </StatusNote>
+        )}
         <TreasuryPolicy
           vault={vault}
           dao={ctx.dao}

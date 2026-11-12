@@ -23,6 +23,8 @@ const offline = process.argv.includes("--offline");
 const strict = process.argv.includes("--strict");
 
 const FACTORY = "kitevaults.near";
+/** The demo DAO whose votes the README cites. */
+const DAO = "kite-demo.sputnik-dao.near";
 const RPCS = ["https://rpc.mainnet.fastnear.com", "https://free.rpc.fastnear.com", "https://rpc.mainnet.near.org", "https://near.drpc.org"];
 // Ordinary servers forget transactions after a few days; archival ones keep them all.
 const ARCHIVAL = ["https://archival-rpc.mainnet.fastnear.com", "https://archival-rpc.mainnet.near.org"];
@@ -33,7 +35,8 @@ const KITE_KEY = "ed25519:F6zW7JjCL5skGpge4HkpoVwGsidC9qeUaNP2mwRpZ766";
 /**
  * Mainnet transactions the README cites. Each is re-read from an archival node and compared with what is written
  * here: the account that signed it, the key it was signed with (`key`), its first action (`call`: a method name,
- * or the action's kind), the member a relayed vote came from (`by`), and how it ended.
+ * or the action's kind), for a vote relayed by Trezu the member it came from (`by`) and the proposal it approves
+ * on the DAO (`vote`), and how it ended.
  */
 const TXS = [
   { what: "factory deployed", hash: "4WX2i7p4oAx86AmkrEX5QNX8xJ89nY2y2MqWYgsFn4hJ", signer: "kitevaults.near", call: "DeployContract", ok: true },
@@ -46,9 +49,9 @@ const TXS = [
   { what: "the hourly keeper rebalanced the live DAO vault with Kite's key", hash: "Ck1NVbN6R12bpr4r4sppsE2MFXb7fMJ6rvNGUPpkukC", signer: "kite-dao-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: true },
   { what: "the same run settled that swap", hash: "7BGF6rfhjbdW9BQmttAqKM3BQjeiuYJaduRxaRDArQBt", signer: "kite-dao-2.kitevaults.near", key: KITE_KEY, call: "settle", ok: true },
   { what: "personal vault closed", hash: "7cPBbUvrhn1RA9UF1VQdw5BpPRtHThjdGNRMDnnEgzJM", signer: "emmanuelhaanks.near", call: "close_vault", ok: true },
-  { what: "DAO vault created by vote (relayed by Trezu)", hash: "Af3Wqkj4djSeD63wt98MJod3QsyfkqFYNtAZqpy41Wdj", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", ok: true },
-  { what: "DAO vault closed by vote (relayed by Trezu)", hash: "GRoLMGDxAL46PdzUGb4Dk4v7J5L5ZC2W9QTqMcrncDiT", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", ok: true },
-  { what: "the live DAO vault created by vote (relayed by Trezu)", hash: "7Q7Ar2Em6acP3iZmKEwFKrUABG3fo2nHSbsGR148BwuN", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", ok: true },
+  { what: "DAO vault created by vote (relayed by Trezu)", hash: "Af3Wqkj4djSeD63wt98MJod3QsyfkqFYNtAZqpy41Wdj", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 0, ok: true },
+  { what: "DAO vault closed by vote (relayed by Trezu)", hash: "GRoLMGDxAL46PdzUGb4Dk4v7J5L5ZC2W9QTqMcrncDiT", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 4, ok: true },
+  { what: "the live DAO vault created by vote (relayed by Trezu)", hash: "7Q7Ar2Em6acP3iZmKEwFKrUABG3fo2nHSbsGR148BwuN", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 19, ok: true },
   { what: "the live DAO vault invested by vote", hash: "A6HuJFgJcBC9nbgM7Dza2KUWECCWkXgkD9e3q8H5Dppk", signer: "emmanuelhaanks.near", call: "act_proposal", ok: true },
   { what: "a treasury policy written by NEAR AI, approved by vote (proposal 24, checkable at /verify)", hash: "B4wdWx2vVuYdQZj4wQ9MyFcwFBUGeirZ7iVHtkGqtn3y", signer: "emmanuelhaanks.near", call: "act_proposal", ok: true },
   { what: "stolen-key attack: quote paying attacker.near", hash: "9vR2bufkfotztJpuP8Rzdm935YkkPBjzPNBL3a6Ri2vR", signer: "emmanuelhaanks-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: false, error: "ERR_QUOTE_RECIPIENT" },
@@ -141,6 +144,7 @@ const factoryHash = createHash("sha256").update(wasm("kite_factory.wasm")).diges
 console.log(`INFO  vault wasm     sha256 ${vaultHash.toString("hex")}\n      as NEAR shows it: ${b58encode(vaultHash)}  (${wasm("kite_vault.wasm").length} bytes)`);
 console.log(`INFO  factory wasm   sha256 ${factoryHash.toString("hex")}\n      as NEAR shows it: ${b58encode(factoryHash)}`);
 
+let pinnedKey = null;
 // The signature scheme the vault checks on chain (contracts/vault/src/lib.rs, verify_quote): ed25519 over
 // base58(sha256(the quote JSON)), by 1Click's key. Here it is run on a real 1Click answer, with Node's own crypto.
 {
@@ -150,6 +154,7 @@ console.log(`INFO  factory wasm   sha256 ${factoryHash.toString("hex")}\n      a
     const key = createPublicKey({ key: Buffer.concat([Buffer.from("302a300506032b6570032100", "hex"), b58decode(f.signer.replace("ed25519:", ""))]), format: "der", type: "spki" });
     return edVerify(null, Buffer.from(b58encode(createHash("sha256").update(payload).digest())), key, b58decode(f.signature.replace("ed25519:", "")));
   };
+  pinnedKey = pinned;
   say(pinned === f.signer ? "PASS" : "FAIL", "the key pinned in the vault's source is 1Click's signing key", `${pinned}`);
   say(check(f.payload) ? "PASS" : "FAIL", "a real 1Click quote verifies under that key (the scheme the vault checks on chain)");
   say(!check(f.payload.replace("kite.preview.near", "attacker.near")) ? "PASS" : "FAIL", "the same quote with the payee changed does not verify");
@@ -184,7 +189,12 @@ await online("every open vault runs that wasm, and no vault has a full-access ke
   for (const { vault } of list.value) {
     const acct = await query({ request_type: "view_account", account_id: vault });
     if (!acct.result) {
-      lines.push(`${vault}: closed (the account no longer exists)`);
+      // Closed means the chain says the account is gone. Any other answer is a failed read, not a closed vault.
+      if (acct.error?.cause?.name === "UNKNOWN_ACCOUNT") lines.push(`${vault}: closed (the account no longer exists)`);
+      else {
+        ok = false;
+        lines.push(`${vault}: could not be read (${JSON.stringify(acct.error ?? acct).slice(0, 120)})`);
+      }
       continue;
     }
     const keys = (await query({ request_type: "view_access_key_list", account_id: vault })).result?.keys ?? [];
@@ -207,7 +217,12 @@ if (!offline && openVaults.length) {
   await online(`${target} refuses a genuine 1Click-signed quote that pays another account`, async () => {
     const r = await view(target, "check_quote", { quote: f.payload, signature: f.signature });
     const refused = r.error?.match(/ERR_[A-Z_]+/)?.[0];
-    return { ok: !!refused, detail: refused ? `refused with ${refused}` : `not refused: ${JSON.stringify(r.value ?? r.error).slice(0, 200)}` };
+    return { ok: refused === "ERR_QUOTE_RECIPIENT", detail: refused ? `refused with ${refused}` : `not refused: ${JSON.stringify(r.value ?? r.error).slice(0, 200)}` };
+  });
+  // The key the vault checks quotes against is the one pinned in this repository's source, read from the vault itself.
+  await online(`${target} checks quotes against the 1Click key pinned in the source`, async () => {
+    const k = await view(target, "get_quote_signer");
+    return { ok: !!pinnedKey && k.value === pinnedKey, detail: `vault: ${k.value ?? k.error}; source: ${pinnedKey}` };
   });
 }
 
@@ -222,15 +237,23 @@ for (const t of TXS) {
     const first = tx.actions?.[0];
     const kind = typeof first === "string" ? first : Object.keys(first ?? {})[0];
     const call = kind === "FunctionCall" ? first.FunctionCall.method_name : kind;
-    const by = first?.Delegate?.delegate_action?.sender_id;
+    const relayed = first?.Delegate?.delegate_action;
+    const by = relayed?.sender_id;
+    // A relayed vote: the member's own action inside it must be `act_proposal` on the DAO, for this proposal.
+    const inner = relayed?.actions?.[0]?.FunctionCall;
+    let votedOn = null;
+    try {
+      votedOn = inner ? JSON.parse(Buffer.from(inner.args, "base64").toString()).id : null;
+    } catch {}
     const wrong = [
       tx.signer_id !== t.signer && `signed by ${tx.signer_id}, expected ${t.signer}`,
       t.key && tx.public_key !== t.key && `signed with ${tx.public_key}, expected Kite's key`,
       t.call && call !== t.call && `first action ${call}, expected ${t.call}`,
       t.by && by !== t.by && `relayed for ${by}, expected ${t.by}`,
+      t.vote !== undefined && !(relayed?.receiver_id === DAO && inner?.method_name === "act_proposal" && votedOn === t.vote) && `relayed call is ${inner?.method_name} on ${relayed?.receiver_id} for proposal ${votedOn}, expected act_proposal on ${DAO} for proposal ${t.vote}`,
       t.ok ? failed && "it failed" : !(failed && all.includes(t.error)) && `it did not fail with ${t.error}`,
     ].filter(Boolean);
-    const seen = `signed by ${tx.signer_id}${t.key ? " with Kite's limited key" : ""}${by ? ` for ${by}` : ""}; ${call}`;
+    const seen = `signed by ${tx.signer_id}${t.key ? " with Kite's limited key" : ""}${by ? ` for ${by}` : ""}; ${t.vote !== undefined ? `${inner?.method_name} on proposal ${votedOn}` : call}`;
     return { ok: wrong.length === 0, detail: `${seen}; full hash ${t.hash}${wrong.length ? `; WRONG: ${wrong.join("; ")}; status ${all.slice(0, 200)}` : ""}` };
   });
 }

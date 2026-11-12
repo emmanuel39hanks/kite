@@ -169,8 +169,8 @@ export function Verifier() {
       )}
 
       <p className="text-[12px] leading-5 text-[#6b6b6b]">
-        What this does not prove: that the analysis is right, or that the price statistics are correct. A signature from a key in NEAR AI&apos;s current TEE report shows the words came from that
-        model and weren&apos;t changed; a signature from any other key shows nothing, so &ldquo;Verified&rdquo; needs that check too. The worst case is recomputed here from the call arguments. NEAR AI&apos;s current report is fetched through Kite&apos;s relay, which only adds the API key; the report is verified here, not on Kite&apos;s server.
+        What this does not prove: that the analysis is right, or that the price statistics are correct. A signature from a key in NEAR AI&apos;s current TEE report shows the words came through NEAR AI&apos;s attested
+        gateway for that model and weren&apos;t changed (it does not show which hardware ran the model); a signature from any other key shows nothing, so &ldquo;Verified&rdquo; needs that check too. The worst case is recomputed here from the call arguments. NEAR AI&apos;s current report is fetched through Kite&apos;s relay, which only adds the API key; the report is verified here, not on Kite&apos;s server.
       </p>
     </div>
   );

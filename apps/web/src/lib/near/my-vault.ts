@@ -100,10 +100,6 @@ export function view(f: Found, pick: string | null): MyVault {
   return { ...base, vault: f.inflight ?? f.next, exists: false };
 }
 
-export async function resolveMyVault(owner: string): Promise<MyVault> {
-  return view(await findMyVaults(owner), readPick(owner));
-}
-
 const found = new Map<string, Found | "loading">();
 const views = new Map<string, MyVault>();
 const subs = new Set<() => void>();

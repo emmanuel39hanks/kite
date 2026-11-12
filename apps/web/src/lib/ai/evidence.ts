@@ -68,8 +68,6 @@ export async function sha256Hex(data: string | Uint8Array): Promise<string> {
 /** The vault's `policy_ref`: sha256 of the bundle's canonical JSON. 64 lowercase hex characters, as the contract requires. */
 export const policyRefOf = (b: EvidenceBundle) => sha256Hex(canonicalJson(b));
 
-export const isPolicyRef = (s: unknown): s is string => typeof s === "string" && /^[0-9a-f]{64}$/.test(s);
-
 /** The model id the signature covers: the `model` field of the exact request bytes. */
 export function requestModel(request: string): string | null {
   try {

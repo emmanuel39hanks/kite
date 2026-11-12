@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fairOut, holdings, nextTrade, rateWait, type Limits, type Target } from "../src/drift.ts";
+import { holdings, nextTrade, rateWait, type Limits, type Target } from "../src/drift.ts";
 
 const BTC = "nep141:nbtc.bridge.near";
 const XAUT = "nep141:xaut";
@@ -36,7 +36,6 @@ test("over the band → sells the overweight into the most underweight, capped",
   // surplus $1000, shortfall $500, cap $1000 → $500 × 0.995
   assert.ok(Math.abs(t.valueUsd - 497.5) < 0.01);
   assert.equal(t.amountIn, 621_875n);
-  assert.ok(fairOut(t) > 0n);
 });
 
 test("never sells more than the cap", () => {

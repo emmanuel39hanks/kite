@@ -13,7 +13,7 @@ import type { Yields } from "@/lib/market/yields";
 
 /** Runs in NEAR AI's attested TEEs and supports end-to-end encryption (checked 2026-11-03). */
 export const PLANNER_MODEL = "z-ai/glm-5.3-flash";
-/** DAO treasury policies are rare and voted on, so they use the stronger attested model (about a cent each). */
+/** DAO treasury policies are rare and voted on, so they use the stronger model; its answers are signed by NEAR AI's attested gateway (about a cent each). */
 export const POLICY_MODEL = "z-ai/glm-5.3";
 
 const PICKABLE = ["btc", "eth", "sol", "near", "xaut", "usdc"] as const;

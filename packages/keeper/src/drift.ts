@@ -90,8 +90,3 @@ export function nextTrade(plan: Target[], balances: bigint[], prices: Record<str
 
 /** Fixed-point USD price the contract expects: $1 = 1_000_000. */
 export const toUsdE6 = (usd: number) => BigInt(Math.round(usd * 1_000_000)).toString();
-
-/** The fair amount out, in `buy` base units, at reference prices. */
-export function fairOut(trade: Trade): bigint {
-  return BigInt(Math.floor((trade.valueUsd / trade.buy.priceUsd) * 10 ** trade.buy.decimals));
-}
