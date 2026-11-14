@@ -27,7 +27,7 @@ Kite is an npm-workspaces monorepo plus a Rust workspace. What it is and what it
 | `node scripts/audit.mjs` | `npm ci`; npm registry | Read-only. Fails on a critical advisory, or a high one outside the wallet adapter listed in the script. |
 | `npm run dev` | – | http://localhost:3000; `/console?preview=1` runs without a wallet. |
 | `npm run keeper -- --vault <vault> --dry` | NEAR RPC, 1Click | Reads a vault and prints what the keeper would do. Runs dry when `KITE_AGENT_KEY` is unset. |
-| `npm run attack -- --vault <vault>` | NEAR RPC, 1Click | View calls only. Requests unfunded 1Click quotes, some naming `attacker.near`; they expire unused. |
+| `npm run attack -- --vault <vault>` | NEAR RPC, 1Click | View calls only. Requests unfunded 1Click quotes, some naming `attacker.near`; they expire unused. With `--replay <hash of a past rebalance>` the views run on the vault as it stood in that block (archival RPC), so it works on a closed vault. |
 
 ## Commands with side effects
 

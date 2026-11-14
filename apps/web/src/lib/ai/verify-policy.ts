@@ -69,7 +69,7 @@ export function numbersCheck(f: PolicyFacts): { ok: boolean; reason: string } {
  * Without a kind (a pasted description), the call and policy_ref checks are "unknown".
  */
 export async function verifyPolicy(
-  input: { description: string; kind?: unknown; /** The DAO the proposal is on, and the vault's owner read from chain now. */ dao?: string; vaultOwner?: string | null },
+  input: { description: string; kind?: unknown; /** The DAO the proposal is on, and the vault's owner read from chain now. */ dao?: string; vaultOwner?: string | null; /** For a vault closed since: who the factory says created it, and whether the proposal passed and ran. */ closed?: { creator: string; passed: boolean } },
   sdk: SdkChecks,
 ): Promise<VerifyResult> {
   const { body, line } = splitDescription(input.description);
@@ -156,6 +156,14 @@ export async function verifyPolicy(
   if (!facts) checks.push({ key: "vault", label: "The vault belongs to this DAO", state: "unknown", reason: "Not checked: the signed request isn't a Kite policy." });
   else if (!input.dao || input.vaultOwner === undefined) checks.push({ key: "vault", label: "The vault belongs to this DAO", state: "unknown", reason: `Not checked: load the proposal from its DAO to compare ${facts.vault}'s owner.` });
   else if (input.vaultOwner === input.dao) checks.push({ key: "vault", label: "The vault belongs to this DAO", state: "pass", reason: `${facts.vault} is owned by ${input.dao}, read from the vault now.` });
+  // A closed vault has no owner to read. An owner-only call that ran proves who the owner was when it ran: SputnikDAO
+  // marks a proposal Approved only if its call succeeded, and the factory's record names who created the vault.
+  else if (!input.vaultOwner && input.closed)
+    checks.push(
+      input.closed.creator === input.dao && input.closed.passed
+        ? { key: "vault", label: "The vault belonged to this DAO", state: "pass", reason: `${facts.vault} has been closed since, so its owner can't be read now. The factory's record shows ${input.dao} created it, and this proposal passed and ran: the vault makes these calls for its owner only.` }
+        : { key: "vault", label: "The vault belongs to this DAO", state: "fail", reason: `${facts.vault} has been closed${input.closed.creator === input.dao ? ", and this proposal did not pass before it closed" : `; the factory's record shows ${input.closed.creator} created it, not ${input.dao}`}.` },
+    );
   else checks.push({ key: "vault", label: "The vault belongs to this DAO", state: "fail", reason: input.vaultOwner ? `${facts.vault} is owned by ${input.vaultOwner}, not ${input.dao}.` : `${facts.vault} couldn't be read as a Kite vault.` });
 
   // (d) and (e): the calls the DAO would make.

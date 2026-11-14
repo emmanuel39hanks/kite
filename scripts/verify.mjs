@@ -46,16 +46,18 @@ const TXS = [
   { what: "Kite's key settled the swap", hash: "4RbnhSFQSBwueYMagQGfKyxvPNg1dgbMm9EeSYtzGP2n", signer: "emmanuelhaanks.kitevaults.near", key: KITE_KEY, call: "settle", ok: true },
   { what: "Kite's key rebalanced a vault holding staked NEAR (stNEAR sold for BTC)", hash: "GWapkJTMWKD42BS4gNvsj6g8iaPTkWBQoKJWMrH9othH", signer: "emmanuelhaanks-3.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: true },
   { what: "and settled that swap", hash: "HuonLqVG1fT1x7XuoKYms6T3RZif64LB8fu918tUWAjk", signer: "emmanuelhaanks-3.kitevaults.near", key: KITE_KEY, call: "settle", ok: true },
-  { what: "the hourly keeper rebalanced the live DAO vault with Kite's key", hash: "Ck1NVbN6R12bpr4r4sppsE2MFXb7fMJ6rvNGUPpkukC", signer: "kite-dao-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: true },
+  { what: "the hourly keeper rebalanced the DAO vault kite-dao-2 with Kite's key", hash: "Ck1NVbN6R12bpr4r4sppsE2MFXb7fMJ6rvNGUPpkukC", signer: "kite-dao-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: true },
   { what: "the same run settled that swap", hash: "7BGF6rfhjbdW9BQmttAqKM3BQjeiuYJaduRxaRDArQBt", signer: "kite-dao-2.kitevaults.near", key: KITE_KEY, call: "settle", ok: true },
   { what: "personal vault closed", hash: "7cPBbUvrhn1RA9UF1VQdw5BpPRtHThjdGNRMDnnEgzJM", signer: "emmanuelhaanks.near", call: "close_vault", ok: true },
   { what: "DAO vault created by vote (relayed by Trezu)", hash: "Af3Wqkj4djSeD63wt98MJod3QsyfkqFYNtAZqpy41Wdj", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 0, ok: true },
   { what: "DAO vault closed by vote (relayed by Trezu)", hash: "GRoLMGDxAL46PdzUGb4Dk4v7J5L5ZC2W9QTqMcrncDiT", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 4, ok: true },
-  { what: "the live DAO vault created by vote (relayed by Trezu)", hash: "7Q7Ar2Em6acP3iZmKEwFKrUABG3fo2nHSbsGR148BwuN", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 19, ok: true },
-  { what: "the live DAO vault invested by vote", hash: "A6HuJFgJcBC9nbgM7Dza2KUWECCWkXgkD9e3q8H5Dppk", signer: "emmanuelhaanks.near", call: "act_proposal", ok: true },
+  { what: "DAO vault kite-dao-2 created by vote (relayed by Trezu)", hash: "7Q7Ar2Em6acP3iZmKEwFKrUABG3fo2nHSbsGR148BwuN", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 19, ok: true },
+  { what: "kite-dao-2 invested by vote", hash: "A6HuJFgJcBC9nbgM7Dza2KUWECCWkXgkD9e3q8H5Dppk", signer: "emmanuelhaanks.near", call: "act_proposal", ok: true },
   { what: "a treasury policy written by NEAR AI, approved by vote (proposal 24, checkable at /verify)", hash: "B4wdWx2vVuYdQZj4wQ9MyFcwFBUGeirZ7iVHtkGqtn3y", signer: "emmanuelhaanks.near", call: "act_proposal", ok: true },
   { what: "a second NEAR AI policy (proposal 27): first of the two approvals it needs (relayed by Trezu)", hash: "5VWxPwGtR1BHDgkuJ6hxTCZDJHpXX9yR1hJQbbS6QQZF", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 27, ok: true },
-  { what: "the second member's approval, which carried it out on the live vault (relayed by Trezu)", hash: "FdWVxyU6ERTuB3YhuWPyX1hCzMiQjo9E9BWK7ghXiFAs", signer: "sponsor.trezu.near", by: "saintsda.near", vote: 27, ok: true },
+  { what: "the second member's approval, which carried it out on kite-dao-2 (relayed by Trezu)", hash: "FdWVxyU6ERTuB3YhuWPyX1hCzMiQjo9E9BWK7ghXiFAs", signer: "sponsor.trezu.near", by: "saintsda.near", vote: 27, ok: true },
+  { what: "the DAO withdrew everything from kite-dao-2 by vote (proposal 28; the second approval, relayed by Trezu)", hash: "Dmcze1SJGup6uLwidDW6krcNZBEsz7TNeFZk22D6eEU3", signer: "sponsor.trezu.near", by: "emmanuelhaanks.near", vote: 28, ok: true },
+  { what: "the DAO closed kite-dao-2 by vote and got its deposit back (proposal 29; the second approval, relayed by Trezu)", hash: "2EzMNE1AcJjhby1yC6VMoB9nS9Qxix7NTTvDWzxLrz76", signer: "sponsor.trezu.near", by: "saintsda.near", vote: 29, ok: true },
   { what: "stolen-key attack: quote paying attacker.near", hash: "9vR2bufkfotztJpuP8Rzdm935YkkPBjzPNBL3a6Ri2vR", signer: "emmanuelhaanks-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: false, error: "ERR_QUOTE_RECIPIENT" },
   { what: "stolen-key attack: edited quote", hash: "5Q1dQEXK58Jbn3hjteko2sgaMqcrzvJjuSEnDeH5pdcp", signer: "emmanuelhaanks-2.kitevaults.near", key: KITE_KEY, call: "rebalance", ok: false, error: "ERR_QUOTE_SIG" },
 ];
@@ -228,11 +230,62 @@ if (!offline && openVaults.length) {
   });
 }
 
-// The demo DAO's own rules, and how the policy proposal the README cites was passed.
-await online(`${DAO}: a call or a transfer needs two approvals, and proposal 27 got both members' votes`, async () => {
+// A closed vault can still be checked: archival servers keep every past block, so its code, its keys and its own
+// views are read as they stood in the block where the keeper's rebalance of Nov 11, 2026 was sent.
+const PAST = { vault: "kite-dao-2.kitevaults.near", rebalance: "Ck1NVbN6R12bpr4r4sppsE2MFXb7fMJ6rvNGUPpkukC" };
+if (!offline) {
+  let at = null;
+  let sent = null;
+  const past = (params) => rpc("query", { block_id: at, ...params }, ARCHIVAL);
+  const viewPast = async (method, args = {}) => {
+    const d = await past({ request_type: "call_function", account_id: PAST.vault, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString("base64") });
+    if (!d.result?.result) return { error: JSON.stringify(d.error ?? d.result ?? d).slice(0, 400) };
+    return { value: JSON.parse(Buffer.from(d.result.result).toString() || "null") };
+  };
+  await online(`${PAST.vault} (closed since), in the block of its rebalance ${PAST.rebalance.slice(0, 8)}…: ran this repository's vault wasm, and its only key was Kite's limited key`, async () => {
+    const d = await rpc("EXPERIMENTAL_tx_status", { tx_hash: PAST.rebalance, sender_account_id: PAST.vault, wait_until: "FINAL" }, ARCHIVAL);
+    if (!d.result) return { ok: false, detail: `rebalance not found: ${JSON.stringify(d.error).slice(0, 200)}` };
+    at = d.result.transaction_outcome.block_hash;
+    sent = JSON.parse(Buffer.from(d.result.transaction.actions[0].FunctionCall.args, "base64").toString());
+    const acct = await past({ request_type: "view_account", account_id: PAST.vault });
+    const keys = (await past({ request_type: "view_access_key_list", account_id: PAST.vault })).result?.keys ?? [];
+    const limited = keys.length === 1 && keys.every((k) => {
+      const fc = k.access_key?.permission?.FunctionCall;
+      return k.public_key === KITE_KEY && fc && fc.receiver_id === PAST.vault && [...fc.method_names].sort().join(",") === "rebalance,settle";
+    });
+    const status = await viewPast("get_status");
+    return {
+      ok: acct.result?.code_hash === b58encode(vaultHash) && limited,
+      detail: `block ${at}; owner ${status.value?.owner ?? status.error}; code ${acct.result?.code_hash ?? JSON.stringify(acct.error).slice(0, 120)}, repository ${b58encode(vaultHash)}; keys: ${keys.map((k) => `${k.public_key} ${JSON.stringify(k.access_key?.permission)}`).join("; ") || "none"}`,
+    };
+  });
+  if (at) {
+    const f = JSON.parse(readFileSync(join(root, "packages/keeper/test/fixtures/oneclick-signed-quote.json"), "utf8"));
+    await online(`${PAST.vault}, same block: accepts the signed quote that rebalance carried, and refuses it once its amount is edited`, async () => {
+      const good = await viewPast("check_quote", { quote: sent.quote, signature: sent.signature });
+      const amountIn = JSON.parse(sent.quote).amountIn;
+      const edited = await viewPast("check_quote", { quote: sent.quote.replace(`"amountIn":"${amountIn}"`, `"amountIn":"${amountIn}000"`), signature: sent.signature });
+      const refused = edited.error?.match(/ERR_[A-Z_]+/)?.[0];
+      return { ok: !good.error && refused === "ERR_QUOTE_SIG", detail: `untouched: ${good.error ? `refused, ${good.error.match(/ERR_[A-Z_]+/)?.[0] ?? good.error.slice(0, 120)}` : "accepted"}; edited: ${refused ? `refused with ${refused}` : "not refused"}` };
+    });
+    await online(`${PAST.vault}, same block: refuses a genuine 1Click-signed quote that pays another account`, async () => {
+      const r = await viewPast("check_quote", { quote: f.payload, signature: f.signature });
+      const refused = r.error?.match(/ERR_[A-Z_]+/)?.[0];
+      return { ok: refused === "ERR_QUOTE_RECIPIENT", detail: refused ? `refused with ${refused}` : `not refused: ${JSON.stringify(r.value ?? r.error).slice(0, 200)}` };
+    });
+    await online(`${PAST.vault}, same block: checks quotes against the 1Click key pinned in the source`, async () => {
+      const k = await viewPast("get_quote_signer");
+      return { ok: !!pinnedKey && k.value === pinnedKey, detail: `vault: ${k.value ?? k.error}; source: ${pinnedKey}` };
+    });
+  }
+}
+
+// The demo DAO's own rules, and how the proposals the README cites were passed.
+await online(`${DAO}: a call or a transfer needs two approvals, and proposals 27 (limits), 28 (withdraw) and 29 (close) each got both members' votes`, async () => {
   const policy = await view(DAO, "get_policy");
   const prop = await view(DAO, "get_proposal", { id: 27 });
-  if (!policy.value || !prop.value) return { ok: false, detail: policy.error ?? prop.error };
+  const later = [await view(DAO, "get_proposal", { id: 28 }), await view(DAO, "get_proposal", { id: 29 })];
+  if (!policy.value || !prop.value || later.some((p) => !p.value)) return { ok: false, detail: policy.error ?? prop.error ?? later.find((p) => p.error)?.error };
   const approver = policy.value.roles.find((r) => r.permissions.includes("call:VoteApprove"));
   const members = approver?.kind?.Group ?? [];
   const need = { call: approver?.vote_policy?.call?.threshold, transfer: approver?.vote_policy?.transfer?.threshold };
@@ -241,8 +294,13 @@ await online(`${DAO}: a call or a transfer needs two approvals, and proposal 27 
   const ok =
     need.call === "2" && need.transfer === "2" && members.length === 2 &&
     prop.value.status === "Approved" && members.every((m) => votes[m] === "Approve") &&
-    call?.actions?.[0]?.method_name === "set_limits";
-  return { ok, detail: `approvers ${members.join(", ")}; approvals needed: call ${need.call}, transfer ${need.transfer}; proposal 27 (${call?.actions?.[0]?.method_name} on ${call?.receiver_id}) is ${prop.value.status}, votes ${JSON.stringify(votes)}` };
+    call?.actions?.[0]?.method_name === "set_limits" &&
+    later.every((p, i) => {
+      const c = p.value.kind?.FunctionCall;
+      return p.value.status === "Approved" && members.every((m) => p.value.votes?.[m] === "Approve") && c?.receiver_id === PAST.vault && c?.actions?.[0]?.method_name === ["withdraw", "close_vault"][i];
+    });
+  const told = later.map((p, i) => `proposal ${28 + i} (${p.value.kind?.FunctionCall?.actions?.[0]?.method_name} on ${p.value.kind?.FunctionCall?.receiver_id}) is ${p.value.status}, votes ${JSON.stringify(p.value.votes)}`);
+  return { ok, detail: `approvers ${members.join(", ")}; approvals needed: call ${need.call}, transfer ${need.transfer}; proposal 27 (${call?.actions?.[0]?.method_name} on ${call?.receiver_id}) is ${prop.value.status}, votes ${JSON.stringify(votes)}\n      ${told.join("\n      ")}` };
 });
 
 for (const t of TXS) {

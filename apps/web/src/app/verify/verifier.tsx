@@ -10,6 +10,7 @@ import { decodeEvidenceLine, splitDescription } from "@/lib/ai/evidence";
 import { factsFromRequest } from "@/lib/ai/policy";
 import { accountUrl } from "@/lib/near/config";
 import type { DaoProposal } from "@/lib/near/dao";
+import { closedVaultCreator } from "@/lib/near/factory";
 import { readProposal, readVaultOwner } from "@/lib/near/proposal";
 
 const MODES = ["From a DAO", "Paste a description"] as const;
@@ -45,12 +46,16 @@ export function Verifier() {
       setBusy("Checking…");
       // For a proposal read from a DAO, also read who owns the vault the analysis is about, right now.
       let vaultOwner: string | null | undefined;
+      let closed: { creator: string; passed: boolean } | undefined;
       if (proposal) {
         const line = splitDescription(description).line;
         const vault = line ? await decodeEvidenceLine(line).then((b) => factsFromRequest(b.request).vault).catch(() => null) : null;
         vaultOwner = vault ? await readVaultOwner(vault) : undefined;
+        // No owner to read: if the factory made this vault and NEAR no longer has it, it was closed.
+        const creator = vault && !vaultOwner ? await closedVaultCreator(vault).catch(() => null) : null;
+        if (creator) closed = { creator, passed: proposal.status === "Approved" };
       }
-      const r = await verifyPolicy({ description, kind: proposal ? proposal.kind : undefined, dao: proposal ? d : undefined, vaultOwner }, sdkChecks(`${window.location.origin}/api/nearai/v1`));
+      const r = await verifyPolicy({ description, kind: proposal ? proposal.kind : undefined, dao: proposal ? d : undefined, vaultOwner, closed }, sdkChecks(`${window.location.origin}/api/nearai/v1`));
       setRes({ ...r, proposal });
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);

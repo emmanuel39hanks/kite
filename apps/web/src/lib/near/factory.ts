@@ -127,6 +127,21 @@ export async function vaultNameFree(name: string): Promise<boolean> {
   }
 }
 
+/**
+ * For a vault the factory made whose account NEAR says is gone: the account that created it. Null for anything else
+ * (never made by the factory, still open, or a read that failed), so a busy RPC can't make an open vault look closed.
+ */
+export async function closedVaultCreator(vault: string): Promise<string | null> {
+  const known = await view<FactoryVault | null>(NEAR.factory, "get_vault", { vault }).catch(() => null);
+  if (!known) return null;
+  try {
+    await provider.viewAccount({ accountId: vault });
+    return null;
+  } catch (e) {
+    return e instanceof Error && (e.constructor.name === "AccountDoesNotExistError" || /does not exist/.test(e.message)) ? known.creator : null;
+  }
+}
+
 /** The DAO's NEAR balance, less what its own storage locks. */
 export async function spendableNear(account: string): Promise<bigint> {
   const a = await provider.viewAccount({ accountId: account });

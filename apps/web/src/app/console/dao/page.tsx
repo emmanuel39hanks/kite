@@ -17,6 +17,7 @@ import { assetByIntentsId, units as fmtUnits, usd } from "@/lib/assets";
 import { useMarket } from "@/lib/market/use-market";
 import { verifyAllocateProposal, verifyConvert, type CheckedSwap } from "@/lib/near/allocate-check";
 import { accountUrl, NEAR, trezuUrl } from "@/lib/near/config";
+import { closedVaultCreator } from "@/lib/near/factory";
 import { pickMyVault, refreshMyVault, useMyVault } from "@/lib/near/my-vault";
 import { closeVaultCalls, usdcInIntents, withdrawAllProposal } from "@/lib/near/dao-fund";
 import { myDaos, openDaoRequests, rememberDao, type DaoRequest, type MyDao } from "@/lib/near/known-daos";
@@ -59,6 +60,8 @@ export default function DaoPage() {
 type Note = { tone: "ok" | "err"; text: string } | null;
 type DaoCtx = { dao: string; policy: DaoPolicy; proposals: DaoProposal[] };
 type Loaded = { state: VaultState; owner: DaoCtx | null; pending: DaoCtx | null };
+/** A vault that was closed: who made it and, when that is a DAO, its proposals about the vault. */
+type Closed = { closed: true; creator: string; ctx: DaoCtx | null };
 
 const MODES = ["Create a vault", "Open a vault"] as const;
 type Mode = (typeof MODES)[number];
@@ -309,7 +312,9 @@ async function load(vault: string): Promise<Loaded> {
     try {
       return await loadOnce(vault);
     } catch (e) {
-      if (i >= 3) throw e;
+      // NEAR saying the account is gone is an answer, not a stumble: no point asking again.
+      const gone = e instanceof Error && (e.constructor.name === "AccountDoesNotExistError" || /does ?n[o']t exist|UNKNOWN_ACCOUNT/i.test(e.message));
+      if (i >= 3 || gone) throw e;
       await new Promise((r) => setTimeout(r, 1200 * (i + 1)));
     }
   }
@@ -325,7 +330,7 @@ async function loadOnce(vault: string): Promise<Loaded> {
 function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: boolean; onCreate: () => void; initialTab?: Tab }) {
   const w = useWallet();
   const router = useRouter();
-  const [data, setData] = useState<Loaded | { error: string } | null>(null);
+  const [data, setData] = useState<Loaded | Closed | { error: string } | null>(null);
   const [rev, setRev] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<Note>(null);
@@ -336,7 +341,13 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
     load(vault)
       .then((d) => alive && setData(d))
       // A refresh that fails keeps what's on screen; only a first load can end in "no vault here".
-      .catch(() => alive && setData((prev) => (prev && !("error" in prev) ? prev : { error: own ? "none" : `There's no Kite vault at ${vault}, or NEAR's RPC didn't answer. Check the name and try again.` })));
+      .catch(async () => {
+        // A vault the factory made and NEAR no longer has was closed: its votes are still on the DAO.
+        const creator = own ? null : await closedVaultCreator(vault).catch(() => null);
+        const closed: Closed | null = creator ? { closed: true, creator, ctx: await daoCtx(creator, vault) } : null;
+        if (!alive) return;
+        setData((prev) => (prev && !("error" in prev) && !("closed" in prev) ? prev : (closed ?? { error: own ? "none" : `There's no Kite vault at ${vault}, or NEAR's RPC didn't answer. Check the name and try again.` })));
+      });
     return () => {
       alive = false;
     };
@@ -367,8 +378,10 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
   // Votes and swaps land without this page doing anything (a vote cast in Trezu, Kite's hourly trade). Re-read while
   // the page is in view: every 5 seconds while a proposal is waiting for votes, every 12 otherwise, and at once when
   // someone comes back to this tab.
-  const waiting = !!data && !("error" in data) && [data.owner, data.pending].some((c) => c?.proposals.some((p) => isOpen(p, c.policy.proposal_period)));
+  const waiting = !!data && !("error" in data) && !("closed" in data) && [data.owner, data.pending].some((c) => c?.proposals.some((p) => isOpen(p, c.policy.proposal_period)));
+  const gone = !!data && "closed" in data; // a closed vault can't change: nothing to re-read
   useEffect(() => {
+    if (gone) return;
     const reread = () => document.visibilityState === "visible" && setRev((r) => r + 1);
     const t = setInterval(reread, waiting ? 5_000 : 12_000);
     document.addEventListener("visibilitychange", reread);
@@ -378,7 +391,7 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
       document.removeEventListener("visibilitychange", reread);
       window.removeEventListener("focus", reread);
     };
-  }, [waiting]);
+  }, [waiting, gone]);
 
   const propose = async (ctx: DaoCtx, name: string, action: OwnerAction) => {
     const { description, calls, gasTgas } = ownerProposal(vault, action);
@@ -405,6 +418,30 @@ function VaultDao({ vault, own, onCreate, initialTab }: { vault: string; own: bo
       </Card>
     );
   if ("error" in data) return <StatusNote tone="err" className="mt-3">{data.error}</StatusNote>;
+  if ("closed" in data)
+    return (
+      <>
+        <Card className="mt-3 p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[16px] break-all">{vault}</span>
+            <Badge>Closed</Badge>
+          </div>
+          <p className="mt-2 max-w-[70ch] text-[14px] leading-5 text-[#6b6b6b]">
+            {data.ctx ? `${data.creator} created this vault by vote, and later withdrew everything and closed it by vote.` : `${data.creator} created this vault and later closed it.`} A closed vault&apos;s account is
+            deleted and its deposit goes back to the owner. Its history stays on NEAR:{" "}
+            <a className="underline underline-offset-2" href={`${NEAR.explorer}/address/${vault}`} target="_blank" rel="noreferrer">
+              every transaction
+            </a>
+            {data.ctx ? ", and every proposal about it below." : "."}
+          </p>
+        </Card>
+        {data.ctx && (
+          <div className="mt-8 space-y-3">
+            <ProposalsCard ctx={data.ctx} vault={vault} planTokens={[]} connected={false} busy={null} onApprove={() => {}} />
+          </div>
+        )}
+      </>
+    );
 
   const { state, owner, pending } = data;
   if (owner) rememberDao(owner.dao);

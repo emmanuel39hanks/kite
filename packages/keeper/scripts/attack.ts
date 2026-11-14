@@ -1,7 +1,9 @@
 /**
- * Attack demo: someone who has stolen Kite's keeper key tries to steal from a live vault.
+ * Attack demo: someone who has stolen Kite's keeper key tries to steal from a vault.
  *
  *   npm run attack -- --vault <name>.kitevaults.near            # no key, no funds, no transactions
+ *   npm run attack -- --replay <hash of a past rebalance>       # the same views, against the vault as it stood when that
+ *                                                               # rebalance was sent (works for a vault closed since)
  *   npm run attack -- --vault <name>.kitevaults.near --send     # also sends real transactions with the keeper key (KITE_AGENT_KEY)
  *   add --out ../../docs/attack-log.md to save the transcript (the path is relative to packages/keeper)
  *
@@ -15,19 +17,23 @@ import { writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { Account, KeyPair, actions, teraToGas, type KeyPairString } from "near-api-js";
 import { INTENTS, isBusy, provider, readVault } from "../src/near.ts";
+import type { Limits, Target } from "../src/drift.ts";
 import { b58encode, quoteFull, signedPayload, tokens, verifyPayload, type QuoteResponse } from "../src/oneclick.ts";
 
 const arg = (name: string) => {
   const i = process.argv.indexOf(`--${name}`);
   return i > 0 ? process.argv[i + 1] : undefined;
 };
-const vault = arg("vault");
+const replay = arg("replay");
+let vault = arg("vault");
 const send = process.argv.includes("--send");
 const out = arg("out");
-if (!vault) {
-  console.error("Usage: npm run attack -- --vault <name>.kitevaults.near [--send] [--out file.md]");
+if ((!vault && !replay) || (replay && send)) {
+  console.error("Usage: npm run attack -- (--vault <name>.kitevaults.near [--send] | --replay <rebalance tx hash> [--vault <its vault>]) [--out file.md]");
   process.exit(2);
 }
+/** In a replay: the block the past rebalance was sent in. Views run against the vault's code and state at that block. */
+let block: string | undefined;
 const ATTACKER = process.env.ATTACKER ?? "attacker.near";
 
 type Row = { id: string; attack: string; layer: string; expect: string; got: string; ok: boolean; tx?: string; note?: string };
@@ -120,17 +126,77 @@ async function attackerQuote(sell: string, buy: string, amount: bigint, recipien
   });
 }
 
-const checkQuote = (quote: string, signature: string) => provider.callFunction({ contractId: vault!, method: "check_quote", args: { quote, signature } });
+/** Servers that keep every past block, so a view can be run against the vault's code and state at an old height. */
+const ARCHIVAL = ["https://archival-rpc.mainnet.fastnear.com", "https://archival-rpc.mainnet.near.org"];
+
+/** One request to an archival server, moving to the other when one is busy. `answer` returns the result or throws the chain's real answer. */
+async function archival<T>(method: string, params: unknown, answer: (d: { result?: unknown; error?: unknown }) => T | undefined): Promise<T> {
+  let last: unknown = new Error("fetch failed");
+  for (let i = 0; i < 6; i++) {
+    try {
+      const r = await fetch(ARCHIVAL[i % ARCHIVAL.length], {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const d = (await r.json()) as { result?: unknown; error?: unknown };
+      const got = answer(d);
+      if (got !== undefined) return got;
+      last = new Error(`fetch failed: ${JSON.stringify(d.error ?? d).slice(0, 200)}`);
+    } catch (e) {
+      if (!isBusy(e)) throw e;
+      last = e;
+    }
+    await new Promise((ok) => setTimeout(ok, 1_000));
+  }
+  throw last;
+}
+
+/** A view call at a past block. A contract panic is the chain's answer and is thrown with its message. */
+const viewAt = <T>(at: string, method: string, args: object) =>
+  archival<T>("query", { request_type: "call_function", block_id: at, account_id: vault, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString("base64") }, (d) => {
+    const res = d.result as { result?: number[]; error?: string } | undefined;
+    if (res?.result) return JSON.parse(Buffer.from(res.result).toString() || "null") as T;
+    if (res?.error) throw new Error(res.error);
+    return undefined;
+  });
+
+/** The signed quote a past rebalance carried, its vault, and the block it was sent in: all read from the chain. */
+async function pastRebalance(hash: string, sender: string | undefined) {
+  type Tx = { transaction: { signer_id: string; receiver_id: string; actions: { FunctionCall?: { method_name: string; args: string } }[] }; transaction_outcome: { block_hash: string } };
+  // The RPC needs the sender to find a transaction; without --vault, ask the explorer who sent it.
+  if (!sender) {
+    const r = await fetch(`https://api.nearblocks.io/v1/txns/${hash}`, { signal: AbortSignal.timeout(15_000) });
+    sender = ((await r.json()) as { txns?: { signer_account_id?: string }[] }).txns?.[0]?.signer_account_id;
+    if (!sender) throw new Error(`Could not find who sent ${hash}. Pass --vault <the vault that sent it>.`);
+  }
+  const tx = await archival<Tx>("tx", { tx_hash: hash, sender_account_id: sender, wait_until: "NONE" }, (d) => (d.result as Tx | undefined)?.transaction && (d.result as Tx));
+  const call = tx.transaction.actions[0]?.FunctionCall;
+  if (call?.method_name !== "rebalance") throw new Error(`${hash} is not a rebalance call.`);
+  const { quote, signature } = JSON.parse(Buffer.from(call.args, "base64").toString()) as { quote: string; signature: string };
+  return { vault: tx.transaction.receiver_id, at: tx.transaction_outcome.block_hash, quote, signature };
+}
+
+const checkQuote = (quote: string, signature: string) =>
+  block === undefined ? provider.callFunction({ contractId: vault!, method: "check_quote", args: { quote, signature } }) : viewAt(block, "check_quote", { quote, signature });
 
 async function main() {
+  // A replay takes its honest quote from a rebalance the chain already holds, and judges everything at that block.
+  const past = replay ? await pastRebalance(replay, vault) : undefined;
+  if (past) {
+    vault = past.vault;
+    block = past.at;
+  }
   say(`# Kite attack demo`);
   say(``);
-  say(`Vault: ${vault} · ${new Date().toISOString()} · mode: ${send ? "views + real transactions" : "views only (no key, no funds)"}`);
+  say(`Vault: ${vault}${past ? `, as it stood in block ${past.at} (when rebalance ${replay} was sent)` : ""} · ${new Date().toISOString()} · mode: ${send ? "views + real transactions" : "views only (no key, no funds)"}`);
   say(`The attacker controls Kite's keeper: its key (rebalance/settle only) and everything it sends to the vault.`);
   say(send ? `Rows Q0–Q6 are free view calls with no key. Rows K1–K6 are signed with Kite's real keeper key.` : `No key, no funds, no transactions: 1Click is asked for unfunded quotes, and the vault's own check_quote view judges each one.`);
   say(``);
 
-  const v = await readVault(vault!);
+  // Only the plan is needed for the views; at a past block it is read from that block.
+  const v = block === undefined ? await readVault(vault!) : { plan: await viewAt<Target[]>(block, "get_plan", {}), limits: await viewAt<Limits>(block, "get_limits", {}) };
   const [sell, buy] = [v.plan[0].token, v.plan[1].token];
   const all = await tokens();
   const px = (id: string) => all.find((t) => t.assetId === id)?.price ?? 0;
@@ -141,9 +207,13 @@ async function main() {
 
   say(`## 1. Redirecting money with real, 1Click-signed quotes`);
   say(``);
-  const honest = await attackerQuote(sell, buy, amount, vault!, vault!);
-  const honestPayload = signedPayload(honest);
-  say(`The honest quote (${honest.quote.amountInUsd} USD, pays and refunds the vault) verifies against 1Click's key locally: ${verifyPayload(honestPayload, honest.signature)}`);
+  // Live: a fresh honest quote. Replay: the one the past rebalance carried, since the vault refuses quotes that are
+  // not fresh at the block it is judged in.
+  const fresh = past ? undefined : await attackerQuote(sell, buy, amount, vault!, vault!);
+  const honest = { signature: past?.signature ?? fresh!.signature };
+  const honestPayload = past?.quote ?? signedPayload(fresh!);
+  const honestIn = (JSON.parse(honestPayload) as { amountIn: string; amountInUsd: string });
+  say(`The honest quote (${honestIn.amountInUsd} USD, pays and refunds the vault${past ? ", taken from that rebalance" : ""}) verifies against 1Click's key locally: ${verifyPayload(honestPayload, honest.signature)}`);
   say(``);
   // The control. A vault that refused everything would also "refuse" every attack, so first show it accepts the real thing.
   let control = "refused";
@@ -165,7 +235,7 @@ async function main() {
   await attempt("Q2", `Genuine quote whose refund goes to ${ATTACKER} (then make the swap fail)`, "contract", ["ERR_QUOTE_REFUND"], () =>
     checkQuote(signedPayload(refundAttacker), refundAttacker.signature),
   );
-  const edited = honestPayload.replace(`"amountIn":"${honest.quote.amountIn}"`, `"amountIn":"${amount * 1000n}"`);
+  const edited = honestPayload.replace(`"amountIn":"${honestIn.amountIn}"`, `"amountIn":"${BigInt(honestIn.amountIn) * 1000n}"`);
   await attempt("Q3", "Honest quote, edited to move 1000× more", "contract", ["ERR_QUOTE_SIG"], () => checkQuote(edited, honest.signature));
   // A real ed25519 signature over the same message 1Click signs, made with a key the attacker just generated.
   const forged = KeyPair.fromRandom("ed25519").sign(Buffer.from(b58encode(createHash("sha256").update(honestPayload).digest()))).signature;
@@ -174,7 +244,8 @@ async function main() {
   );
   const dry = await quoteFull({ dry: true, originAsset: sell, destinationAsset: buy, amount: amount.toString(), account: vault!, slippageBps: 50, deadlineSecs: 3600 });
   await attempt("Q5", "Dry quote (no deposit address) passed off as real", "contract", ["ERR_QUOTE_TERMS"], () => checkQuote(signedPayload(dry), dry.signature));
-  if (offPlan) {
+  // Not in a replay: a fresh quote is refused there for its date before the plan is looked at.
+  if (offPlan && !past) {
     const off = await attackerQuote(sell, offPlan, amount, vault!, vault!);
     await attempt("Q6", `Genuine quote into an asset outside the plan (${offPlan})`, "contract", ["ERR_NOT_IN_PLAN"], () =>
       checkQuote(signedPayload(off), off.signature),

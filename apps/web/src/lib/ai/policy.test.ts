@@ -199,6 +199,10 @@ test("the vault must belong to the DAO the proposal is on", async () => {
   assert.equal(states(await verifyPolicy({ ...input, vaultOwner: "someone.near" }, sdk)).vault, "fail");
   assert.equal(states(await verifyPolicy({ ...input, vaultOwner: null }, sdk)).vault, "fail");
   assert.equal(states(await verifyPolicy({ ...input, vaultOwner: undefined }, sdk)).vault, "unknown");
+  // A vault closed since: only the DAO the factory says created it, on a proposal that passed and ran, counts.
+  assert.equal(states(await verifyPolicy({ ...input, vaultOwner: null, closed: { creator: DAO, passed: true } }, sdk)).vault, "pass");
+  assert.equal(states(await verifyPolicy({ ...input, vaultOwner: null, closed: { creator: DAO, passed: false } }, sdk)).vault, "fail");
+  assert.equal(states(await verifyPolicy({ ...input, vaultOwner: null, closed: { creator: "someone.near", passed: true } }, sdk)).vault, "fail");
 });
 
 test("each call must attach exactly 1 yoctoNEAR", async () => {
